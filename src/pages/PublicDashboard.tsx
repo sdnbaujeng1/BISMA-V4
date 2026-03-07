@@ -1,0 +1,442 @@
+import { useEffect, useState } from 'react';
+import { LogIn, Megaphone, Moon, Sun, BookOpen, AlertCircle, X, User, Backpack, Pencil, Globe, Calculator, GraduationCap, Volume2, Minimize2, Maximize2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+
+export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }: { onNavigate: (page: string) => void, darkMode: boolean, toggleDarkMode: () => void }) {
+  const [data, setData] = useState<any>(null);
+  const [schoolIdentity, setSchoolIdentity] = useState<any>(null);
+  const [time, setTime] = useState(new Date());
+  const [showAbsentModal, setShowAbsentModal] = useState(false);
+  const [isAnnouncementMinimized, setIsAnnouncementMinimized] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    
+    // Load Public Dashboard Data
+    const loadPublicData = () => {
+      const storedData = localStorage.getItem('public_dashboard_data');
+      if (storedData) {
+        try {
+          setData(JSON.parse(storedData));
+        } catch (e) {
+          console.error("Failed to parse public dashboard data", e);
+          localStorage.removeItem('public_dashboard_data');
+          // Fallback will be set below if data is null (which it won't be if we don't set it here, but we should probably set default)
+        }
+      }
+      
+      if (!storedData) { // Check again or if parsing failed (we could improve this logic but let's stick to the structure)
+         // Fallback/Initial data
+         setData({
+           appName: "BISMA",
+           pengumuman: "Selamat datang di Sistem Monitoring KBM SDN BAUJENG I BEJI. Silahkan login untuk akses fitur lainnya.",
+           kelas1: 0, kelas2: 0, kelas3: 0, kelas4: 0, kelas5: 0, kelas6: 0,
+           totalStudents: 0, totalJP: 0,
+           completedKBM: 0, totalScheduled: 240, percentage: 0,
+           absentStudents: [
+             { name: "Ahmad", class: "1", reason: "Sakit" },
+             { name: "Budi", class: "3", reason: "Izin" },
+             { name: "Siti", class: "5", reason: "Alpha" }
+           ]
+         });
+      }
+    };
+
+    // Load School Identity Data
+    const loadSchoolIdentity = async () => {
+      try {
+        const res = await fetch('/api/pengaturan');
+        const result = await res.json();
+        if (result.success && result.data) {
+          setSchoolIdentity(result.data);
+          // Update localStorage
+          localStorage.setItem('school_identity_data', JSON.stringify(result.data));
+        } else {
+          // Fallback to localStorage
+          const storedIdentity = localStorage.getItem('school_identity_data');
+          if (storedIdentity) {
+            try {
+              setSchoolIdentity(JSON.parse(storedIdentity));
+            } catch (e) {
+              console.error("Failed to parse school identity data", e);
+            }
+          } else {
+             setSchoolIdentity({
+              schoolName: "UPT Satuan Pendidikan SDN Baujeng 1",
+              logo1x1: "https://i.imghippo.com/files/xbYy2711Wk.png"
+            });
+          }
+        }
+      } catch (e) {
+        // Fallback to localStorage
+        const storedIdentity = localStorage.getItem('school_identity_data');
+        if (storedIdentity) {
+          try {
+            setSchoolIdentity(JSON.parse(storedIdentity));
+          } catch (e) {
+            console.error("Failed to parse school identity data", e);
+          }
+        } else {
+           setSchoolIdentity({
+            schoolName: "UPT Satuan Pendidikan SDN Baujeng 1",
+            logo1x1: "https://i.imghippo.com/files/xbYy2711Wk.png"
+          });
+        }
+      }
+    };
+
+    loadPublicData();
+    loadSchoolIdentity();
+    
+    // Also try fetch for real API
+    fetch('/api/public-dashboard')
+      .then(res => res.json())
+      .then(res => {
+        if (res.success) setData(res.data);
+      })
+      .catch(() => {}); // Ignore error if API not built
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Listen for storage changes to update in real-time
+  useEffect(() => {
+    const handleStorageChange = async () => {
+      let localData = {};
+      const storedData = localStorage.getItem('public_dashboard_data');
+      if (storedData) {
+        try {
+          localData = JSON.parse(storedData);
+        } catch (e) {
+          console.error("Failed to parse public dashboard data from storage event", e);
+        }
+      }
+      
+      // Fetch latest API data
+      try {
+        const res = await fetch('/api/public-dashboard');
+        const result = await res.json();
+        if (result.success) {
+          setData((prev: any) => ({ ...prev, ...localData, ...result.data }));
+        } else {
+          setData((prev: any) => ({ ...prev, ...localData }));
+        }
+      } catch (e) {
+        setData((prev: any) => ({ ...prev, ...localData }));
+      }
+      
+      const storedIdentity = localStorage.getItem('school_identity_data');
+      if (storedIdentity) {
+        try {
+          setSchoolIdentity(JSON.parse(storedIdentity));
+        } catch (e) {
+          console.error("Failed to parse school identity data from storage event", e);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('public-data-update', handleStorageChange);
+    window.addEventListener('school-identity-update', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('public-data-update', handleStorageChange);
+      window.removeEventListener('school-identity-update', handleStorageChange);
+    };
+  }, []);
+
+  const getClassIcon = () => {
+    return <Backpack className="w-10 h-10 text-white drop-shadow-md" />;
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 flex flex-col font-sans">
+      <header className="w-full bg-white/90 dark:bg-slate-800/90 backdrop-blur shadow-sm border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <img 
+              src={schoolIdentity?.logo1x1 || "https://i.imghippo.com/files/xbYy2711Wk.png"} 
+              alt="Logo" 
+              className="h-12 w-12 object-contain drop-shadow-xl rounded-lg transform hover:scale-110 transition-transform duration-500" 
+              style={{
+                filter: 'drop-shadow(0 10px 8px rgb(0 0 0 / 0.2)) drop-shadow(0 4px 3px rgb(0 0 0 / 0.1))',
+                transform: 'perspective(500px) rotateY(15deg)'
+              }}
+              onError={(e) => { (e.target as HTMLImageElement).src = "https://i.imghippo.com/files/xbYy2711Wk.png"; }}
+            />
+            <div>
+              <h1 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight leading-tight uppercase">
+                {data?.appName || "BISMA"}
+              </h1>
+              <p className="text-slate-500 dark:text-slate-400 text-xs hidden sm:block font-bold uppercase">
+                {schoolIdentity?.schoolName || "UPT Satuan Pendidikan SDN Baujeng 1"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+             <div className="hidden md:flex flex-col items-end mr-4">
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                  {time.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
+                <span className="text-xs font-mono text-green-600 dark:text-green-400 font-medium">
+                  {time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':')}
+                </span>
+             </div>
+
+            <button 
+              onClick={toggleDarkMode}
+              className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+            >
+              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+            <button 
+              onClick={() => onNavigate('login')}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors shadow-sm text-sm"
+            >
+              <LogIn className="w-4 h-4" /> <span className="hidden sm:inline">Login</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 flex flex-col gap-8">
+        {!data ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          </div>
+        ) : (
+          <>
+            {/* Pengumuman */}
+            <div className={`relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 shadow-xl transition-all duration-500 ease-in-out text-white ${isAnnouncementMinimized ? 'p-6 flex items-center justify-between' : 'p-6 lg:p-10 flex flex-col md:flex-row items-start gap-6'}`}>
+              <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-black/10 rounded-full blur-3xl pointer-events-none"></div>
+              
+              <div className="relative z-10 flex w-full justify-between items-start gap-4">
+                  <div className={`flex ${isAnnouncementMinimized ? 'items-center gap-4' : 'flex-col md:flex-row md:items-start gap-6'} flex-1`}>
+                      <div className="bg-white/20 p-3 rounded-2xl shadow-lg backdrop-blur-sm flex-shrink-0">
+                        <Megaphone className="w-6 h-6 animate-pulse text-white" />
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                          <div className={`flex flex-col ${isAnnouncementMinimized ? 'justify-center' : 'md:flex-row md:items-center justify-between mb-4 border-b border-white/20 pb-4'}`}>
+                              <h3 className="font-extrabold text-xl md:text-2xl text-white drop-shadow-sm truncate">
+                                {data.announcementTitle || "Informasi Terkini"}
+                              </h3>
+                              {!isAnnouncementMinimized && data.announcementDate && (
+                                <span className="mt-2 md:mt-0 px-4 py-1.5 bg-white/20 text-white text-xs font-bold rounded-full border border-white/30 flex items-center gap-2 w-fit backdrop-blur-sm">
+                                  <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                                  {new Date(data.announcementDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                </span>
+                              )}
+                          </div>
+                          
+                          {!isAnnouncementMinimized && (
+                            <motion.div 
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="text-white/90 leading-relaxed font-medium text-lg whitespace-pre-wrap drop-shadow-sm"
+                            >
+                                {data.pengumuman}
+                            </motion.div>
+                          )}
+                      </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+                      <button 
+                          onClick={() => setIsAnnouncementMinimized(!isAnnouncementMinimized)}
+                          className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors backdrop-blur-sm shadow-sm"
+                          title={isAnnouncementMinimized ? "Tampilkan Detail" : "Sembunyikan Detail"}
+                      >
+                          {isAnnouncementMinimized ? <Maximize2 className="w-5 h-5" /> : <Minimize2 className="w-5 h-5" />}
+                      </button>
+                      <button 
+                          onClick={() => {
+                              setIsAnnouncementMinimized(false);
+                              // Play TTS
+                              if ('speechSynthesis' in window) {
+                                  window.speechSynthesis.cancel(); // Stop current speech
+                                  const utterance = new SpeechSynthesisUtterance(data.pengumuman || "Tidak ada pengumuman.");
+                                  utterance.lang = 'id-ID';
+                                  window.speechSynthesis.speak(utterance);
+                              }
+                          }}
+                          onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              setIsAnnouncementMinimized(true);
+                          }}
+                          className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors backdrop-blur-sm shadow-sm"
+                          title="Klik 1x: Baca & Tampil | Klik 2x: Sembunyikan"
+                      >
+                          <Volume2 className="w-5 h-5" />
+                      </button>
+                  </div>
+              </div>
+            </div>
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+              {/* Total Siswa */}
+              <div className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center h-40 md:h-48 relative overflow-hidden group hover:shadow-md transition-shadow">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-2xl mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <User className="w-6 h-6 md:w-8 md:h-8 text-blue-500 dark:text-blue-400" />
+                </div>
+                <div className="text-2xl md:text-4xl font-black text-slate-800 dark:text-white mb-1">
+                  {data.totalStudents || 0}
+                </div>
+                <p className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Siswa</p>
+              </div>
+
+              {/* Total JP */}
+              <div className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center h-40 md:h-48 relative overflow-hidden group hover:shadow-md transition-shadow">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-emerald-600"></div>
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <Calculator className="w-6 h-6 md:w-8 md:h-8 text-emerald-500 dark:text-emerald-400" />
+                </div>
+                <div className="text-2xl md:text-4xl font-black text-slate-800 dark:text-white mb-1">
+                  {data.totalJP || 0}
+                </div>
+                <p className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total JP</p>
+              </div>
+
+              {/* KBM Terlaksana */}
+              <div className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center h-40 md:h-48 relative overflow-hidden group hover:shadow-md transition-shadow">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-400 to-purple-600"></div>
+                <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-2xl mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <BookOpen className="w-6 h-6 md:w-8 md:h-8 text-purple-500 dark:text-purple-400" />
+                </div>
+                <div className="text-2xl md:text-4xl font-black text-slate-800 dark:text-white mb-1 flex items-baseline justify-center gap-1">
+                  {data.completedKBM || 0} <span className="text-sm md:text-lg text-slate-400 font-medium">/ {data.totalScheduled || 0}</span>
+                </div>
+                <p className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">KBM Hari Ini</p>
+              </div>
+
+              {/* Ketidakhadiran */}
+              <button 
+                onClick={() => setShowAbsentModal(true)}
+                className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center h-40 md:h-48 relative overflow-hidden group hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+              >
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 to-orange-600"></div>
+                <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-2xl mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <AlertCircle className="w-6 h-6 md:w-8 md:h-8 text-orange-500 dark:text-orange-400" />
+                </div>
+                <div className="text-2xl md:text-4xl font-black text-slate-800 dark:text-white mb-1">
+                  {data.absentStudents?.length || 0}
+                </div>
+                <p className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Absen Siswa</p>
+              </button>
+            </div>
+
+            {/* Class Breakdown Section */}
+            <div className="flex items-center gap-3 mt-2">
+              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400">
+                <GraduationCap className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white">
+                Rincian Siswa Per Kelas
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+              {[1, 2, 3, 4, 5, 6].map(k => (
+                <div key={k} className="bg-white dark:bg-slate-800 p-3 md:p-4 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group flex items-center gap-3 md:gap-4">
+                  {/* 3D Icon Container */}
+                  <div className={`w-14 h-14 md:w-20 md:h-20 rounded-2xl flex-shrink-0 flex flex-col items-center justify-center transform transition-transform duration-500 group-hover:scale-110 shadow-[0_10px_20px_-5px_rgba(0,0,0,0.3)] bg-gradient-to-br ${
+                    k === 1 ? 'from-red-400 to-red-600 shadow-red-500/40' : 
+                    k === 2 ? 'from-orange-400 to-orange-600 shadow-orange-500/40' : 
+                    k === 3 ? 'from-yellow-400 to-yellow-600 shadow-yellow-500/40' : 
+                    k === 4 ? 'from-green-400 to-green-600 shadow-green-500/40' : 
+                    k === 5 ? 'from-blue-400 to-blue-600 shadow-blue-500/40' : 
+                    'from-purple-400 to-purple-600 shadow-purple-500/40'
+                  }`}>
+                    <Backpack className="w-7 h-7 md:w-10 md:h-10 text-white drop-shadow-md" />
+                  </div>
+                  
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-[10px] md:text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-0.5 md:mb-1 truncate">Kelas {k}</span>
+                    <span className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white leading-none truncate">
+                      {data[`kelas${k}`] || 0}
+                    </span>
+                  </div>
+
+                  {/* Decorative background blob */}
+                  <div className={`absolute -right-4 -bottom-4 w-24 h-24 rounded-full opacity-5 blur-2xl ${
+                    k === 1 ? 'bg-red-500' : k === 2 ? 'bg-orange-500' : k === 3 ? 'bg-yellow-500' : k === 4 ? 'bg-green-500' : k === 5 ? 'bg-blue-500' : 'bg-purple-500'
+                  }`}></div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </main>
+      
+      <footer className="py-6 text-center text-slate-400 dark:text-slate-600 text-sm">
+        &copy; {new Date().getFullYear()} {schoolIdentity?.schoolName || "UPT Satuan Pendidikan SDN Baujeng 1"}. All rights reserved.
+      </footer>
+
+      {/* Absent Modal */}
+      <AnimatePresence>
+        {showAbsentModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col"
+            >
+              <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-700 bg-orange-50 dark:bg-orange-900/10">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg text-orange-600 dark:text-orange-400">
+                    <AlertCircle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-800 dark:text-white">Ketidakhadiran Murid</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Daftar siswa yang tidak hadir hari ini</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowAbsentModal(false)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+              
+              <div className="p-0 max-h-[60vh] overflow-y-auto">
+                {data?.absentStudents && data.absentStudents.length > 0 ? (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {data.absentStudents.map((student: any, idx: number) => (
+                      <div key={idx} className="p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                        <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 font-bold">
+                          {student.name.charAt(0)}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-slate-800 dark:text-white">{student.name}</h4>
+                          <p className="text-xs text-slate-500">Kelas {student.class}</p>
+                        </div>
+                        <span className="px-3 py-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-xs font-bold rounded-full">
+                          {student.reason}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-12 text-center text-slate-500 dark:text-slate-400">
+                    <p>Tidak ada data ketidakhadiran hari ini.</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end">
+                <button onClick={() => setShowAbsentModal(false)} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
+                  Tutup
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
