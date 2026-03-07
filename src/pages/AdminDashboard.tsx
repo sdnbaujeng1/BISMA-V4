@@ -1357,7 +1357,9 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
 
 function UserManagementModal({ onClose, showToast }: { onClose: () => void, showToast: (msg: string, type?: 'success' | 'error') => void }) {
   const [isAdding, setIsAdding] = useState(false);
-  const [role, setRole] = useState('Guru');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState('');
+  const [roles, setRoles] = useState<string[]>(['Guru']);
   const [password, setPassword] = useState('baujeng@1');
   const [nip, setNip] = useState('');
   const [nama, setNama] = useState('');
@@ -1380,10 +1382,10 @@ function UserManagementModal({ onClose, showToast }: { onClose: () => void, show
     fetchUsers();
   }, []);
 
-  const handleDeleteUser = async (type: string, id: string) => {
+  const handleDeleteUser = async (id: string) => {
     if (!confirm("Hapus user ini?")) return;
     try {
-      const res = await fetch(`/api/users/${type}/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
       const result = await res.json();
       if (result.success) {
         showToast("User dihapus");
@@ -1396,23 +1398,48 @@ function UserManagementModal({ onClose, showToast }: { onClose: () => void, show
     }
   };
 
+  const handleEditClick = (user: any) => {
+    setEditId(user.id);
+    setNip(user.nip);
+    setNama(user.nama);
+    setRoles(user.roles || user.role.split(', '));
+    setPassword(''); // Leave empty to not change
+    setJabatan(user.jabatan || '');
+    setWaliKelas(user.wali_kelas || '');
+    setIsEditing(true);
+    setIsAdding(true);
+  };
+
+  const handleRoleChange = (role: string) => {
+    setRoles(prev => 
+      prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (roles.length === 0) {
+      showToast("Pilih minimal satu role", "error");
+      return;
+    }
     setLoading(true);
     try {
-      const res = await fetch('/api/users', {
-        method: 'POST',
+      const url = isEditing ? `/api/users/${editId}` : '/api/users';
+      const method = isEditing ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nip, nama, role, password, jabatan, wali_kelas: waliKelas })
+        body: JSON.stringify({ nip, nama, roles, password, jabatan, wali_kelas: waliKelas })
       });
       const result = await res.json();
       if (result.success) {
-        showToast("User berhasil ditambahkan");
+        showToast(`User berhasil ${isEditing ? 'diupdate' : 'ditambahkan'}`);
         setIsAdding(false);
-        setNip(''); setNama(''); setRole('Guru'); setPassword('baujeng@1'); setJabatan(''); setWaliKelas('');
+        setIsEditing(false);
+        setNip(''); setNama(''); setRoles(['Guru']); setPassword('baujeng@1'); setJabatan(''); setWaliKelas('');
         fetchUsers();
       } else {
-        showToast("Gagal menambahkan user: " + result.message, 'error');
+        showToast(`Gagal ${isEditing ? 'mengupdate' : 'menambahkan'} user: ` + result.message, 'error');
       }
     } catch (error) {
       showToast("Terjadi kesalahan jaringan", 'error');
@@ -1429,7 +1456,11 @@ function UserManagementModal({ onClose, showToast }: { onClose: () => void, show
           <>
             <div className="flex justify-between mb-4">
               <input type="text" placeholder="Cari user..." className="border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white" />
-              <button onClick={() => setIsAdding(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+              <button onClick={() => {
+                setIsAdding(true);
+                setIsEditing(false);
+                setNip(''); setNama(''); setRoles(['Guru']); setPassword('baujeng@1'); setJabatan(''); setWaliKelas('');
+              }} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
                 <Plus className="w-4 h-4" /> Tambah User
               </button>
             </div>
@@ -1449,13 +1480,18 @@ function UserManagementModal({ onClose, showToast }: { onClose: () => void, show
                     <td className="px-4 py-3 font-medium text-slate-800 dark:text-white">{user.nama}</td>
                     <td className="px-4 py-3">{user.nip || '-'}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${user.role === 'Guru' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
-                        {user.role}
-                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {(user.roles || user.role.split(', ')).map((r: string) => (
+                          <span key={r} className={`px-2 py-1 rounded-full text-xs font-bold ${r === 'Guru' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : r === 'Admin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
+                            {r}
+                          </span>
+                        ))}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-slate-400">••••••</td>
                     <td className="px-4 py-3 text-right">
-                      <button onClick={() => handleDeleteUser(user.type, user.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleEditClick(user)} className="text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2 rounded-lg transition-colors mr-1"><Edit className="w-4 h-4" /></button>
+                      <button onClick={() => handleDeleteUser(user.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
                     </td>
                   </tr>
                 ))}
@@ -1492,8 +1528,9 @@ function UserManagementModal({ onClose, showToast }: { onClose: () => void, show
                     className="w-full border rounded px-3 py-2 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white" 
                     value={password} 
                     onChange={(e) => setPassword(e.target.value)}
+                    placeholder={isEditing ? "Kosongkan jika tidak diubah" : ""}
                   />
-                  <p className="text-[10px] text-slate-500 mt-1">Default: baujeng@1</p>
+                  {!isEditing && <p className="text-[10px] text-slate-500 mt-1">Default: baujeng@1</p>}
                 </div>
               </div>
             </div>
@@ -1511,19 +1548,23 @@ function UserManagementModal({ onClose, showToast }: { onClose: () => void, show
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Role</label>
-              <select 
-                className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-              >
-                <option value="Guru">User (Guru)</option>
-                <option value="Tendik">Tendik</option>
-                <option value="Admin">Admin</option>
-              </select>
+              <label className="block text-sm font-medium mb-2">Role (Bisa pilih lebih dari satu)</label>
+              <div className="flex gap-4">
+                {['Guru', 'Tendik', 'Admin'].map(r => (
+                  <label key={r} className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500"
+                      checked={roles.includes(r)}
+                      onChange={() => handleRoleChange(r)}
+                    />
+                    <span>{r}</span>
+                  </label>
+                ))}
+              </div>
             </div>
 
-            {role === 'Tendik' && (
+            {roles.includes('Tendik') && (
               <div>
                 <label className="block text-sm font-medium mb-1">Jabatan</label>
                 <input 
@@ -1536,7 +1577,7 @@ function UserManagementModal({ onClose, showToast }: { onClose: () => void, show
               </div>
             )}
 
-            {role === 'Guru' && (
+            {roles.includes('Guru') && (
               <>
                 <div>
                   <label className="block text-sm font-medium mb-1">Wali Kelas</label>
@@ -1559,9 +1600,9 @@ function UserManagementModal({ onClose, showToast }: { onClose: () => void, show
             )}
 
             <div className="flex justify-end gap-2 pt-4">
-               <button type="button" onClick={() => setIsAdding(false)} className="px-4 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">Batal</button>
+               <button type="button" onClick={() => { setIsAdding(false); setIsEditing(false); }} className="px-4 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">Batal</button>
                <button type="submit" disabled={loading} className="bg-emerald-500 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2 disabled:opacity-50">
-                 <Plus className="w-4 h-4" /> {loading ? 'Menyimpan...' : 'Tambah User'}
+                 <Save className="w-4 h-4" /> {loading ? 'Menyimpan...' : (isEditing ? 'Update User' : 'Tambah User')}
                </button>
              </div>
           </form>
@@ -2003,13 +2044,6 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
                 <AlertTriangle className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                 <h3 className="text-sm font-bold text-purple-600 dark:text-purple-400 uppercase">Widget Pengumuman</h3>
               </div>
-              <button 
-                onClick={handleNewAnnouncement}
-                className="flex items-center gap-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Tambah Baru
-              </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -2042,9 +2076,18 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
             </div>
           </div>
 
-          <div className="pt-4">
-            <button onClick={handleSave} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-bold text-sm uppercase transition-colors">
-              Simpan & Publikasikan
+          <div className="pt-4 flex flex-col gap-3">
+            <button 
+              onClick={handleNewAnnouncement}
+              className="w-full flex justify-center items-center gap-2 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 py-4 rounded-xl font-bold text-sm uppercase hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Tambah Baru
+            </button>
+            <button 
+              onClick={handleSave} 
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-bold text-sm uppercase transition-colors flex justify-center items-center gap-2"
+            >
+              <Save className="w-4 h-4" /> Simpan & Publikasikan
             </button>
           </div>
 

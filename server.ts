@@ -1,5 +1,4 @@
 import express from 'express';
-import { createServer as createViteServer } from 'vite';
 import { createClient } from '@supabase/supabase-js';
 
 const envUrl = process.env.VITE_SUPABASE_URL;
@@ -8,12 +7,11 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1Ni
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function startServer() {
-  const app = express();
-  app.use(express.json());
-  const PORT = 3000;
+const app = express();
+app.use(express.json());
+const PORT = 3000;
 
-  app.get('/api/admin/stats', async (req, res) => {
+app.get('/api/admin/stats', async (req, res) => {
     try {
       // 1. Student Counts per Class
       const { data: muridData, error: muridError } = await supabase.from('murid').select('Kelas');
@@ -708,24 +706,83 @@ async function startServer() {
   });
 
   app.post('/api/users', async (req, res) => {
-    const { nip, nama, role, password, jabatan } = req.body;
+    const { nip, nama, roles, password, jabatan } = req.body;
     
-    let table = 'guru';
-    let data: any = { nip, password: password || '123456' };
-
-    if (role === 'Tendik') {
-      table = 'tendik';
-      data.nama_tendik = nama;
-      data.jabatan = jabatan;
-    } else {
-      // Guru or Admin
-      data.nama_guru = nama;
-      // Admin might be a flag in guru table or separate
+    try {
+      const rolesArray = Array.isArray(roles) ? roles : [roles];
+      
+      if (rolesArray.includes('Guru')) {
+        await supabase.from('guru').insert({ nip, nama_guru: nama, password: password || '123456' });
+      }
+      if (rolesArray.includes('Tendik')) {
+        await supabase.from('tendik').insert({ nip, nama_tendik: nama, jabatan, password: password || '123456' });
+      }
+      if (rolesArray.includes('Admin')) {
+        await supabase.from('admin').insert({ username: nip, nama, password: password || '123456' });
+      }
+      
+      res.json({ success: true, message: 'User berhasil ditambahkan' });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
     }
+  });
 
-    const { error } = await supabase.from(table).insert(data);
-    if (error) return res.status(500).json({ success: false, message: error.message });
-    res.json({ success: true, message: 'User berhasil ditambahkan' });
+  app.put('/api/users/:id', async (req, res) => {
+    const { id } = req.params;
+    const { nip, nama, roles, password, jabatan } = req.body;
+
+    try {
+      const rolesArray = Array.isArray(roles) ? roles : [roles];
+
+      // Update or insert into Guru
+      if (rolesArray.includes('Guru')) {
+        const { data: existingGuru } = await supabase.from('guru').select('nip').eq('nip', id).single();
+        const updateData: any = { nip, nama_guru: nama };
+        if (password) updateData.password = password;
+        
+        if (existingGuru) {
+          await supabase.from('guru').update(updateData).eq('nip', id);
+        } else {
+          await supabase.from('guru').insert({ ...updateData, password: password || '123456' });
+        }
+      } else {
+        await supabase.from('guru').delete().eq('nip', id);
+      }
+
+      // Update or insert into Tendik
+      if (rolesArray.includes('Tendik')) {
+        const { data: existingTendik } = await supabase.from('tendik').select('nip').eq('nip', id).single();
+        const updateData: any = { nip, nama_tendik: nama, jabatan };
+        if (password) updateData.password = password;
+
+        if (existingTendik) {
+          await supabase.from('tendik').update(updateData).eq('nip', id);
+        } else {
+          await supabase.from('tendik').insert({ ...updateData, password: password || '123456' });
+        }
+      } else {
+        await supabase.from('tendik').delete().eq('nip', id);
+      }
+
+      // Update or insert into Admin
+      if (rolesArray.includes('Admin')) {
+        const { data: existingAdmin } = await supabase.from('admin').select('username').eq('username', id).single();
+        const updateData: any = { username: nip, nama };
+        if (password) updateData.password = password;
+
+        if (existingAdmin) {
+          await supabase.from('admin').update(updateData).eq('username', id);
+        } else {
+          await supabase.from('admin').insert({ ...updateData, password: password || '123456' });
+        }
+      } else {
+        await supabase.from('admin').delete().eq('username', id);
+      }
+
+      res.json({ success: true, message: 'User berhasil diupdate' });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
   });
 
   app.get('/api/jadwal', async (req, res) => {
@@ -890,14 +947,39 @@ async function startServer() {
     try {
       const { data: guru, error: errorGuru } = await supabase.from('guru').select('*');
       const { data: tendik, error: errorTendik } = await supabase.from('tendik').select('*');
+      const { data: admin, error: errorAdmin } = await supabase.from('admin').select('*');
 
       if (errorGuru) throw errorGuru;
       if (errorTendik) throw errorTendik;
+      if (errorAdmin) throw errorAdmin;
 
-      const allUsers = [
-        ...(guru || []).map((g: any) => ({ ...g, role: 'Guru', nama: g.nama_guru, type: 'guru', id: g.nip })),
-        ...(tendik || []).map((t: any) => ({ ...t, role: 'Tendik', type: 'tendik', nama: t.nama_tendik, id: t.nip }))
-      ];
+      const userMap = new Map();
+
+      (guru || []).forEach((g: any) => {
+        if (!userMap.has(g.nip)) {
+          userMap.set(g.nip, { id: g.nip, nip: g.nip, nama: g.nama_guru, roles: [], type: 'guru' });
+        }
+        userMap.get(g.nip).roles.push('Guru');
+      });
+
+      (tendik || []).forEach((t: any) => {
+        if (!userMap.has(t.nip)) {
+          userMap.set(t.nip, { id: t.nip, nip: t.nip, nama: t.nama_tendik, roles: [], type: 'tendik' });
+        }
+        userMap.get(t.nip).roles.push('Tendik');
+      });
+
+      (admin || []).forEach((a: any) => {
+        if (!userMap.has(a.username)) {
+          userMap.set(a.username, { id: a.username, nip: a.username, nama: a.nama, roles: [], type: 'admin' });
+        }
+        userMap.get(a.username).roles.push('Admin');
+      });
+
+      const allUsers = Array.from(userMap.values()).map(u => ({
+        ...u,
+        role: u.roles.join(', ')
+      }));
 
       res.json({ success: true, data: allUsers });
     } catch (e: any) {
@@ -905,16 +987,18 @@ async function startServer() {
     }
   });
 
-  app.delete('/api/users/:type/:id', async (req, res) => {
-    const { type, id } = req.params;
-    let table = '';
-    if (type === 'guru') table = 'guru';
-    else if (type === 'tendik') table = 'tendik';
-    else return res.status(400).json({ success: false, message: 'Invalid user type' });
+  app.delete('/api/users/:id', async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+      await supabase.from('guru').delete().eq('nip', id);
+      await supabase.from('tendik').delete().eq('nip', id);
+      await supabase.from('admin').delete().eq('username', id);
 
-    const { error } = await supabase.from(table).delete().eq('nip', id);
-    if (error) return res.status(500).json({ success: false, message: error.message });
-    res.json({ success: true, message: 'User berhasil dihapus' });
+      res.json({ success: true, message: 'User berhasil dihapus' });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
   });
 
   app.post('/api/guru', async (req, res) => {
@@ -949,7 +1033,9 @@ async function startServer() {
   });
 
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    const viteModule = 'vite';
+    const { createServer: createViteServer } = await import(viteModule);
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -957,9 +1043,10 @@ async function startServer() {
     app.use(vite.middlewares);
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
-}
+  if (!process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
 
-startServer();
+export default app;
