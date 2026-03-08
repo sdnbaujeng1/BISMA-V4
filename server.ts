@@ -7,7 +7,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1Ni
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const app = express();
+export const app = express();
 app.use(express.json());
 const PORT = 3000;
 
