@@ -12,6 +12,7 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
   const [tendikStats, setTendikStats] = useState<any>(null);
   const [activity, setActivity] = useState('');
   const [loadingActivity, setLoadingActivity] = useState(false);
+  const [logoUrl, setLogoUrl] = useState("https://i.imghippo.com/files/xbYy2711Wk.png");
 
   const colors: Record<string, { gradient: string, text: string, bg: string, border: string, ring: string }> = {
     blue: { gradient: 'from-blue-600 to-indigo-600', text: 'text-blue-600', bg: 'bg-blue-600', border: 'border-blue-200', ring: 'ring-blue-500' },
@@ -55,10 +56,35 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
       if (newColor) setThemeColor(newColor);
     };
 
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch('/api/pengaturan');
+        const result = await res.json();
+        if (result.success && result.data && result.data.logo1x1) {
+          setLogoUrl(result.data.logo1x1);
+        } else {
+          const stored = localStorage.getItem('school_identity_data');
+          if (stored) {
+            const data = JSON.parse(stored);
+            if (data.logo1x1) setLogoUrl(data.logo1x1);
+          }
+        }
+      } catch (e) {
+        const stored = localStorage.getItem('school_identity_data');
+        if (stored) {
+          const data = JSON.parse(stored);
+          if (data.logo1x1) setLogoUrl(data.logo1x1);
+        }
+      }
+    };
+    fetchSettings();
+
     window.addEventListener('theme-color-change', handleThemeChange);
+    window.addEventListener('school-identity-update', fetchSettings);
     return () => {
       clearInterval(timer);
       window.removeEventListener('theme-color-change', handleThemeChange);
+      window.removeEventListener('school-identity-update', fetchSettings);
     };
   }, [user]);
 
@@ -130,7 +156,7 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3 text-white">
             <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
-              <img src="https://i.imghippo.com/files/xbYy2711Wk.png" className="h-10 w-10" alt="Logo" />
+              <img src={logoUrl} className="h-10 w-10" alt="Logo" />
             </div>
             <div>
               <p className="text-xs text-white/80 opacity-90">Selamat Datang,</p>
@@ -154,10 +180,10 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 flex justify-between items-center border border-slate-100 dark:border-slate-700">
             <span className="font-bold text-slate-700 dark:text-slate-200">BISMA APPS</span>
             <div className="flex flex-col items-end">
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+              <span className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">
                 {time.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               </span>
-              <span className={`font-mono ${currentTheme.text} font-semibold text-lg`}>
+              <span className={`font-mono ${currentTheme.text} font-semibold text-sm sm:text-lg`}>
                 {time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
@@ -363,7 +389,14 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
       </main>
 
       {/* Floating Navigation */}
-      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md px-4 py-2 rounded-full shadow-2xl border border-slate-200 dark:border-slate-700 flex items-center gap-2 sm:gap-4 z-50">
+      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md px-4 py-2 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 flex items-center gap-2 sm:gap-4 z-50">
+        <button 
+          onClick={() => onNavigate('chatbot')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all text-slate-400 hover:text-slate-600 dark:hover:text-slate-300`}
+        >
+          <MessageSquare className="w-5 h-5" />
+          <span className="text-[9px] font-bold">Chatbot</span>
+        </button>
         <button 
           onClick={() => setActiveTab('dashboard')}
           className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeTab === 'dashboard' ? `${currentTheme.text} bg-slate-100 dark:bg-slate-700` : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
@@ -377,13 +410,6 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
         >
           <BookOpen className="w-5 h-5" />
           <span className="text-[9px] font-bold">Menu</span>
-        </button>
-        <button 
-          onClick={() => onNavigate('chatbot')}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all text-slate-400 hover:text-slate-600 dark:hover:text-slate-300`}
-        >
-          <MessageSquare className="w-5 h-5" />
-          <span className="text-[9px] font-bold">Chatbot</span>
         </button>
         <button 
           onClick={() => setActiveTab('profil')}
@@ -420,7 +446,7 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
               
               <div className={`h-32 bg-gradient-to-br ${currentTheme.gradient} flex items-center justify-center`}>
                 <div className="w-20 h-20 bg-white rounded-2xl shadow-lg flex items-center justify-center transform rotate-12">
-                   <img src="https://i.imghippo.com/files/xbYy2711Wk.png" className="w-14 h-14 object-contain" alt="Logo" />
+                   <img src={logoUrl} className="w-14 h-14 object-contain" alt="Logo" />
                 </div>
               </div>
               

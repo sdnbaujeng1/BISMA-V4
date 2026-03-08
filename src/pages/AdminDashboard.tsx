@@ -233,8 +233,7 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
               
               <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 rounded-3xl shadow-lg shadow-blue-200 dark:shadow-none text-white relative overflow-hidden group hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                 <div className="relative z-10">
-                  <h3 className="text-lg font-bold mb-1 drop-shadow-md">Informasi Terkini</h3>
-                  <p className="text-blue-100 text-sm mb-4 font-medium">{new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  <h3 className="text-lg font-bold mb-4 drop-shadow-md">Informasi Terkini</h3>
                   <div className="flex items-center gap-2 text-xs font-bold bg-white/20 w-fit px-3 py-1 rounded-full backdrop-blur-sm shadow-inner border border-white/10">
                     <div className={`w-2 h-2 rounded-full animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.8)] ${latestAnnouncement?.type === 'important' ? 'bg-orange-400' : 'bg-green-400'}`}></div>
                     {latestAnnouncement ? latestAnnouncement.judul : 'Sistem Online'}

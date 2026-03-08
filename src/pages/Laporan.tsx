@@ -10,6 +10,7 @@ export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (
   const [headmasterName, setHeadmasterName] = useState("Drs. H. Ahmad");
   const [headmasterNIP, setHeadmasterNIP] = useState("196001011980031001");
   const [schoolName, setSchoolName] = useState("UPT Satuan Pendidikan SDN Baujeng 1");
+  const [logoUrl, setLogoUrl] = useState("https://i.imghippo.com/files/xbYy2711Wk.png");
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -21,6 +22,7 @@ export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (
           if (data.schoolName) setSchoolName(data.schoolName);
           if (data.headmasterName) setHeadmasterName(data.headmasterName);
           if (data.headmasterNIP) setHeadmasterNIP(data.headmasterNIP);
+          if (data.logo1x1) setLogoUrl(data.logo1x1);
         } else {
           // Fallback
           const stored = localStorage.getItem('school_identity_data');
@@ -29,6 +31,7 @@ export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (
             if (data.schoolName) setSchoolName(data.schoolName);
             if (data.headmasterName) setHeadmasterName(data.headmasterName);
             if (data.headmasterNIP) setHeadmasterNIP(data.headmasterNIP);
+            if (data.logo1x1) setLogoUrl(data.logo1x1);
           }
         }
       } catch (e) {
@@ -39,6 +42,7 @@ export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (
           if (data.schoolName) setSchoolName(data.schoolName);
           if (data.headmasterName) setHeadmasterName(data.headmasterName);
           if (data.headmasterNIP) setHeadmasterNIP(data.headmasterNIP);
+          if (data.logo1x1) setLogoUrl(data.logo1x1);
         }
       }
     };
@@ -135,7 +139,7 @@ export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (
 
           <div className="bg-white dark:bg-slate-800 text-black dark:text-white rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700 print:shadow-none print:border-none print:p-0 print:bg-white print:text-black">
             <div className="flex items-center gap-6 mb-8 border-b-2 border-black dark:border-white print:border-black pb-6">
-              <img src="https://i.imghippo.com/files/xbYy2711Wk.png" className="h-24 w-24 object-contain" alt="Logo" />
+              <img src={logoUrl} className="h-24 w-24 object-contain" alt="Logo" />
               <div className="text-left">
                 <h3 className="text-2xl font-bold uppercase tracking-wide">{schoolName}</h3>
                 <h4 className="text-xl font-semibold mt-1">Jurnal Guru: {user?.['Nama Guru']}</h4>

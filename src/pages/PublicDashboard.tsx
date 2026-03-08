@@ -130,29 +130,29 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 flex flex-col font-sans relative">
       <header className="w-full bg-white/90 dark:bg-slate-800/90 backdrop-blur shadow-sm border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
             <img 
               src={schoolIdentity?.logo1x1 || "https://i.imghippo.com/files/xbYy2711Wk.png"} 
               alt="Logo" 
-              className="h-12 w-12 object-contain drop-shadow-xl rounded-lg transform hover:scale-110 transition-transform duration-500" 
+              className="h-10 w-10 sm:h-12 sm:w-12 object-contain drop-shadow-xl rounded-lg transform hover:scale-110 transition-transform duration-500 shrink-0" 
               style={{
                 filter: 'drop-shadow(0 10px 8px rgb(0 0 0 / 0.2)) drop-shadow(0 4px 3px rgb(0 0 0 / 0.1))',
                 transform: 'perspective(500px) rotateY(15deg)'
               }}
               onError={(e) => { (e.target as HTMLImageElement).src = "https://i.imghippo.com/files/xbYy2711Wk.png"; }}
             />
-            <div>
-              <h1 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight leading-tight uppercase">
+            <div className="flex flex-col min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-white tracking-tight leading-tight uppercase truncate">
                 {data?.appName || "BISMA"}
               </h1>
-              <p className="text-slate-500 dark:text-slate-400 text-xs hidden sm:block font-bold uppercase">
+              <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-bold uppercase truncate">
                 {schoolIdentity?.schoolName || "UPT Satuan Pendidikan SDN Baujeng 1"}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
              <div className="hidden md:flex flex-col items-end mr-4">
                 <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
                   {time.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}

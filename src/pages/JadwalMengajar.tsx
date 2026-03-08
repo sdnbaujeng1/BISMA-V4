@@ -49,25 +49,21 @@ export default function JadwalMengajar({ user, onNavigate }: { user: any, onNavi
       
       if (daySchedule.length === 0) return;
 
-      let currentGroup: any = null;
-
-      daySchedule.forEach((item, index) => {
-        if (!currentGroup) {
-          currentGroup = { ...item, jamStart: item.jam, jamEnd: item.jam };
+      const dayGrouped: any[] = [];
+      daySchedule.forEach(item => {
+        const existing = dayGrouped.find(g => g.kelas === item.kelas && g.mapel === item.mapel);
+        if (existing) {
+          existing.jams.push(item.jam);
         } else {
-          // Check if consecutive and same subject/class
-          if (item.jam === currentGroup.jamEnd + 1 && item.mapel === currentGroup.mapel && item.kelas === currentGroup.kelas) {
-            currentGroup.jamEnd = item.jam;
-          } else {
-            grouped.push(currentGroup);
-            currentGroup = { ...item, jamStart: item.jam, jamEnd: item.jam };
-          }
+          dayGrouped.push({ ...item, jams: [item.jam] });
         }
+      });
 
-        // Push last group
-        if (index === daySchedule.length - 1) {
-          grouped.push(currentGroup);
-        }
+      dayGrouped.forEach(g => {
+        // Format jams array to string, e.g., [1, 2, 4] -> "1, 2, 4"
+        g.jamDisplay = g.jams.join(', ');
+        g.totalJP = g.jams.length;
+        grouped.push(g);
       });
     });
 
@@ -96,7 +92,7 @@ export default function JadwalMengajar({ user, onNavigate }: { user: any, onNavi
     const tableColumn = ["Hari", "Jam Ke", "Kelas", "Mata Pelajaran"];
     const tableRows = groupedSchedule.map(item => [
       item.hari,
-      item.jamStart === item.jamEnd ? `${item.jamStart}` : `${item.jamStart} - ${item.jamEnd}`,
+      item.jamDisplay,
       item.kelas,
       item.mapel
     ]);
@@ -171,8 +167,8 @@ export default function JadwalMengajar({ user, onNavigate }: { user: any, onNavi
                     <div key={idx} className="flex items-start gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-700/30 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors border border-slate-100 dark:border-slate-700/50 group">
                       <div className="flex flex-col items-center justify-center w-14 h-14 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-600 group-hover:border-indigo-200 dark:group-hover:border-indigo-700 transition-colors">
                         <span className="text-[10px] text-slate-400 uppercase font-bold">Jam</span>
-                        <span className="text-lg font-black text-indigo-600 dark:text-indigo-400 leading-none">
-                          {item.jamStart === item.jamEnd ? item.jamStart : `${item.jamStart}-${item.jamEnd}`}
+                        <span className={`font-black text-indigo-600 dark:text-indigo-400 leading-none text-center px-1 ${item.jamDisplay.length > 4 ? 'text-xs' : 'text-lg'}`}>
+                          {item.jamDisplay}
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
@@ -182,7 +178,7 @@ export default function JadwalMengajar({ user, onNavigate }: { user: any, onNavi
                             <MapPin className="w-3 h-3 text-red-400" /> Kelas {item.kelas}
                           </span>
                           <span className="flex items-center gap-1 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-md shadow-sm border border-slate-100 dark:border-slate-700">
-                            <Clock className="w-3 h-3 text-orange-400" /> {item.jamEnd - item.jamStart + 1} JP
+                            <Clock className="w-3 h-3 text-orange-400" /> {item.totalJP} JP
                           </span>
                         </div>
                       </div>

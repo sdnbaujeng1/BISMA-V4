@@ -8,19 +8,22 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [schoolName, setSchoolName] = useState("SDN BAUJENG I BEJI");
+  const [logoUrl, setLogoUrl] = useState("https://i.imghippo.com/files/xbYy2711Wk.png");
 
   React.useEffect(() => {
     const fetchSettings = async () => {
       try {
         const res = await fetch('/api/pengaturan');
         const result = await res.json();
-        if (result.success && result.data && result.data.schoolName) {
-          setSchoolName(result.data.schoolName);
+        if (result.success && result.data) {
+          if (result.data.schoolName) setSchoolName(result.data.schoolName);
+          if (result.data.logo1x1) setLogoUrl(result.data.logo1x1);
         } else {
           const stored = localStorage.getItem('school_identity_data');
           if (stored) {
             const data = JSON.parse(stored);
             if (data.schoolName) setSchoolName(data.schoolName);
+            if (data.logo1x1) setLogoUrl(data.logo1x1);
           }
         }
       } catch (e) {
@@ -28,6 +31,7 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
         if (stored) {
           const data = JSON.parse(stored);
           if (data.schoolName) setSchoolName(data.schoolName);
+          if (data.logo1x1) setLogoUrl(data.logo1x1);
         }
       }
     };
@@ -72,7 +76,7 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-green-50 dark:bg-slate-900 transition-colors">
       <main className="w-full max-w-xl z-10">
         <div className="text-center mb-6">
-          <img src="https://i.imghippo.com/files/xbYy2711Wk.png" alt="Logo" className="mx-auto h-28 w-auto mb-4 drop-shadow-xl hover:scale-105 transition-transform duration-300" />
+          <img src={logoUrl} alt="Logo" className="mx-auto h-28 w-auto mb-4 drop-shadow-xl hover:scale-105 transition-transform duration-300" />
           <h1 className="text-2xl font-bold text-slate-800 dark:text-white">LOGIN BISMA</h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">{schoolName}</p>
         </div>

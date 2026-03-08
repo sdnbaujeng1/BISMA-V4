@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Monitor, Calendar, RefreshCw, AlertTriangle, Users, Percent, Sparkles, Clock, CheckCircle2, XCircle, LogOut } from 'lucide-react';
+import { Monitor, Calendar, RefreshCw, AlertTriangle, Users, Percent, Sparkles, Clock, CheckCircle2, XCircle, LogOut, X } from 'lucide-react';
 
 export default function MonitoringDashboard({ onLogout }: { onLogout: () => void }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [search, setSearch] = useState('');
+  const [activeModal, setActiveModal] = useState<'ketidakhadiran' | 'keterlaksanaan' | 'kebersihan' | null>(null);
 
   const fetchData = async () => {
     try {
@@ -36,7 +37,7 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
     );
   }
 
-  const classes = ['1', '2', '3', '4', '5', '6'];
+  const classes = data?.classes || ['1', '2', '3', '4', '5', '6'];
   const todayStr = lastUpdate.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   const filteredJadwal = (data?.jadwal || []).filter((j: any) => 
@@ -63,41 +64,6 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
           </div>
         </div>
 
-        {/* Belum Mengisi Jurnal Alert */}
-        <div className={`flex-1 max-w-2xl border rounded-xl p-3 flex items-start gap-3 overflow-hidden ${
-          data?.belumMengisi?.length > 0 
-            ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50' 
-            : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50'
-        }`}>
-          {data?.belumMengisi?.length > 0 ? (
-            <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-          ) : (
-            <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
-          )}
-          <div className="flex-1">
-            <div className={`text-xs font-bold mb-1 uppercase tracking-wider ${
-              data?.belumMengisi?.length > 0 
-                ? 'text-amber-600 dark:text-amber-500' 
-                : 'text-emerald-600 dark:text-emerald-500'
-            }`}>
-              {data?.belumMengisi?.length > 0 
-                ? "Pengisian Jurnal Dibawah Ekspektasi" 
-                : "Pengisian Jurnal Sesuai Ekspektasi"
-              }
-            </div>
-            
-            {data?.belumMengisi?.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {data.belumMengisi.map((b: any, idx: number) => (
-                  <span key={idx} className="font-medium text-amber-800 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded text-sm">
-                    {b.guru} <span className="text-amber-600/70 dark:text-amber-500/70 text-xs">({b.kelas})</span>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
         <div className="flex items-center gap-3">
           <div className="relative">
             <input 
@@ -120,21 +86,30 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
+        <div 
+          onClick={() => setActiveModal('ketidakhadiran')}
+          className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4 cursor-pointer hover:shadow-md hover:border-red-300 dark:hover:border-red-700 transition-all"
+        >
           <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-xl"><Users className="w-6 h-6" /></div>
           <div>
             <div className="text-xs font-bold text-slate-500 uppercase">Ketidakhadiran Murid</div>
             <div className="text-2xl font-bold text-red-600 dark:text-red-400">{data?.stats?.ketidakhadiran || 0}</div>
           </div>
         </div>
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
+        <div 
+          onClick={() => setActiveModal('keterlaksanaan')}
+          className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4 cursor-pointer hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all"
+        >
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-500 rounded-xl"><Percent className="w-6 h-6" /></div>
           <div>
             <div className="text-xs font-bold text-slate-500 uppercase">Keterlaksanaan</div>
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data?.stats?.keterlaksanaan || 0}%</div>
           </div>
         </div>
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
+        <div 
+          onClick={() => setActiveModal('kebersihan')}
+          className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4 cursor-pointer hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 transition-all"
+        >
           <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 rounded-xl"><Sparkles className="w-6 h-6" /></div>
           <div>
             <div className="text-xs font-bold text-slate-500 uppercase">Kelas Terbersih</div>
@@ -153,30 +128,29 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
       {/* Classes Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {classes.map(kelas => {
-          const classData = (data?.jadwal || []).find((j: any) => j.kelas === kelas);
-          const studentCount = classData?.studentCount || 0;
+          const studentCount = data?.studentCountByClass?.[kelas] || 0;
           const filteredJadwalKelas = filteredJadwal.filter((j: any) => j.kelas === kelas);
           
           // Determine header color based on class
+          const classMatch = kelas.match(/\d+/);
+          const classNum = classMatch ? classMatch[0] : kelas;
+          
           const headerColors: Record<string, string> = {
             '1': 'bg-blue-600',
             '2': 'bg-emerald-600',
             '3': 'bg-rose-600',
-            '4': 'bg-amber-600',
+            '4': 'bg-orange-600',
             '5': 'bg-purple-600',
             '6': 'bg-indigo-600'
           };
+          const headerColor = headerColors[classNum] || 'bg-slate-600';
           
           return (
             <div key={kelas} className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
-              <div className={`${headerColors[kelas]} text-white text-center py-2 font-bold tracking-wider relative`}>
-                <div className="text-xs opacity-80 font-medium">KELAS</div>
-                <div className="text-xl">{kelas}</div>
-                <div className="absolute top-1 right-2 bg-white/20 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">
-                  <Users className="w-2.5 h-2.5" /> {studentCount}
-                </div>
+              <div className={`${headerColor} text-white text-center py-3 font-bold tracking-wider relative`}>
+                <div className="text-xl uppercase">{classNum}</div>
               </div>
-              <div className="p-0 flex-1 overflow-y-auto max-h-[60vh]">
+              <div className="p-0 flex-1 overflow-y-auto overflow-x-hidden max-h-[60vh]">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 sticky top-0 z-10">
                     <tr>
@@ -192,7 +166,7 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
                       filteredJadwalKelas.forEach((j: any) => {
                         const last = groupedSchedule[groupedSchedule.length - 1];
                         if (last && last.guru === j.guru && last.mapel === j.mapel) {
-                          last.jam += `, ${j.jam}`;
+                          last.jam = `${last.jam}, ${j.jam}`;
                           // If any part is done, mark as done? Or all must be done?
                           // Usually if journal is filled for the lesson, it covers the block.
                           // But let's check if status is consistent.
@@ -200,7 +174,7 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
                           // Let's assume if one is done, it's done.
                           if (j.status) last.status = true; 
                         } else {
-                          groupedSchedule.push({ ...j });
+                          groupedSchedule.push({ ...j, jam: String(j.jam) });
                         }
                       });
 
@@ -253,6 +227,105 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
           );
         })}
       </div>
+
+      {/* Modals */}
+      {activeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+              <h2 className="text-lg font-bold">
+                {activeModal === 'ketidakhadiran' && 'Detail Ketidakhadiran Murid'}
+                {activeModal === 'keterlaksanaan' && 'Detail Keterlaksanaan per Kelas'}
+                {activeModal === 'kebersihan' && 'Detail Kelas Terbersih'}
+              </h2>
+              <button 
+                onClick={() => setActiveModal(null)}
+                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1">
+              {activeModal === 'ketidakhadiran' && (
+                data?.details?.ketidakhadiran?.length > 0 ? (
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400">
+                      <tr>
+                        <th className="py-2 px-3 font-medium">Nama Siswa</th>
+                        <th className="py-2 px-3 font-medium">Kelas</th>
+                        <th className="py-2 px-3 font-medium">Guru</th>
+                        <th className="py-2 px-3 font-medium">Mapel</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                      {data.details.ketidakhadiran.map((k: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                          <td className="py-2 px-3 font-medium">{k.nama}</td>
+                          <td className="py-2 px-3">{k.kelas}</td>
+                          <td className="py-2 px-3">{k.guru}</td>
+                          <td className="py-2 px-3">{k.mapel}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="text-center py-8 text-slate-500">Tidak ada data ketidakhadiran hari ini.</div>
+                )
+              )}
+
+              {activeModal === 'keterlaksanaan' && (
+                data?.details?.keterlaksanaan?.length > 0 ? (
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400">
+                      <tr>
+                        <th className="py-2 px-3 font-medium">Kelas</th>
+                        <th className="py-2 px-3 font-medium text-center">Jadwal Selesai</th>
+                        <th className="py-2 px-3 font-medium text-center">Total Jadwal</th>
+                        <th className="py-2 px-3 font-medium text-right">Persentase</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                      {data.details.keterlaksanaan.map((k: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                          <td className="py-2 px-3 font-bold">Kelas {k.kelas}</td>
+                          <td className="py-2 px-3 text-center text-emerald-600 dark:text-emerald-400 font-medium">{k.done}</td>
+                          <td className="py-2 px-3 text-center">{k.total}</td>
+                          <td className="py-2 px-3 text-right font-bold">{k.percentage}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="text-center py-8 text-slate-500">Tidak ada data keterlaksanaan.</div>
+                )
+              )}
+
+              {activeModal === 'kebersihan' && (
+                data?.details?.kebersihan?.length > 0 ? (
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400">
+                      <tr>
+                        <th className="py-2 px-3 font-medium">Kelas</th>
+                        <th className="py-2 px-3 font-medium text-right">Skor Kebersihan (Jurnal)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                      {data.details.kebersihan.sort((a: any, b: any) => b.skor - a.skor).map((k: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                          <td className="py-2 px-3 font-bold">Kelas {k.kelas}</td>
+                          <td className="py-2 px-3 text-right font-medium text-emerald-600 dark:text-emerald-400">{k.skor}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="text-center py-8 text-slate-500">Belum ada data kebersihan kelas hari ini.</div>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       
       <style>{`
         @keyframes marquee {

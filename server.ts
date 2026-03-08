@@ -384,9 +384,9 @@ app.get('/api/admin/stats', async (req, res) => {
     const groupedSchedule: any[] = [];
     if (todaysSchedule) {
       todaysSchedule.forEach(sch => {
-        const lastGroup = groupedSchedule[groupedSchedule.length - 1];
-        if (lastGroup && lastGroup.kelas === sch.kelas && lastGroup.mapel === sch.mapel) {
-          lastGroup.jam = `${lastGroup.jam},${sch.jam}`;
+        const existingGroup = groupedSchedule.find(g => g.kelas === sch.kelas && g.mapel === sch.mapel);
+        if (existingGroup) {
+          existingGroup.jam = `${existingGroup.jam}, ${sch.jam}`;
         } else {
           groupedSchedule.push({ ...sch, jam: String(sch.jam) });
         }
@@ -643,78 +643,144 @@ app.get('/api/admin/stats', async (req, res) => {
       const totalJP = allTodaySchedules?.length || 0;
 
       const monitoringData: any[] = [];
-      const classes = ['1', '2', '3', '4', '5', '6'];
       const belumMengisi: any[] = [];
+      
+      // Derive classes dynamically from schedules and students
+      const classSet = new Set<string>();
+      (todaysSchedule || []).forEach(s => {
+        const cls = String(s.kelas).replace(/\D/g, '');
+        if (cls) classSet.add(cls);
+      });
+      Object.keys(studentCountByClass).forEach(c => {
+        if (c) classSet.add(c);
+      });
+      const classes = Array.from(classSet).sort((a, b) => {
+        // Try to sort numerically first, then alphabetically
+        const numA = parseInt(a);
+        const numB = parseInt(b);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          if (numA !== numB) return numA - numB;
+        }
+        return a.localeCompare(b);
+      });
       
       // Calculate Stats
       let totalKetidakhadiran = 0;
+      const detailKetidakhadiran: any[] = [];
+      const kebersihanPerKelas: Record<string, number> = {};
+      
       if (todaysJurnal) {
         todaysJurnal.forEach(j => {
+          const jCls = String(j.kelas).replace(/\D/g, '');
+          // Ketidakhadiran
           try {
             const absen = typeof j.ketidakhadiran === 'string' ? JSON.parse(j.ketidakhadiran) : j.ketidakhadiran;
             if (Array.isArray(absen)) {
               totalKetidakhadiran += absen.length;
+              absen.forEach(a => {
+                detailKetidakhadiran.push({
+                  nama: a.nama || a,
+                  kelas: jCls,
+                  guru: j.nama_guru,
+                  mapel: j.pembelajaran
+                });
+              });
             }
           } catch (e) {}
+
+          // Kebersihan (assuming 'sudah_bersih' or similar indicates clean)
+          if (j.kebersihan_kelas === 'sudah_bersih') {
+            kebersihanPerKelas[jCls] = (kebersihanPerKelas[jCls] || 0) + 1;
+          }
         });
       }
+
+      // Determine Kelas Terbersih
+      let kelasTerbersih = '-';
+      let maxKebersihan = 0;
+      const detailKebersihan: { kelas: string, skor: number }[] = [];
+      Object.keys(kebersihanPerKelas).forEach(k => {
+        detailKebersihan.push({ kelas: k, skor: kebersihanPerKelas[k] });
+        if (kebersihanPerKelas[k] > maxKebersihan) {
+          maxKebersihan = kebersihanPerKelas[k];
+          kelasTerbersih = k;
+        } else if (kebersihanPerKelas[k] === maxKebersihan && maxKebersihan > 0) {
+          kelasTerbersih += `, ${k}`;
+        }
+      });
 
       const totalJadwal = todaysSchedule?.length || 0;
       const totalJurnal = todaysJurnal?.length || 0;
       const keterlaksanaan = totalJadwal > 0 ? Math.round((totalJurnal / totalJadwal) * 100) : 0;
 
-      // Logic for monitoring grid (current active class)
+      // Keterlaksanaan per class
+      const detailKeterlaksanaan: { kelas: string, total: number, done: number, percentage: number }[] = [];
       classes.forEach(cls => {
-        const classSchedule = todaysSchedule?.filter(s => s.kelas === cls) || [];
+        const classJadwal = todaysSchedule?.filter(s => {
+          const sCls = String(s.kelas).replace(/\D/g, '');
+          return sCls === cls;
+        }) || [];
+        const classJurnal = todaysJurnal?.filter(j => {
+          const jCls = String(j.kelas).replace(/\D/g, '');
+          return jCls === cls;
+        }) || [];
         
-        if (classSchedule.length === 0) {
-          monitoringData.push({
-            kelas: cls,
-            status: 'Kosong',
-            guru: '-',
-            mapel: '-',
-            jam: '-',
-            studentCount: studentCountByClass[cls] || 0
-          });
-        } else {
-          const currentHour = today.getHours() + today.getMinutes() / 60;
-          
-          // Find active schedule based on time, or default to first/upcoming
-          const activeSchedule = classSchedule.find(s => {
-            const parts = s.jam.split('-');
-            if (parts.length === 2) {
-              const [startH, startM] = parts[0].split(':').map(Number);
-              const [endH, endM] = parts[1].split(':').map(Number);
-              const start = startH + (startM || 0) / 60;
-              const end = endH + (endM || 0) / 60;
-              return currentHour >= start && currentHour < end;
-            }
-            return false;
-          }) || classSchedule[0];
+        // Count unique schedules done
+        let doneCount = 0;
+        classJadwal.forEach(sch => {
+          const isDone = classJurnal.some(j => j.nama_guru === sch.guru);
+          if (isDone) doneCount++;
+        });
 
-          const isDone = todaysJurnal?.some(j => j.kelas === cls && j.nama_guru === activeSchedule.guru);
+        const total = classJadwal.length;
+        const percentage = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+        detailKeterlaksanaan.push({
+          kelas: cls,
+          total,
+          done: doneCount,
+          percentage
+        });
+      });
 
-          monitoringData.push({
-            kelas: cls,
-            status: isDone ? 'Terlaksana' : 'Belum',
-            guru: activeSchedule.guru,
-            mapel: activeSchedule.mapel,
-            jam: activeSchedule.jam,
-            studentCount: studentCountByClass[cls] || 0
+      // Logic for monitoring grid (all schedules for today)
+      classes.forEach(cls => {
+        const classSchedule = todaysSchedule?.filter(s => {
+          const sCls = String(s.kelas).replace(/\D/g, '');
+          return sCls === cls;
+        }) || [];
+        
+        if (classSchedule.length > 0) {
+          classSchedule.forEach(sch => {
+            const isDone = todaysJurnal?.some(j => {
+              const jCls = String(j.kelas).replace(/\D/g, '');
+              return jCls === cls && j.nama_guru === sch.guru;
+            });
+            monitoringData.push({
+              kelas: cls, // Use normalized class
+              status: isDone,
+              guru: sch.guru,
+              mapel: sch.mapel,
+              jam: String(sch.jam)
+            });
           });
         }
       });
 
       // Logic for Belum Mengisi (Teachers who haven't filled journal for today's schedule)
       if (todaysSchedule) {
+        const uniqueBelumMengisi = new Set<string>();
         todaysSchedule.forEach(sch => {
           const isDone = todaysJurnal?.some(j => j.kelas === sch.kelas && j.nama_guru === sch.guru);
           if (!isDone) {
-            belumMengisi.push({
-              guru: sch.guru,
-              kelas: sch.kelas,
-              mapel: sch.mapel
-            });
+            const key = `${sch.guru}-${sch.kelas}-${sch.mapel}`;
+            if (!uniqueBelumMengisi.has(key)) {
+              uniqueBelumMengisi.add(key);
+              belumMengisi.push({
+                guru: sch.guru,
+                kelas: sch.kelas,
+                mapel: sch.mapel
+              });
+            }
           }
         });
       }
@@ -723,12 +789,19 @@ app.get('/api/admin/stats', async (req, res) => {
         success: true, 
         data: {
           jadwal: monitoringData,
+          classes: classes,
+          studentCountByClass: studentCountByClass,
           stats: {
             ketidakhadiran: totalKetidakhadiran,
             keterlaksanaan: keterlaksanaan,
-            kelasTerbersih: '-', // Placeholder as we don't have this logic yet
+            kelasTerbersih: kelasTerbersih,
             jamKosongMax: 0, // Placeholder
             totalJP: totalJP
+          },
+          details: {
+            ketidakhadiran: detailKetidakhadiran,
+            keterlaksanaan: detailKeterlaksanaan,
+            kebersihan: detailKebersihan
           },
           belumMengisi: belumMengisi
         } 
