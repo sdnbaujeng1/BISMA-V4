@@ -1513,13 +1513,15 @@ app.get('/api/admin/stats', async (req, res) => {
 
 
   if (process.env.NODE_ENV !== 'production') {
-    const viteModule = 'vite';
-    const { createServer: createViteServer } = await import(viteModule);
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
+    (async () => {
+      const viteModule = 'vite';
+      const { createServer: createViteServer } = await import(viteModule);
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
+      });
+      app.use(vite.middlewares);
+    })();
   }
 
   if (process.env.NODE_ENV !== 'production') {
