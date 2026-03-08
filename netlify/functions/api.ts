@@ -1,6 +1,6 @@
 import serverless from 'serverless-http';
 import express from 'express';
-import { app } from '../../server';
+import app from '../../server';
 
 const netlifyApp = express();
 netlifyApp.use('/.netlify/functions', app);
