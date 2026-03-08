@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import TabunganSampahAdmin from './TabunganSampahAdmin';
 import { 
+  Palette,
+  Recycle,
   LayoutDashboard, 
   Users, 
   Moon, 
@@ -39,7 +41,7 @@ interface AdminDashboardProps {
 }
 
 export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMode }: AdminDashboardProps) {
-  const [activeView, setActiveView] = useState('dashboard'); // 'monitoring', 'dashboard', 'input_guru', 'profile'
+  const [activeView, setActiveView] = useState('dashboard'); // 'monitoring', 'dashboard', 'input_guru', 'profile', 'color_config'
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [stats, setStats] = useState<{
@@ -47,6 +49,7 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
     totalStudents: number;
     totalJP: number;
   } | null>(null);
+  const [latestAnnouncement, setLatestAnnouncement] = useState<any>(null);
 
   const fetchStats = async () => {
     try {
@@ -62,6 +65,14 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
 
   useEffect(() => {
     fetchStats();
+    fetch('/api/pengumuman')
+      .then(res => res.json())
+      .then(res => {
+        if (res.success && res.data && res.data.length > 0) {
+          setLatestAnnouncement(res.data[0]);
+        }
+      })
+      .catch(err => console.error("Failed to fetch announcements", err));
   }, []);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -74,16 +85,28 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
     { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { id: 'input_guru', icon: UserPlus, label: 'Input Guru Baru' },
     { id: 'tabungan_sampah', icon: Trash2, label: 'Tabungan Sampah' },
+    { id: 'color_config', icon: Palette, label: 'Konfigurasi Warna' },
+    { id: 'api_config', icon: Key, label: 'Konfigurasi API' },
   ];
 
   const adminCards = [
+    { 
+      id: 'tabungan_sampah_card', 
+      title: 'Tabungan Sampah', 
+      subtitle: 'RECYCLE', 
+      icon: Recycle, 
+      color: 'bg-green-600', 
+      shadow: 'shadow-green-200 dark:shadow-green-900/20',
+      action: () => setActiveView('tabungan_sampah')
+    },
     { 
       id: 'import_master', 
       title: 'Import Master', 
       subtitle: 'DATABASE CSV', 
       icon: Database, 
       color: 'bg-red-500', 
-      shadow: 'shadow-red-200 dark:shadow-red-900/20' 
+      shadow: 'shadow-red-200 dark:shadow-red-900/20',
+      action: () => setActiveModal('import_master')
     },
     { 
       id: 'input_manual', 
@@ -91,7 +114,8 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
       subtitle: 'INPUT MASSAL CSV', 
       icon: Keyboard, 
       color: 'bg-purple-500', 
-      shadow: 'shadow-purple-200 dark:shadow-purple-900/20' 
+      shadow: 'shadow-purple-200 dark:shadow-purple-900/20',
+      action: () => setActiveModal('input_manual')
     },
     { 
       id: 'jadwal', 
@@ -99,7 +123,8 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
       subtitle: 'SETUP JADWAL', 
       icon: Calendar, 
       color: 'bg-fuchsia-500', 
-      shadow: 'shadow-fuchsia-200 dark:shadow-fuchsia-900/20' 
+      shadow: 'shadow-fuchsia-200 dark:shadow-fuchsia-900/20',
+      action: () => setActiveModal('jadwal')
     },
     { 
       id: 'manajemen_user', 
@@ -107,7 +132,8 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
       subtitle: 'AKUN GURU', 
       icon: UserCog, 
       color: 'bg-emerald-500', 
-      shadow: 'shadow-emerald-200 dark:shadow-emerald-900/20' 
+      shadow: 'shadow-emerald-200 dark:shadow-emerald-900/20',
+      action: () => setActiveModal('manajemen_user')
     },
     { 
       id: 'data_murid', 
@@ -115,7 +141,8 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
       subtitle: 'SISWA & MUTASI', 
       icon: GraduationCap, 
       color: 'bg-sky-500', 
-      shadow: 'shadow-sky-200 dark:shadow-sky-900/20' 
+      shadow: 'shadow-sky-200 dark:shadow-sky-900/20',
+      action: () => setActiveModal('data_murid')
     },
     { 
       id: 'pengumuman', 
@@ -123,7 +150,17 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
       subtitle: 'INFO PUBLIK', 
       icon: Megaphone, 
       color: 'bg-orange-500', 
-      shadow: 'shadow-orange-200 dark:shadow-orange-900/20' 
+      shadow: 'shadow-orange-200 dark:shadow-orange-900/20',
+      action: () => setActiveModal('pengumuman')
+    },
+    { 
+      id: 'api_config_card', 
+      title: 'Konfigurasi API', 
+      subtitle: 'CHATBOT & INTEGRASI', 
+      icon: Key, 
+      color: 'bg-indigo-500', 
+      shadow: 'shadow-indigo-200 dark:shadow-indigo-900/20',
+      action: () => setActiveView('api_config')
     },
     { 
       id: 'pengaturan', 
@@ -131,7 +168,8 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
       subtitle: 'KONFIGURASI UMUM', 
       icon: Settings, 
       color: 'bg-slate-600', 
-      shadow: 'shadow-slate-200 dark:shadow-slate-900/20' 
+      shadow: 'shadow-slate-200 dark:shadow-slate-900/20',
+      action: () => setActiveModal('pengaturan')
     },
   ];
 
@@ -198,9 +236,14 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
                   <h3 className="text-lg font-bold mb-1 drop-shadow-md">Informasi Terkini</h3>
                   <p className="text-blue-100 text-sm mb-4 font-medium">{new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
                   <div className="flex items-center gap-2 text-xs font-bold bg-white/20 w-fit px-3 py-1 rounded-full backdrop-blur-sm shadow-inner border border-white/10">
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(74,222,128,0.8)]"></div>
-                    Sistem Online
+                    <div className={`w-2 h-2 rounded-full animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.8)] ${latestAnnouncement?.type === 'important' ? 'bg-orange-400' : 'bg-green-400'}`}></div>
+                    {latestAnnouncement ? latestAnnouncement.judul : 'Sistem Online'}
                   </div>
+                  {latestAnnouncement && (
+                    <p className="mt-3 text-xs text-blue-50 line-clamp-2 opacity-90">
+                      {latestAnnouncement.isi}
+                    </p>
+                  )}
                 </div>
                 <div className="absolute -bottom-4 -right-4 transform rotate-12 transition-transform duration-500 group-hover:rotate-6 group-hover:scale-110">
                   <div className="relative">
@@ -215,7 +258,7 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
               {adminCards.map((card, index) => (
                 <motion.button
                   key={card.id}
-                  onClick={() => setActiveModal(card.id)}
+                  onClick={card.action}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
@@ -235,6 +278,10 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
         return <InputGuruBaruView showToast={showToast} />;
       case 'tabungan_sampah':
         return <TabunganSampahAdmin showToast={showToast} />;
+      case 'color_config':
+        return <ColorConfigView showToast={showToast} />;
+      case 'api_config':
+        return <ApiConfigView showToast={showToast} />;
       case 'profile':
         return <ProfileView showToast={showToast} />;
       default:
@@ -328,9 +375,12 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
           </button>
           <button
             onClick={onLogout}
-            className="p-3 rounded-xl flex justify-center text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 transition-all"
+            className="p-3 rounded-xl flex justify-center text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 transition-all group relative"
           >
             <LogOut className="w-6 h-6" />
+            <span className="absolute left-16 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+              Kembali
+            </span>
           </button>
         </div>
       </aside>
@@ -694,6 +744,110 @@ function ProfileView({ showToast }: { showToast: (msg: string, type?: 'success' 
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+function ColorConfigView({ showToast }: { showToast: (msg: string, type?: 'success' | 'error') => void }) {
+  const [selectedColor, setSelectedColor] = useState('blue');
+  const [loading, setLoading] = useState(false);
+
+  const colors = [
+    { id: 'blue', name: 'Biru (Default)', class: 'bg-blue-600', value: '#2563eb' },
+    { id: 'red', name: 'Merah', class: 'bg-red-600', value: '#dc2626' },
+    { id: 'green', name: 'Hijau', class: 'bg-green-600', value: '#16a34a' },
+    { id: 'purple', name: 'Ungu', class: 'bg-purple-600', value: '#9333ea' },
+    { id: 'orange', name: 'Oranye', class: 'bg-orange-600', value: '#ea580c' },
+    { id: 'teal', name: 'Teal', class: 'bg-teal-600', value: '#0d9488' },
+    { id: 'cyan', name: 'Cyan', class: 'bg-cyan-600', value: '#0891b2' },
+    { id: 'pink', name: 'Pink', class: 'bg-pink-600', value: '#db2777' },
+  ];
+
+  useEffect(() => {
+    // Load current color
+    const storedColor = localStorage.getItem('app_theme_color');
+    if (storedColor) {
+      setSelectedColor(storedColor);
+    }
+  }, []);
+
+  const handleColorSelect = async (colorId: string) => {
+    setSelectedColor(colorId);
+    setLoading(true);
+    
+    // Save to localStorage
+    localStorage.setItem('app_theme_color', colorId);
+    
+    // Dispatch event for real-time updates in same window
+    window.dispatchEvent(new Event('theme-color-change'));
+
+    // Save to DB (optional but good for persistence across devices)
+    try {
+      await fetch('/api/pengaturan/theme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ themeColor: colorId })
+      });
+      showToast(`Tema warna berhasil diubah ke ${colors.find(c => c.id === colorId)?.name}`);
+    } catch (e) {
+      console.error("Failed to save theme to DB", e);
+      // Still show success as it works locally
+      showToast(`Tema warna berhasil diubah (Lokal)`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <header className="mb-8">
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Konfigurasi Warna</h1>
+        <p className="text-slate-500 dark:text-slate-400">Atur tema warna aplikasi untuk menu Guru dan Siswa</p>
+      </header>
+
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          {colors.map((color) => (
+            <button
+              key={color.id}
+              onClick={() => handleColorSelect(color.id)}
+              className={`relative group p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${
+                selectedColor === color.id 
+                  ? 'border-slate-800 dark:border-white bg-slate-50 dark:bg-slate-700' 
+                  : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-700/50'
+              }`}
+            >
+              <div className={`w-16 h-16 rounded-full ${color.class} shadow-lg flex items-center justify-center transition-transform group-hover:scale-110`}>
+                {selectedColor === color.id && (
+                  <CheckCircle className="w-8 h-8 text-white drop-shadow-md" />
+                )}
+              </div>
+              <span className={`font-bold ${selectedColor === color.id ? 'text-slate-800 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
+                {color.name}
+              </span>
+              {selectedColor === color.id && (
+                <span className="absolute top-2 right-2 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800/30 flex items-start gap-3">
+          <div className="p-2 bg-blue-100 dark:bg-blue-800/50 rounded-lg text-blue-600 dark:text-blue-400">
+            <Palette className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="font-bold text-slate-800 dark:text-white text-sm">Pratinjau Perubahan</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Perubahan warna akan diterapkan secara otomatis pada menu Guru dan Siswa. 
+              Warna yang dipilih akan menjadi warna dominan untuk header, tombol, dan aksen lainnya.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1927,12 +2081,141 @@ function DataMuridModal({ onClose, showToast }: { onClose: () => void, showToast
   );
 }
 
+function ApiConfigView({ showToast }: { showToast: (msg: string, type?: 'success' | 'error') => void }) {
+  const [apiKeys, setApiKeys] = useState({
+    gemini_api_key: '',
+    whatsapp_api_key: '',
+    other_api_key: ''
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchKeys = async () => {
+      try {
+        const res = await fetch('/api/api-settings');
+        const data = await res.json();
+        if (data.success) {
+          setApiKeys({
+            gemini_api_key: data.data.gemini_api_key || '',
+            whatsapp_api_key: data.data.whatsapp_api_key || '',
+            other_api_key: data.data.other_api_key || ''
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch API keys", error);
+      }
+    };
+    fetchKeys();
+  }, []);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await fetch('/api/api-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(apiKeys)
+      });
+      const result = await res.json();
+      if (result.success) {
+        showToast("Konfigurasi API berhasil disimpan!", "success");
+      } else {
+        showToast("Gagal menyimpan konfigurasi", "error");
+      }
+    } catch (error) {
+      showToast("Terjadi kesalahan jaringan", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <header className="mb-8">
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Konfigurasi API</h1>
+        <p className="text-slate-500 dark:text-slate-400">Kelola kunci API untuk integrasi layanan pihak ketiga</p>
+      </header>
+
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-8">
+        <form onSubmit={handleSave} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-slate-50 dark:bg-slate-700/50 p-6 rounded-xl border border-slate-100 dark:border-slate-700">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                  <Key className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-slate-800 dark:text-white">Gemini AI</h3>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 h-10">
+                Digunakan untuk fitur Chatbot cerdas bagi Guru dan Siswa.
+              </p>
+              <input 
+                type="password" 
+                value={apiKeys.gemini_api_key}
+                onChange={(e) => setApiKeys({...apiKeys, gemini_api_key: e.target.value})}
+                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="Masukkan API Key"
+              />
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-700/50 p-6 rounded-xl border border-slate-100 dark:border-slate-700">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-green-100 text-green-600 rounded-lg">
+                  <Megaphone className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-slate-800 dark:text-white">WhatsApp Gateway</h3>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 h-10">
+                Digunakan untuk notifikasi otomatis ke orang tua (Opsional).
+              </p>
+              <input 
+                type="password" 
+                value={apiKeys.whatsapp_api_key}
+                onChange={(e) => setApiKeys({...apiKeys, whatsapp_api_key: e.target.value})}
+                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                placeholder="Masukkan API Key"
+              />
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-700/50 p-6 rounded-xl border border-slate-100 dark:border-slate-700">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-purple-100 text-purple-600 rounded-lg">
+                  <Settings className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-slate-800 dark:text-white">Lainnya</h3>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 h-10">
+                Slot untuk integrasi API tambahan di masa depan.
+              </p>
+              <input 
+                type="password" 
+                value={apiKeys.other_api_key}
+                onChange={(e) => setApiKeys({...apiKeys, other_api_key: e.target.value})}
+                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                placeholder="Masukkan API Key"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-4">
+            <button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 dark:shadow-none transition-all flex items-center gap-2 disabled:opacity-50">
+              <Save className="w-5 h-5" /> {loading ? 'Menyimpan...' : 'Simpan Konfigurasi'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToast: (msg: string, type?: 'success' | 'error') => void }) {
   const [appName, setAppName] = useState("BISMA");
   const [landingDesc, setLandingDesc] = useState("");
   const [announcementTitle, setAnnouncementTitle] = useState("");
   const [announcementDate, setAnnouncementDate] = useState("");
   const [announcementContent, setAnnouncementContent] = useState("");
+  const [announcementType, setAnnouncementType] = useState("info"); // 'info', 'important'
   const [announcements, setAnnouncements] = useState<any[]>([]);
 
   const fetchAnnouncements = async () => {
@@ -1947,6 +2230,7 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
           setAnnouncementTitle(latest.judul || "");
           setAnnouncementDate(latest.tanggal || "");
           setAnnouncementContent(latest.isi || "");
+          setAnnouncementType(latest.type || "info");
         }
       }
     } catch (e) {
@@ -1969,6 +2253,7 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
     setAnnouncementTitle("");
     setAnnouncementDate(new Date().toISOString().split('T')[0]);
     setAnnouncementContent("");
+    setAnnouncementType("info");
     showToast("Form dikosongkan untuk pengumuman baru", "success");
   };
 
@@ -1981,7 +2266,6 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
     data.landingDesc = landingDesc;
 
     localStorage.setItem('public_dashboard_data', JSON.stringify(data));
-    // window.dispatchEvent(new Event('public-data-update')); // Move this to after API call
 
     // Save Announcement to Server
     try {
@@ -1991,7 +2275,8 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
         body: JSON.stringify({
           judul: announcementTitle,
           tanggal: announcementDate,
-          isi: announcementContent
+          isi: announcementContent,
+          type: announcementType
         })
       });
       
@@ -2066,6 +2351,34 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
               </div>
             </div>
 
+            <div className="mb-4">
+               <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-2">Tipe Pengumuman</label>
+               <div className="flex gap-4">
+                 <label className="flex items-center gap-2 cursor-pointer">
+                   <input 
+                     type="radio" 
+                     name="announcementType" 
+                     value="info" 
+                     checked={announcementType === 'info'} 
+                     onChange={(e) => setAnnouncementType(e.target.value)}
+                     className="w-4 h-4 text-blue-500"
+                   />
+                   <span className="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">Info (Biru)</span>
+                 </label>
+                 <label className="flex items-center gap-2 cursor-pointer">
+                   <input 
+                     type="radio" 
+                     name="announcementType" 
+                     value="important" 
+                     checked={announcementType === 'important'} 
+                     onChange={(e) => setAnnouncementType(e.target.value)}
+                     className="w-4 h-4 text-orange-500"
+                   />
+                   <span className="text-sm font-medium text-orange-600 bg-orange-50 px-2 py-1 rounded">Penting (Oranye)</span>
+                 </label>
+               </div>
+            </div>
+
             <div>
               <textarea 
                 value={announcementContent}
@@ -2097,9 +2410,13 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
               <h4 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-4">Riwayat Pengumuman</h4>
               <div className="space-y-3">
                 {announcements.map((ann, idx) => (
-                  <div key={idx} className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                  <div key={idx} className={`p-4 rounded-xl border flex justify-between items-center ${
+                    ann.type === 'important' 
+                      ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800/30' 
+                      : 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800/30'
+                  }`}>
                     <div>
-                      <h5 className="font-bold text-slate-700 dark:text-white">{ann.judul}</h5>
+                      <h5 className={`font-bold ${ann.type === 'important' ? 'text-orange-700 dark:text-orange-300' : 'text-blue-700 dark:text-blue-300'}`}>{ann.judul}</h5>
                       <p className="text-xs text-slate-500">{new Date(ann.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                     </div>
                     <div className="text-xs text-slate-400 max-w-[200px] truncate hidden md:block">
@@ -2125,6 +2442,8 @@ function PengaturanModal({ onClose, showToast }: { onClose: () => void, showToas
   const [logo3x4, setLogo3x4] = useState("");
   const [logo4x3, setLogo4x3] = useState("");
   const [logoKop, setLogoKop] = useState("");
+  const [tahunAjaran, setTahunAjaran] = useState("2024/2025");
+  const [semester, setSemester] = useState("Ganjil");
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -2140,6 +2459,8 @@ function PengaturanModal({ onClose, showToast }: { onClose: () => void, showToas
           setLogo3x4(data.logo3x4 || "");
           setLogo4x3(data.logo4x3 || "");
           setLogoKop(data.logoKop || "");
+          setTahunAjaran(data.tahunAjaran || "2024/2025");
+          setSemester(data.semester || "Ganjil");
           
           // Also update localStorage for consistency
           localStorage.setItem('school_identity_data', JSON.stringify(data));
@@ -2155,6 +2476,8 @@ function PengaturanModal({ onClose, showToast }: { onClose: () => void, showToas
             setLogo3x4(data.logo3x4 || "");
             setLogo4x3(data.logo4x3 || "");
             setLogoKop(data.logoKop || "");
+            setTahunAjaran(data.tahunAjaran || "2024/2025");
+            setSemester(data.semester || "Ganjil");
           }
         }
       } catch (error) {
@@ -2170,6 +2493,8 @@ function PengaturanModal({ onClose, showToast }: { onClose: () => void, showToas
           setLogo3x4(data.logo3x4 || "");
           setLogo4x3(data.logo4x3 || "");
           setLogoKop(data.logoKop || "");
+          setTahunAjaran(data.tahunAjaran || "2024/2025");
+          setSemester(data.semester || "Ganjil");
         }
       }
     };
@@ -2185,7 +2510,9 @@ function PengaturanModal({ onClose, showToast }: { onClose: () => void, showToas
       logo1x1,
       logo3x4,
       logo4x3,
-      logoKop
+      logoKop,
+      tahunAjaran,
+      semester
     };
     
     try {
@@ -2237,6 +2564,30 @@ function PengaturanModal({ onClose, showToast }: { onClose: () => void, showToas
                 />
               </div>
               
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tahun Ajaran</label>
+                  <input 
+                    type="text" 
+                    value={tahunAjaran}
+                    onChange={(e) => setTahunAjaran(e.target.value)}
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-slate-500 outline-none font-bold"
+                    placeholder="Contoh: 2024/2025"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Semester</label>
+                  <select 
+                    value={semester}
+                    onChange={(e) => setSemester(e.target.value)}
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-slate-500 outline-none font-bold"
+                  >
+                    <option value="Ganjil">Ganjil</option>
+                    <option value="Genap">Genap</option>
+                  </select>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Kepala Sekolah</label>

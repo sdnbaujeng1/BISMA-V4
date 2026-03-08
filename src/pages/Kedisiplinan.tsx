@@ -1,25 +1,174 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Calendar, Search, X } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { motion, AnimatePresence } from 'motion/react';
 
 export default function Kedisiplinan({ user, onNavigate }: { user: any, onNavigate: (page: string) => void }) {
   const [kelas, setKelas] = useState('');
   const [tab, setTab] = useState('absensi');
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [availableClasses, setAvailableClasses] = useState<string[]>([]);
 
   useEffect(() => {
-    if (kelas) {
+    const fetchClasses = async () => {
+      if (!user?.['Nama Guru']) return;
+      try {
+        const { data: jadwalData, error } = await supabase
+          .from('jadwal_real')
+          .select('kelas')
+          .eq('guru', user['Nama Guru']);
+        
+        if (error) throw error;
+        
+        if (jadwalData) {
+          const uniqueClasses = Array.from(new Set(jadwalData.map(j => j.kelas))).sort();
+          setAvailableClasses(uniqueClasses);
+        }
+      } catch (error) {
+        console.error('Error fetching classes:', error);
+      }
+    };
+    fetchClasses();
+  }, [user]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!kelas) return;
       setLoading(true);
-      // Mocking data
-      setTimeout(() => {
-        setData([
-          { nisn: '001', nama: 'Andi', s: 1, i: 0, a: 0, d: 0, total: 1, catatan: [] },
-          { nisn: '002', nama: 'Budi', s: 0, i: 0, a: 0, d: 0, total: 0, catatan: [] },
-        ]);
+      try {
+        // Fetch students for the selected class
+        const { data: studentsData, error: studentsError } = await supabase
+          .from('murid')
+          .select('NISN, "Nama Lengkap"')
+          .eq('Kelas', kelas);
+
+        if (studentsError) throw studentsError;
+
+        // Fetch journal data for attendance and discipline
+        let query = supabase
+          .from('jurnal')
+          .select('timestamp, kelas, mata_pelajaran, nama_guru, ketidakhadiran, catatan_mengajar, jam_pembelajaran')
+          .eq('kelas', kelas);
+
+        if (startDate) {
+          query = query.gte('timestamp', new Date(startDate).toISOString());
+        }
+        if (endDate) {
+          // Add 1 day to include the end date fully
+          const end = new Date(endDate);
+          end.setDate(end.getDate() + 1);
+          query = query.lt('timestamp', end.toISOString());
+        }
+
+        const { data: journalData, error: journalError } = await query;
+
+        if (journalError) throw journalError;
+
+        const processedData = studentsData.map(student => {
+          let s = 0, i = 0, a = 0, d = 0;
+          const catatan: any[] = [];
+          const studentName = student['Nama Lengkap'];
+          
+          // Group attendance by date to calculate 60% rule
+          const attendanceByDate: Record<string, { totalJp: number, absentJp: number, status: string }> = {};
+
+          journalData?.forEach(journal => {
+            const dateStr = new Date(journal.timestamp).toLocaleDateString();
+            
+            // Parse jam_pembelajaran (e.g., "1, 2, 3" -> 3 JP)
+            let jpCount = 1;
+            if (journal.jam_pembelajaran) {
+               // It's a string like "1, 2" or "1-2" depending on how it's saved.
+               // Jurnal.tsx saves it as "1, 2".
+               const parts = journal.jam_pembelajaran.split(',');
+               jpCount = parts.length;
+            }
+
+            if (!attendanceByDate[dateStr]) {
+              attendanceByDate[dateStr] = { totalJp: 0, absentJp: 0, status: '' };
+            }
+            attendanceByDate[dateStr].totalJp += jpCount;
+
+            // Process Ketidakhadiran
+            // Format: [{ type: 'Sakit', students: ['Name1', 'Name2'] }, ...]
+            if (journal.ketidakhadiran && journal.ketidakhadiran !== '[]') {
+              try {
+                const absensi = typeof journal.ketidakhadiran === 'string' ? JSON.parse(journal.ketidakhadiran) : journal.ketidakhadiran;
+                
+                if (Array.isArray(absensi)) {
+                    for (const record of absensi) {
+                        if (record.students && record.students.includes(studentName)) {
+                            attendanceByDate[dateStr].absentJp += jpCount;
+                            attendanceByDate[dateStr].status = record.type;
+                            break; // Found the student in this journal entry
+                        }
+                    }
+                }
+              } catch (e) {
+                console.error("Error parsing Ketidakhadiran", e);
+              }
+            }
+
+            // Process Catatan Kedisiplinan (catatan_mengajar)
+            // Format: [{ type: 'Type', student: 'Name' }, ...]
+            if (journal.catatan_mengajar && journal.catatan_mengajar !== '[]') {
+              try {
+                const disiplin = typeof journal.catatan_mengajar === 'string' ? JSON.parse(journal.catatan_mengajar) : journal.catatan_mengajar;
+                
+                if (Array.isArray(disiplin)) {
+                    const studentDisiplin = disiplin.filter((d: any) => d.student === studentName);
+                    studentDisiplin.forEach((d: any) => {
+                        catatan.push({
+                            date: new Date(journal.timestamp).toLocaleDateString('id-ID'),
+                            type: d.type,
+                            mapel: journal.mata_pelajaran,
+                            guru: journal.nama_guru
+                        });
+                    });
+                }
+              } catch (e) {
+                console.error("Error parsing Catatan_Kedisiplinan", e);
+              }
+            }
+          });
+
+          // Apply 60% rule for daily attendance
+          Object.values(attendanceByDate).forEach(day => {
+             if (day.totalJp > 0) {
+                const absentPercentage = day.absentJp / day.totalJp;
+                // If absent for >= 60% of the day's JP, count as full day absence
+                if (absentPercentage >= 0.6) {
+                   if (day.status === 'Sakit') s++;
+                   else if (day.status === 'Izin') i++;
+                   else if (day.status === 'Alpa') a++;
+                   else if (day.status === 'Dispensasi') d++;
+                }
+             }
+          });
+
+          return {
+            nisn: student.NISN,
+            nama: studentName,
+            s, i, a, d,
+            total: s + i + a + d,
+            catatan
+          };
+        });
+
+        setData(processedData);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
         setLoading(false);
-      }, 500);
-    }
-  }, [kelas]);
+      }
+    };
+
+    fetchData();
+  }, [kelas, startDate, endDate]);
 
   return (
     <div className="min-h-screen w-full flex flex-col bg-slate-50 dark:bg-slate-900 transition-colors">
@@ -28,23 +177,44 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
           <button onClick={() => onNavigate('main')} className="p-2 rounded-full hover:bg-white/20 text-white transition-colors">
             <ArrowLeft className="w-6 h-6" />
           </button>
-          <h2 className="text-xl font-bold text-white">Kedisiplinan</h2>
+          <h2 className="text-xl font-bold text-white">Kedisiplinan & Kehadiran</h2>
         </div>
       </header>
       
       <main className="flex-grow p-4 md:p-6 mt-4">
         <div className="max-w-7xl mx-auto bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Pilih Kelas</label>
-            <select 
-              value={kelas} 
-              onChange={e => setKelas(e.target.value)}
-              className="w-full md:w-1/3 border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 bg-slate-50 dark:bg-slate-700 dark:text-white"
-            >
-              <option value="">-- Pilih Kelas --</option>
-              <option value="1">Kelas 1</option>
-              <option value="2">Kelas 2</option>
-            </select>
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Pilih Kelas</label>
+              <select 
+                value={kelas} 
+                onChange={e => setKelas(e.target.value)}
+                className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 bg-slate-50 dark:bg-slate-700 dark:text-white"
+              >
+                <option value="">-- Pilih Kelas --</option>
+                {availableClasses.map(c => (
+                  <option key={c} value={c}>Kelas {c}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Dari Tanggal</label>
+              <input 
+                type="date" 
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+                className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 bg-slate-50 dark:bg-slate-700 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Sampai Tanggal</label>
+              <input 
+                type="date" 
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+                className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 bg-slate-50 dark:bg-slate-700 dark:text-white"
+              />
+            </div>
           </div>
 
           <div className="border-b border-slate-200 dark:border-slate-700 mb-6">
@@ -83,6 +253,8 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                       {loading ? (
                         <tr><td colSpan={7} className="p-8 text-center text-slate-500 dark:text-slate-400 italic">Memuat data...</td></tr>
+                      ) : data.length === 0 ? (
+                        <tr><td colSpan={7} className="p-8 text-center text-slate-500 dark:text-slate-400 italic">Tidak ada data siswa.</td></tr>
                       ) : data.map((m, i) => (
                         <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                           <td className="p-3 text-center text-slate-500 dark:text-slate-400">{i + 1}</td>
@@ -106,26 +278,30 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
                       <tr>
                         <th className="p-3 border-b dark:border-slate-600 text-center w-12">No</th>
                         <th className="p-3 border-b dark:border-slate-600 text-left w-64">Nama</th>
-                        <th className="p-3 border-b dark:border-slate-600 text-left">Detail Catatan</th>
+                        <th className="p-3 border-b dark:border-slate-600 text-center w-32">Jumlah Catatan</th>
+                        <th className="p-3 border-b dark:border-slate-600 text-left">Aksi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                       {loading ? (
-                        <tr><td colSpan={3} className="p-8 text-center text-slate-500 dark:text-slate-400 italic">Memuat data...</td></tr>
+                        <tr><td colSpan={4} className="p-8 text-center text-slate-500 dark:text-slate-400 italic">Memuat data...</td></tr>
+                      ) : data.length === 0 ? (
+                        <tr><td colSpan={4} className="p-8 text-center text-slate-500 dark:text-slate-400 italic">Tidak ada data siswa.</td></tr>
                       ) : data.map((m, i) => (
-                        <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                          <td className="p-3 text-center text-slate-500 dark:text-slate-400 align-top">{i + 1}</td>
-                          <td className="p-3 font-medium text-slate-800 dark:text-slate-200 align-top">{m.nama}</td>
-                          <td className="p-3 text-slate-600 dark:text-slate-300">
-                            {m.catatan.length === 0 ? (
-                              <span className="italic text-slate-400 dark:text-slate-500">Tidak ada catatan</span>
-                            ) : (
-                              <ul className="list-disc list-inside space-y-1">
-                                {m.catatan.map((c: any, j: number) => (
-                                  <li key={j}>{c.date}: {c.type} ({c.mapel} - {c.guru})</li>
-                                ))}
-                              </ul>
-                            )}
+                        <tr 
+                          key={i} 
+                          className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
+                          onDoubleClick={() => setSelectedStudent(m)}
+                        >
+                          <td className="p-3 text-center text-slate-500 dark:text-slate-400 align-middle">{i + 1}</td>
+                          <td className="p-3 font-medium text-slate-800 dark:text-slate-200 align-middle">{m.nama}</td>
+                          <td className="p-3 text-center align-middle">
+                            <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${m.catatan.length > 0 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'}`}>
+                              {m.catatan.length} Catatan
+                            </span>
+                          </td>
+                          <td className="p-3 align-middle text-slate-500 dark:text-slate-400 text-xs italic">
+                            Klik ganda untuk melihat detail
                           </td>
                         </tr>
                       ))}
@@ -137,6 +313,66 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
           )}
         </div>
       </main>
+
+      {/* Detail Modal */}
+      <AnimatePresence>
+        {selectedStudent && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                <h3 className="font-bold text-lg text-slate-800 dark:text-white">Detail Kedisiplinan</h3>
+                <button 
+                  onClick={() => setSelectedStudent(null)}
+                  className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                >
+                  <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto">
+                <div className="mb-6">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Nama Siswa</p>
+                  <p className="text-xl font-bold text-slate-800 dark:text-white">{selectedStudent.nama}</p>
+                </div>
+
+                <h4 className="font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
+                  <Calendar className="w-4 h-4" /> Riwayat Pelanggaran
+                </h4>
+
+                {selectedStudent.catatan.length === 0 ? (
+                  <div className="text-center py-8 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-600">
+                    <p className="text-slate-500 dark:text-slate-400 italic">Tidak ada catatan pelanggaran.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {selectedStudent.catatan.map((c: any, idx: number) => (
+                      <div key={idx} className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-xs font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded">
+                            {c.date}
+                          </span>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">
+                            {c.mapel}
+                          </span>
+                        </div>
+                        <p className="text-slate-800 dark:text-slate-200 font-medium">{c.type}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 border-t border-red-100 dark:border-red-900/30 pt-2">
+                          Dilaporkan oleh: {c.guru}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

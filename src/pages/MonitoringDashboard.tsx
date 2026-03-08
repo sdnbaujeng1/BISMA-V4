@@ -111,8 +111,9 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
           <button onClick={fetchData} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors" title="Refresh">
             <RefreshCw className="w-5 h-5 text-slate-600 dark:text-slate-300" />
           </button>
-          <button onClick={onLogout} className="p-2 rounded-lg bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 transition-colors" title="Logout">
+          <button onClick={onLogout} className="p-2 rounded-lg bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 transition-colors flex items-center gap-2" title="Kembali">
             <LogOut className="w-5 h-5" />
+            <span className="text-sm font-bold hidden md:inline">Kembali</span>
           </button>
         </div>
       </div>
@@ -177,38 +178,74 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
               </div>
               <div className="p-0 flex-1 overflow-y-auto max-h-[60vh]">
                 <table className="w-full text-sm">
-                  <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 sticky top-0">
+                  <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 sticky top-0 z-10">
                     <tr>
-                      <th className="py-2 px-3 text-left font-medium w-12">Jam</th>
+                      <th className="py-2 px-3 text-left font-medium w-16">Jam</th>
                       <th className="py-2 px-3 text-left font-medium">Guru / Mapel</th>
                       <th className="py-2 px-3 text-center font-medium w-12">Sts</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                    {filteredJadwalKelas.length > 0 ? (
-                      filteredJadwalKelas.map((j: any, idx: number) => (
-                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                          <td className="py-3 px-3 text-slate-600 dark:text-slate-400 font-medium">{j.jam}</td>
-                          <td className="py-3 px-3">
-                            <div className="font-bold text-slate-800 dark:text-slate-200">{j.guru}</div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{j.mapel}</div>
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            {j.status ? (
-                              <CheckCircle2 className="w-5 h-5 text-emerald-500 mx-auto" />
-                            ) : (
-                              <XCircle className="w-5 h-5 text-red-500 mx-auto" />
-                            )}
+                    {(() => {
+                      // Group consecutive lessons with same teacher and subject
+                      const groupedSchedule: any[] = [];
+                      filteredJadwalKelas.forEach((j: any) => {
+                        const last = groupedSchedule[groupedSchedule.length - 1];
+                        if (last && last.guru === j.guru && last.mapel === j.mapel) {
+                          last.jam += `, ${j.jam}`;
+                          // If any part is done, mark as done? Or all must be done?
+                          // Usually if journal is filled for the lesson, it covers the block.
+                          // But let's check if status is consistent.
+                          // If one is done, maybe show done? Or show partial?
+                          // Let's assume if one is done, it's done.
+                          if (j.status) last.status = true; 
+                        } else {
+                          groupedSchedule.push({ ...j });
+                        }
+                      });
+
+                      return groupedSchedule.length > 0 ? (
+                        groupedSchedule.map((j: any, idx: number) => (
+                          <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group">
+                            <td className="py-3 px-3 text-slate-500 dark:text-slate-400 font-mono text-xs align-top pt-4">
+                              {j.jam.split(',').map((t: string) => (
+                                <span key={t} className="block bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-center mb-1 last:mb-0">
+                                  {t.trim()}
+                                </span>
+                              ))}
+                            </td>
+                            <td className="py-3 px-3 align-top">
+                              <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-fuchsia-600 dark:group-hover:text-fuchsia-400 transition-colors">
+                                {j.guru}
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 bg-slate-100 dark:bg-slate-700/50 inline-block px-2 py-1 rounded-md border border-slate-200 dark:border-slate-600">
+                                {j.mapel}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-center align-middle">
+                              {j.status ? (
+                                <div className="bg-emerald-100 dark:bg-emerald-900/30 p-1.5 rounded-full inline-flex">
+                                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                                </div>
+                              ) : (
+                                <div className="bg-red-100 dark:bg-red-900/30 p-1.5 rounded-full inline-flex">
+                                  <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={3} className="py-12 text-center text-slate-400 dark:text-slate-500 italic">
+                            <div className="flex flex-col items-center gap-2">
+                              <Calendar className="w-8 h-8 opacity-20" />
+                              <span>Tidak ada jadwal</span>
+                            </div>
                           </td>
                         </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={3} className="py-8 text-center text-slate-400 dark:text-slate-500 italic">
-                          Tidak ada jadwal
-                        </td>
-                      </tr>
-                    )}
+                      );
+                    })()}
                   </tbody>
                 </table>
               </div>

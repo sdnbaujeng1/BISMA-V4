@@ -16,6 +16,8 @@ export default function BankSampahGuru({ user, onNavigate }: { user: any, onNavi
   const [transactions, setTransactions] = useState<any[]>([]);
   const [stats, setStats] = useState({ totalSavings: 0, totalWeight: 0 });
   const [loading, setLoading] = useState(false);
+  const [students, setStudents] = useState<any[]>([]);
+  const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
 
   const fetchData = async () => {
     try {
@@ -33,6 +35,14 @@ export default function BankSampahGuru({ user, onNavigate }: { user: any, onNavi
       const transData = await transRes.json();
       if (transData.success) setTransactions(transData.data);
 
+      // Fetch Students
+      const studentsRes = await fetch('/api/murid');
+      const studentsData = await studentsRes.json();
+      if (studentsData.success) {
+        setStudents(studentsData.data);
+        filterStudentsByClass(studentsData.data, formData.kelas);
+      }
+
     } catch (error) {
       console.error("Error fetching data", error);
     }
@@ -41,6 +51,23 @@ export default function BankSampahGuru({ user, onNavigate }: { user: any, onNavi
   useEffect(() => {
     fetchData();
   }, []);
+
+  const filterStudentsByClass = (allStudents: any[], kelas: string) => {
+    // Normalize class string to match student data format if necessary
+    // Assuming student.Kelas is like "Kelas 1" or "1"
+    const filtered = allStudents.filter(s => {
+        const sClass = String(s.Kelas).toLowerCase().replace(/\s/g, '');
+        const fClass = kelas.toLowerCase().replace(/\s/g, '');
+        return sClass.includes(fClass.replace('kelas', ''));
+    });
+    setFilteredStudents(filtered);
+  };
+
+  const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newClass = e.target.value;
+    setFormData({ ...formData, kelas: newClass, siswa: '' });
+    filterStudentsByClass(students, newClass);
+  };
 
   const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const weight = e.target.value;
@@ -188,22 +215,11 @@ export default function BankSampahGuru({ user, onNavigate }: { user: any, onNavi
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Nama Siswa</label>
-                  <input 
-                    type="text" 
-                    required 
-                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-green-500 outline-none"
-                    placeholder="Cari nama siswa..."
-                    value={formData.siswa}
-                    onChange={(e) => setFormData({...formData, siswa: e.target.value})}
-                  />
-                </div>
-                <div>
                   <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Kelas</label>
                   <select 
                     className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-green-500 outline-none"
                     value={formData.kelas}
-                    onChange={(e) => setFormData({...formData, kelas: e.target.value})}
+                    onChange={handleClassChange}
                   >
                     <option value="Kelas 1">Kelas 1</option>
                     <option value="Kelas 2">Kelas 2</option>
@@ -211,6 +227,20 @@ export default function BankSampahGuru({ user, onNavigate }: { user: any, onNavi
                     <option value="Kelas 4">Kelas 4</option>
                     <option value="Kelas 5">Kelas 5</option>
                     <option value="Kelas 6">Kelas 6</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Nama Siswa</label>
+                  <select 
+                    required 
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-green-500 outline-none"
+                    value={formData.siswa}
+                    onChange={(e) => setFormData({...formData, siswa: e.target.value})}
+                  >
+                    <option value="">-- Pilih Siswa --</option>
+                    {filteredStudents.map((s, idx) => (
+                        <option key={idx} value={s['Nama Lengkap']}>{s['Nama Lengkap']}</option>
+                    ))}
                   </select>
                 </div>
                 <div>

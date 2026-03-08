@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { LogIn, Megaphone, Moon, Sun, BookOpen, AlertCircle, X, User, Backpack, Pencil, Globe, Calculator, GraduationCap, Volume2, Minimize2, Maximize2 } from 'lucide-react';
+import { LogIn, Moon, Sun, BookOpen, AlertCircle, X, User, Backpack, Calculator, GraduationCap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import UnifiedAnnouncementCard from '../components/UnifiedAnnouncementCard';
 
 export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }: { onNavigate: (page: string) => void, darkMode: boolean, toggleDarkMode: () => void }) {
   const [data, setData] = useState<any>(null);
   const [schoolIdentity, setSchoolIdentity] = useState<any>(null);
   const [time, setTime] = useState(new Date());
   const [showAbsentModal, setShowAbsentModal] = useState(false);
-  const [isAnnouncementMinimized, setIsAnnouncementMinimized] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -21,23 +21,17 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
         } catch (e) {
           console.error("Failed to parse public dashboard data", e);
           localStorage.removeItem('public_dashboard_data');
-          // Fallback will be set below if data is null (which it won't be if we don't set it here, but we should probably set default)
         }
       }
       
-      if (!storedData) { // Check again or if parsing failed (we could improve this logic but let's stick to the structure)
-         // Fallback/Initial data
+      if (!storedData) {
          setData({
            appName: "BISMA",
            pengumuman: "Selamat datang di Sistem Monitoring KBM SDN BAUJENG I BEJI. Silahkan login untuk akses fitur lainnya.",
            kelas1: 0, kelas2: 0, kelas3: 0, kelas4: 0, kelas5: 0, kelas6: 0,
            totalStudents: 0, totalJP: 0,
            completedKBM: 0, totalScheduled: 240, percentage: 0,
-           absentStudents: [
-             { name: "Ahmad", class: "1", reason: "Sakit" },
-             { name: "Budi", class: "3", reason: "Izin" },
-             { name: "Siti", class: "5", reason: "Alpha" }
-           ]
+           absentStudents: []
          });
       }
     };
@@ -49,17 +43,13 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
         const result = await res.json();
         if (result.success && result.data) {
           setSchoolIdentity(result.data);
-          // Update localStorage
           localStorage.setItem('school_identity_data', JSON.stringify(result.data));
         } else {
-          // Fallback to localStorage
           const storedIdentity = localStorage.getItem('school_identity_data');
           if (storedIdentity) {
             try {
               setSchoolIdentity(JSON.parse(storedIdentity));
-            } catch (e) {
-              console.error("Failed to parse school identity data", e);
-            }
+            } catch (e) {}
           } else {
              setSchoolIdentity({
               schoolName: "UPT Satuan Pendidikan SDN Baujeng 1",
@@ -68,14 +58,11 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
           }
         }
       } catch (e) {
-        // Fallback to localStorage
         const storedIdentity = localStorage.getItem('school_identity_data');
         if (storedIdentity) {
           try {
             setSchoolIdentity(JSON.parse(storedIdentity));
-          } catch (e) {
-            console.error("Failed to parse school identity data", e);
-          }
+          } catch (e) {}
         } else {
            setSchoolIdentity({
             schoolName: "UPT Satuan Pendidikan SDN Baujeng 1",
@@ -88,13 +75,12 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
     loadPublicData();
     loadSchoolIdentity();
     
-    // Also try fetch for real API
     fetch('/api/public-dashboard')
       .then(res => res.json())
       .then(res => {
         if (res.success) setData(res.data);
       })
-      .catch(() => {}); // Ignore error if API not built
+      .catch(() => {});
 
     return () => clearInterval(timer);
   }, []);
@@ -107,12 +93,9 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
       if (storedData) {
         try {
           localData = JSON.parse(storedData);
-        } catch (e) {
-          console.error("Failed to parse public dashboard data from storage event", e);
-        }
+        } catch (e) {}
       }
       
-      // Fetch latest API data
       try {
         const res = await fetch('/api/public-dashboard');
         const result = await res.json();
@@ -129,9 +112,7 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
       if (storedIdentity) {
         try {
           setSchoolIdentity(JSON.parse(storedIdentity));
-        } catch (e) {
-          console.error("Failed to parse school identity data from storage event", e);
-        }
+        } catch (e) {}
       }
     };
 
@@ -146,12 +127,8 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
     };
   }, []);
 
-  const getClassIcon = () => {
-    return <Backpack className="w-10 h-10 text-white drop-shadow-md" />;
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 flex flex-col font-sans relative">
       <header className="w-full bg-white/90 dark:bg-slate-800/90 backdrop-blur shadow-sm border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -208,73 +185,9 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
           </div>
         ) : (
           <>
-            {/* Pengumuman */}
-            <div className={`relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 shadow-xl transition-all duration-500 ease-in-out text-white ${isAnnouncementMinimized ? 'p-6 flex items-center justify-between' : 'p-6 lg:p-10 flex flex-col md:flex-row items-start gap-6'}`}>
-              <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
-              <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-black/10 rounded-full blur-3xl pointer-events-none"></div>
-              
-              <div className="relative z-10 flex w-full justify-between items-start gap-4">
-                  <div className={`flex ${isAnnouncementMinimized ? 'items-center gap-4' : 'flex-col md:flex-row md:items-start gap-6'} flex-1`}>
-                      <div className="bg-white/20 p-3 rounded-2xl shadow-lg backdrop-blur-sm flex-shrink-0">
-                        <Megaphone className="w-6 h-6 animate-pulse text-white" />
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                          <div className={`flex flex-col ${isAnnouncementMinimized ? 'justify-center' : 'md:flex-row md:items-center justify-between mb-4 border-b border-white/20 pb-4'}`}>
-                              <h3 className="font-extrabold text-xl md:text-2xl text-white drop-shadow-sm truncate">
-                                {data.announcementTitle || "Informasi Terkini"}
-                              </h3>
-                              {!isAnnouncementMinimized && data.announcementDate && (
-                                <span className="mt-2 md:mt-0 px-4 py-1.5 bg-white/20 text-white text-xs font-bold rounded-full border border-white/30 flex items-center gap-2 w-fit backdrop-blur-sm">
-                                  <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-                                  {new Date(data.announcementDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                </span>
-                              )}
-                          </div>
-                          
-                          {!isAnnouncementMinimized && (
-                            <motion.div 
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="text-white/90 leading-relaxed font-medium text-lg whitespace-pre-wrap drop-shadow-sm"
-                            >
-                                {data.pengumuman}
-                            </motion.div>
-                          )}
-                      </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-shrink-0 ml-4">
-                      <button 
-                          onClick={() => setIsAnnouncementMinimized(!isAnnouncementMinimized)}
-                          className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors backdrop-blur-sm shadow-sm"
-                          title={isAnnouncementMinimized ? "Tampilkan Detail" : "Sembunyikan Detail"}
-                      >
-                          {isAnnouncementMinimized ? <Maximize2 className="w-5 h-5" /> : <Minimize2 className="w-5 h-5" />}
-                      </button>
-                      <button 
-                          onClick={() => {
-                              setIsAnnouncementMinimized(false);
-                              // Play TTS
-                              if ('speechSynthesis' in window) {
-                                  window.speechSynthesis.cancel(); // Stop current speech
-                                  const utterance = new SpeechSynthesisUtterance(data.pengumuman || "Tidak ada pengumuman.");
-                                  utterance.lang = 'id-ID';
-                                  window.speechSynthesis.speak(utterance);
-                              }
-                          }}
-                          onDoubleClick={(e) => {
-                              e.stopPropagation();
-                              setIsAnnouncementMinimized(true);
-                          }}
-                          className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors backdrop-blur-sm shadow-sm"
-                          title="Klik 1x: Baca & Tampil | Klik 2x: Sembunyikan"
-                      >
-                          <Volume2 className="w-5 h-5" />
-                      </button>
-                  </div>
-              </div>
+            {/* Unified Announcement Card */}
+            <div className="mb-6">
+              <UnifiedAnnouncementCard type="public" />
             </div>
 
             {/* Stats Grid */}

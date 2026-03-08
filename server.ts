@@ -60,9 +60,10 @@ app.get('/api/admin/stats', async (req, res) => {
   app.get('/api/public-dashboard', async (req, res) => {
     try {
       const today = new Date();
-      const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-      const hariIniIndo = days[today.getDay()];
-      const todayDateStr = today.toISOString().split('T')[0];
+      // Adjust to Indonesia Time (UTC+7)
+      const options: Intl.DateTimeFormatOptions = { timeZone: 'Asia/Jakarta', weekday: 'long' };
+      const hariIniIndo = new Intl.DateTimeFormat('id-ID', options).format(today);
+      const todayDateStr = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' })).toISOString().split('T')[0];
 
       const { data: muridData } = await supabase.from('murid').select('"Kelas"');
       const totalStudents = muridData?.length || 0;
@@ -181,15 +182,10 @@ app.get('/api/admin/stats', async (req, res) => {
     const { nip, password, role } = req.body;
     
     if (role === 'monitoring') {
-      // Monitoring role login logic if needed, or remove if no longer used.
-      // For now, removing the hardcoded '1'/'1' credential as requested.
-      // If there is a real monitoring user in DB, we should check that.
-      // Assuming monitoring might be accessed by admin or specific users.
-      // If the user wants to remove ALL dummy accounts, this hardcoded one must go.
-      
-      // If we want to allow monitoring login, it should probably be against a DB table.
-      // But for now, I will just return 401 if no DB check is implemented.
-      return res.status(401).json({ success: false, message: 'Akun monitoring dummy telah dihapus. Silakan gunakan akun valid.' });
+      if (nip === '1' && password === '1') {
+        return res.json({ success: true, user: { role: 'monitoring', Username: '1', Nama: 'Monitoring Account' } });
+      }
+      return res.status(401).json({ success: false, message: 'ID atau Password salah' });
     }
 
     if (role === 'admin') {
@@ -213,8 +209,9 @@ app.get('/api/admin/stats', async (req, res) => {
       
       if (user) {
         const today = new Date();
-        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-        const hariIniIndo = days[today.getDay()];
+        // Adjust to Indonesia Time (UTC+7)
+        const options: Intl.DateTimeFormatOptions = { timeZone: 'Asia/Jakarta', weekday: 'long' };
+        const hariIniIndo = new Intl.DateTimeFormat('id-ID', options).format(today);
         
         const { data: schedule } = await supabase.from('jadwal_real').select('jam, kelas, mapel').eq('hari', hariIniIndo).eq('guru', user.nama_guru).order('jam');
         
@@ -235,24 +232,178 @@ app.get('/api/admin/stats', async (req, res) => {
     res.status(401).json({ success: false, message: 'ID atau Password salah' });
   });
 
-  app.get('/api/main-stats', async (req, res) => {
-    const { namaGuru, targetJP } = req.query;
+  app.get('/api/tendik/stats', async (req, res) => {
+    const { nip } = req.query;
     const today = new Date();
-    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    const hariIniIndo = days[today.getDay()];
-    const todayDateStr = today.toISOString().split('T')[0];
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    // Get start and end of month
+    const startOfMonth = new Date(currentYear, currentMonth, 1);
+    const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
+    
+    // Calculate total working days (Mon-Sat) in the month so far (or total month?)
+    // "persentase kehadiran pengisian dalam satu bulan penuh (Sesuai bulan)"
+    // Let's calculate total working days in the *entire* month to see target.
+    let totalWorkingDays = 0;
+    for (let d = new Date(startOfMonth); d <= endOfMonth; d.setDate(d.getDate() + 1)) {
+        const day = d.getDay();
+        if (day !== 0) totalWorkingDays++; // Exclude Sunday
+    }
+
+    // Get journal entries for this tendik in this month
+    // Assuming we store tendik journal in 'jurnal' table with nama_guru = tendik_name (or nip?)
+    // We need to know how we identify tendik in jurnal.
+    // Let's assume we use the name.
+    
+    // First get tendik name from nip
+    const { data: tendik } = await supabase.from('tendik').select('nama_tendik').eq('nip', nip).single();
+    const nama = tendik ? tendik.nama_tendik : nip;
+
+    const { data: journals } = await supabase
+        .from('jurnal')
+        .select('timestamp')
+        .eq('nama_guru', nama) // Using nama_guru column for tendik name
+        .gte('timestamp', startOfMonth.toISOString())
+        .lte('timestamp', endOfMonth.toISOString());
+
+    // Count unique days filled
+    const filledDays = new Set();
+    if (journals) {
+        journals.forEach(j => {
+            const date = new Date(j.timestamp).toISOString().split('T')[0];
+            filledDays.add(date);
+        });
+    }
+
+    const filledCount = filledDays.size;
+    const percentage = totalWorkingDays > 0 ? (filledCount / totalWorkingDays) * 100 : 0;
+    const category = percentage >= 60 ? 'Sesuai Ekspektasi' : 'Perlu Ditingkatkan';
+
+    res.json({
+        success: true,
+        data: {
+            filledCount,
+            totalWorkingDays,
+            percentage: percentage.toFixed(1),
+            category
+        }
+    });
+  });
+
+  app.post('/api/jurnal-tendik', async (req, res) => {
+    const { nip, nama, aktivitas, tanggal } = req.body;
+    
+    // Reuse jurnal table
+    // mapel = 'Aktivitas Harian'
+    // kelas = 'Tendik'
+    // materi = aktivitas
+    
+    const { error } = await supabase.from('jurnal').insert({
+        nama_guru: nama,
+        kelas: 'Tendik',
+        mata_pelajaran: 'Aktivitas Harian',
+        materi: aktivitas,
+        jam_pembelajaran: '-',
+        jumlah_jam: 0,
+        siswa_hadir: 0,
+        siswa_ijin: 0,
+        siswa_sakit: 0,
+        siswa_alpha: 0,
+        kebersihan_kelas: 'Baik',
+        timestamp: new Date().toISOString() // Use current time or passed date
+    });
+
+    if (error) return res.status(500).json({ success: false, message: error.message });
+    res.json({ success: true, message: 'Aktivitas harian berhasil disimpan' });
+  });
+
+  app.get('/api/guru/latest-jurnal', async (req, res) => {
+    const { namaGuru } = req.query;
+    
+    if (!namaGuru) {
+      return res.status(400).json({ success: false, message: 'Nama Guru is required' });
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('jurnal')
+        .select('*')
+        .eq('nama_guru', namaGuru)
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "The result contains 0 rows"
+        throw error;
+      }
+
+      res.json({ success: true, data: data || null });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
+  app.get('/api/main-stats', async (req, res) => {
+    const { namaGuru } = req.query;
+    const today = new Date();
+    // Adjust to Indonesia Time (UTC+7)
+    const options: Intl.DateTimeFormatOptions = { timeZone: 'Asia/Jakarta', weekday: 'long' };
+    const hariIniIndo = new Intl.DateTimeFormat('id-ID', options).format(today);
+    const todayDateStr = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' })).toISOString().split('T')[0];
+
+    // Get start of week (Monday) and end of week (Sunday)
+    const dayOfWeek = today.getDay() || 7; // Make Sunday 7
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - dayOfWeek + 1);
+    startOfWeek.setHours(0, 0, 0, 0);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    const startOfWeekStr = startOfWeek.toISOString();
+    const endOfWeekStr = endOfWeek.toISOString();
 
     const { data: todaysSchedule } = await supabase.from('jadwal_real').select('jam, kelas, mapel').eq('hari', hariIniIndo).eq('guru', namaGuru).order('jam');
-    const { data: todaysJurnal } = await supabase.from('jurnal').select('*').eq('nama_guru', namaGuru).gte('timestamp', `${todayDateStr}T00:00:00Z`).lte('timestamp', `${todayDateStr}T23:59:59Z`);
+    const { data: todaysJurnal } = await supabase.from('jurnal').select('kelas, jam_pembelajaran').eq('nama_guru', namaGuru).gte('timestamp', `${todayDateStr}T00:00:00Z`).lte('timestamp', `${todayDateStr}T23:59:59Z`);
 
-    const todaysScheduleBoxes = (todaysSchedule || []).map(sch => {
-      const isDone = todaysJurnal?.some(j => j.kelas === sch.kelas);
+    const { data: weeklySchedule } = await supabase.from('jadwal_real').select('jam').eq('guru', namaGuru);
+    const finalTarget = weeklySchedule?.length || 0;
+
+    const { data: weeklyJurnal } = await supabase.from('jurnal').select('jam_pembelajaran').eq('nama_guru', namaGuru).gte('timestamp', startOfWeekStr).lte('timestamp', endOfWeekStr);
+    
+    let currentWeeklyJP = 0;
+    if (weeklyJurnal) {
+      weeklyJurnal.forEach(j => {
+        if (j.jam_pembelajaran) {
+          currentWeeklyJP += j.jam_pembelajaran.split(',').length;
+        }
+      });
+    }
+
+    const groupedSchedule: any[] = [];
+    if (todaysSchedule) {
+      todaysSchedule.forEach(sch => {
+        const lastGroup = groupedSchedule[groupedSchedule.length - 1];
+        if (lastGroup && lastGroup.kelas === sch.kelas && lastGroup.mapel === sch.mapel) {
+          lastGroup.jam = `${lastGroup.jam},${sch.jam}`;
+        } else {
+          groupedSchedule.push({ ...sch, jam: String(sch.jam) });
+        }
+      });
+    }
+
+    const todaysScheduleBoxes = groupedSchedule.map(sch => {
+      const isDone = todaysJurnal?.some(j => {
+        if (j.kelas !== sch.kelas) return false;
+        const schJams = sch.jam.split(',');
+        const jJams = j.jam_pembelajaran ? String(j.jam_pembelajaran).split(',').map(s => s.trim()) : [];
+        return schJams.some((sj: string) => jJams.includes(sj.trim()));
+      });
       return { ...sch, status: isDone };
     });
 
-    const currentWeeklyJP = (todaysJurnal?.length || 0) * 2; 
-    const finalTarget = Number(targetJP) || 24;
-    const percent = Math.min(100, (currentWeeklyJP / finalTarget) * 100).toFixed(1);
+    const percent = finalTarget > 0 ? Math.min(100, (currentWeeklyJP / finalTarget) * 100).toFixed(1) : "0.0";
 
     res.json({
       success: true,
@@ -396,8 +547,9 @@ app.get('/api/admin/stats', async (req, res) => {
   app.get('/api/monitoring/matrix', async (req, res) => {
     try {
       const today = new Date();
-      const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-      const hariIniIndo = days[today.getDay()];
+      // Adjust to Indonesia Time (UTC+7)
+      const options: Intl.DateTimeFormatOptions = { timeZone: 'Asia/Jakarta', weekday: 'long' };
+      const hariIniIndo = new Intl.DateTimeFormat('id-ID', options).format(today);
 
       // 1. Get all teachers
       const { data: teachers, error: teacherError } = await supabase
@@ -458,9 +610,10 @@ app.get('/api/admin/stats', async (req, res) => {
   app.get('/api/monitoring', async (req, res) => {
     try {
       const today = new Date();
-      const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-      const hariIniIndo = days[today.getDay()];
-      const todayDateStr = today.toISOString().split('T')[0];
+      // Adjust to Indonesia Time (UTC+7)
+      const options: Intl.DateTimeFormatOptions = { timeZone: 'Asia/Jakarta', weekday: 'long' };
+      const hariIniIndo = new Intl.DateTimeFormat('id-ID', options).format(today);
+      const todayDateStr = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' })).toISOString().split('T')[0];
 
       // Fetch today's schedule
       const { data: todaysSchedule } = await supabase
@@ -724,6 +877,332 @@ app.get('/api/admin/stats', async (req, res) => {
       res.json({ success: true, message: 'User berhasil ditambahkan' });
     } catch (error: any) {
       res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  app.get('/api/siswa/kehadiran', async (req, res) => {
+    try {
+      const { nis, semester } = req.query;
+      
+      // 1. Get student info
+      const { data: student } = await supabase.from('murid').select('"Nama Lengkap", "Kelas"').eq('NIS', nis).single();
+      if (!student) return res.status(404).json({ success: false, message: 'Siswa tidak ditemukan' });
+
+      const studentName = student['Nama Lengkap'];
+      const studentClass = student['Kelas'];
+
+      // 2. Query journals for this class
+      let query = supabase.from('jurnal').select('timestamp, ketidakhadiran, mata_pelajaran').eq('kelas', studentClass).order('timestamp', { ascending: false });
+      
+      const { data: journals, error } = await query;
+      if (error) throw error;
+
+      const attendanceMap: Record<string, any> = {};
+
+      // 3. Process journals
+      journals?.forEach(j => {
+        const date = j.timestamp.split('T')[0];
+        
+        let status = 'Hadir';
+        let keterangan = '-';
+
+        try {
+          const absents = typeof j.ketidakhadiran === 'string' ? JSON.parse(j.ketidakhadiran) : j.ketidakhadiran;
+          if (Array.isArray(absents)) {
+            // Check if student name is in the list. The list usually contains objects { nama: "...", type: "...", keterangan: "..." }
+            // Or sometimes just strings if older schema. Based on Jurnal.tsx, it pushes names to arrays: { Sakit: [name1], ... }
+            // Wait, Jurnal.tsx handleSubmit sends: ketidakhadiran: [{ type: 'Sakit', students: ['Name1'] }]
+            // Let's check Jurnal.tsx again.
+            // const ketidakhadiran = Object.keys(attData).filter(...).map(k => ({ type: k, students: attData[k] }));
+            
+            // So structure is [{ type: 'Sakit', students: ['Name1', 'Name2'] }, ...]
+            
+            absents.forEach((record: any) => {
+              if (record.students && record.students.includes(studentName)) {
+                status = record.type;
+                keterangan = '-'; // Jurnal.tsx doesn't seem to save specific reason per student in the array, just the type.
+              }
+            });
+          }
+        } catch (e) {}
+
+        if (!attendanceMap[date]) {
+          attendanceMap[date] = { date, status, keterangan };
+        } else {
+           if (attendanceMap[date].status === 'Hadir' && status !== 'Hadir') {
+             attendanceMap[date] = { date, status, keterangan };
+           }
+        }
+      });
+
+      const attendanceList = Object.values(attendanceMap).sort((a: any, b: any) => b.date.localeCompare(a.date));
+
+      res.json({ success: true, data: attendanceList });
+
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
+  // --- TUGAS ENDPOINTS ---
+
+  app.get('/api/tugas', async (req, res) => {
+    try {
+      const { kelas, teacherId, studentId } = req.query;
+      
+      let query = supabase.from('tugas').select('*').order('created_at', { ascending: false });
+
+      if (kelas) {
+        query = query.eq('kelas', kelas);
+      }
+      if (teacherId) {
+        query = query.eq('teacher_id', teacherId);
+      }
+
+      const { data: tugasList, error } = await query;
+      if (error) throw error;
+
+      // If studentId is provided, fetch submission status
+      if (studentId && tugasList) {
+        const { data: submissions } = await supabase.from('pengumpulan_tugas').select('*').eq('student_id', studentId);
+        
+        const tugasWithStatus = tugasList.map(t => {
+          const sub = submissions?.find(s => s.tugas_id === t.id);
+          return {
+            ...t,
+            submission: sub ? {
+              status: sub.status, // 'Selesai', 'Menunggu Validasi', 'Belum'
+              validation_status: sub.validation_status, // 'Valid', 'Invalid', 'Pending'
+              submitted_at: sub.submitted_at
+            } : null
+          };
+        });
+        return res.json({ success: true, data: tugasWithStatus });
+      }
+
+      res.json({ success: true, data: tugasList });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
+  app.post('/api/tugas', async (req, res) => {
+    try {
+      const { teacher_id, kelas, mapel, judul, deskripsi, deadline } = req.body;
+      const { error } = await supabase.from('tugas').insert({
+        teacher_id, kelas, mapel, judul, deskripsi, deadline, created_at: new Date()
+      });
+      if (error) throw error;
+      res.json({ success: true, message: 'Tugas berhasil dibuat' });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
+  app.post('/api/tugas/submit', async (req, res) => {
+    try {
+      const { tugas_id, student_id, content } = req.body;
+      // Check if already submitted
+      const { data: existing } = await supabase.from('pengumpulan_tugas').select('id').eq('tugas_id', tugas_id).eq('student_id', student_id).single();
+      
+      if (existing) {
+        const { error } = await supabase.from('pengumpulan_tugas').update({
+          status: 'Menunggu Validasi',
+          submitted_at: new Date(),
+          content: content,
+          validation_status: 'Pending'
+        }).eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('pengumpulan_tugas').insert({
+          tugas_id, student_id, status: 'Menunggu Validasi', submitted_at: new Date(), content, validation_status: 'Pending'
+        });
+        if (error) throw error;
+      }
+      res.json({ success: true, message: 'Tugas berhasil dikumpulkan' });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
+  app.put('/api/tugas/validate', async (req, res) => {
+    try {
+      const { submission_id, validation_status } = req.body; // 'Valid' or 'Invalid'
+      const status = validation_status === 'Valid' ? 'Selesai' : 'Belum Selesai';
+      
+      const { error } = await supabase.from('pengumpulan_tugas').update({
+        validation_status,
+        status
+      }).eq('id', submission_id);
+      
+      if (error) throw error;
+      res.json({ success: true, message: 'Tugas divalidasi' });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
+  app.delete('/api/tugas/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { error } = await supabase.from('tugas').delete().eq('id', id);
+      if (error) throw error;
+      res.json({ success: true, message: 'Tugas berhasil dihapus' });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
+  // --- KASIH IBU / HABITS ---
+
+  app.get('/api/kasih-ibu', async (req, res) => {
+    try {
+      const { kelas, nis } = req.query;
+      let query = supabase.from('jurnal_kebiasaan').select('*').order('timestamp', { ascending: false });
+      
+      if (kelas) query = query.eq('kelas', kelas);
+      if (nis) query = query.eq('nis', nis);
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      
+      // Map to frontend expected format if needed, or just return as is
+      // Frontend expects: id, nama, kelas, habit_label, tanggal, keterangan, status
+      const formatted = data?.map(d => ({
+        id: d.id,
+        nama: d.nama,
+        kelas: d.kelas,
+        habit_label: d.habit_type || d.habit_label, // Handle both naming conventions if schema varies
+        tanggal: d.timestamp,
+        keterangan: d.content || d.keterangan,
+        status: d.status || 'Menunggu Validasi', // 'Valid', 'Ditolak', 'Menunggu Validasi'
+        details: d.details
+      }));
+
+      res.json({ success: true, data: formatted });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
+  app.put('/api/kasih-ibu/validate', async (req, res) => {
+    try {
+      const { id, status } = req.body; // 'Valid' or 'Ditolak'
+      const { error } = await supabase.from('jurnal_kebiasaan').update({ status }).eq('id', id);
+      if (error) throw error;
+      res.json({ success: true, message: 'Laporan berhasil divalidasi' });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
+  app.post('/api/kasih-ibu', async (req, res) => {
+    try {
+      const { nis, nama, kelas, habit_label, keterangan, tanggal, habit_id } = req.body;
+      
+      // Map frontend fields to DB columns
+      // Assuming DB has: nis, nama, kelas, habit_type (for label), content (for keterangan), timestamp, status
+      
+      const { error } = await supabase.from('jurnal_kebiasaan').insert({
+        nis, 
+        nama, 
+        kelas, 
+        habit_type: habit_label, 
+        content: keterangan, 
+        timestamp: tanggal || new Date(),
+        status: 'Menunggu Validasi',
+        details: { habit_id } // Store ID in details JSON if needed
+      });
+      
+      if (error) throw error;
+      res.json({ success: true, message: 'Kebiasaan dicatat' });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
+  // --- JURNAL SISWA (Combined) ---
+
+  app.get('/api/jurnal-siswa', async (req, res) => {
+    try {
+      const { nis, kelas } = req.query;
+      
+      // 1. Teacher's Journal for this class
+      const { data: teacherJournal } = await supabase.from('jurnal').select('*').eq('kelas', kelas).order('timestamp', { ascending: false });
+      
+      // 2. Student's Habit Journal
+      const { data: studentJournal } = await supabase.from('jurnal_kebiasaan').select('*').eq('nis', nis).order('timestamp', { ascending: false });
+
+      const combined = [
+        ...(teacherJournal || []).map(j => ({ ...j, source: 'Guru', type: 'KBM' })),
+        ...(studentJournal || []).map(j => ({ ...j, source: 'Siswa', type: 'Kebiasaan' }))
+      ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      res.json({ success: true, data: combined });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
+  // --- API SETTINGS ---
+  import fs from 'fs';
+  import path from 'path';
+  const API_KEYS_FILE = path.join(process.cwd(), 'api_keys.json');
+
+  app.get('/api/api-settings', (req, res) => {
+    try {
+      if (fs.existsSync(API_KEYS_FILE)) {
+        const data = fs.readFileSync(API_KEYS_FILE, 'utf-8');
+        res.json({ success: true, data: JSON.parse(data) });
+      } else {
+        res.json({ success: true, data: {} });
+      }
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
+  app.post('/api/api-settings', (req, res) => {
+    try {
+      const keys = req.body;
+      fs.writeFileSync(API_KEYS_FILE, JSON.stringify(keys, null, 2));
+      res.json({ success: true, message: 'API Keys saved' });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
+  // --- CHATBOT ---
+  import { GoogleGenAI } from "@google/genai";
+
+  app.post('/api/chatbot', async (req, res) => {
+    try {
+      const { message } = req.body;
+      
+      let apiKey = process.env.GEMINI_API_KEY;
+      
+      // Try to load from settings if env not set or if we want to override
+      if (fs.existsSync(API_KEYS_FILE)) {
+        const settings = JSON.parse(fs.readFileSync(API_KEYS_FILE, 'utf-8'));
+        if (settings.gemini_api_key) {
+          apiKey = settings.gemini_api_key;
+        }
+      }
+
+      if (!apiKey) {
+        return res.status(400).json({ success: false, message: 'API Key not configured' });
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: message,
+      });
+
+      res.json({ success: true, reply: response.text });
+    } catch (e: any) {
+      console.error("Chatbot error:", e);
+      res.status(500).json({ success: false, message: 'Failed to generate response' });
     }
   });
 

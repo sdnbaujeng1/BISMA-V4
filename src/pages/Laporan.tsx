@@ -4,6 +4,7 @@ import { ArrowLeft, Printer } from 'lucide-react';
 export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (page: string) => void }) {
   const [jurnalData, setJurnalData] = useState<any[]>([]);
   const [filterBulan, setFilterBulan] = useState('semua');
+  const [filterTahun, setFilterTahun] = useState('semua');
   const [loading, setLoading] = useState(true);
 
   const [headmasterName, setHeadmasterName] = useState("Drs. H. Ahmad");
@@ -65,6 +66,14 @@ export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (
     window.print();
   };
 
+  const filteredData = jurnalData.filter(j => {
+    if (filterBulan === 'semua' && filterTahun === 'semua') return true;
+    const date = new Date(j.timestamp);
+    const monthMatch = filterBulan === 'semua' || date.getMonth().toString() === filterBulan;
+    const yearMatch = filterTahun === 'semua' || date.getFullYear().toString() === filterTahun;
+    return monthMatch && yearMatch;
+  });
+
   return (
     <div className="min-h-screen w-full flex flex-col bg-slate-50 dark:bg-slate-900 transition-colors">
       <header className="sticky top-0 z-30 bg-green-600 px-4 pb-4 pt-6 shadow-lg print:hidden">
@@ -81,13 +90,6 @@ export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 print:hidden mb-6 flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tanggal</label>
-                <input 
-                  type="date" 
-                  className="border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 bg-slate-50 dark:bg-slate-700 dark:text-white"
-                />
-              </div>
-              <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Bulan</label>
                 <select 
                   value={filterBulan} 
@@ -95,18 +97,31 @@ export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (
                   className="border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 bg-slate-50 dark:bg-slate-700 dark:text-white"
                 >
                   <option value="semua">Semua</option>
-                  <option value="0-2024">Januari 2024</option>
-                  <option value="1-2024">Februari 2024</option>
-                  {/* Add more months */}
+                  <option value="0">Januari</option>
+                  <option value="1">Februari</option>
+                  <option value="2">Maret</option>
+                  <option value="3">April</option>
+                  <option value="4">Mei</option>
+                  <option value="5">Juni</option>
+                  <option value="6">Juli</option>
+                  <option value="7">Agustus</option>
+                  <option value="8">September</option>
+                  <option value="9">Oktober</option>
+                  <option value="10">November</option>
+                  <option value="11">Desember</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tahun</label>
                 <select 
+                  value={filterTahun}
+                  onChange={e => setFilterTahun(e.target.value)}
                   className="border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 bg-slate-50 dark:bg-slate-700 dark:text-white"
                 >
-                  <option value="2024">2024</option>
+                  <option value="semua">Semua</option>
                   <option value="2025">2025</option>
+                  <option value="2026">2026</option>
+                  <option value="2027">2027</option>
                 </select>
               </div>
             </div>
@@ -142,12 +157,12 @@ export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (
                   </tr>
                 </thead>
                 <tbody>
-                  {jurnalData.length === 0 ? (
+                  {filteredData.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-6 text-center text-slate-500 dark:text-slate-400 italic">Tidak ada data jurnal.</td>
                     </tr>
                   ) : (
-                    jurnalData.map((item, idx) => (
+                    filteredData.map((item, idx) => (
                       <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 print:hover:bg-transparent">
                         <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center">{idx + 1}</td>
                         <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3">

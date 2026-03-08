@@ -14,12 +14,54 @@ export default function Jurnal({ user, onNavigate }: { user: any, onNavigate: (p
   const [guruPiket, setGuruPiket] = useState('');
   const [loading, setLoading] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [showCatatanPopup, setShowCatatanPopup] = useState(false);
+  const [selectedCatatanType, setSelectedCatatanType] = useState('');
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [isFromSchedule, setIsFromSchedule] = useState(false);
+  const [customCatatan, setCustomCatatan] = useState('');
+
+  const catatanOptions = [
+    "Tidak membawa buku tulis",
+    "Tidak membawa buku paket",
+    "Membawa/menggunakan HP saat pembelajaran",
+    "Rambut tidak rapi dan panjang",
+    "Piket Kelas Belum terlaksana",
+    "Izin keluar kelas tidak kembali",
+    "Tidak mengumpulkan tugas",
+    "Berkelahi",
+    "Menangis",
+    "Sudah berjalan dengan tertib",
+    "Tidak mengerjakan PR"
+  ];
 
   useEffect(() => {
     fetch('/api/initial-data')
       .then(res => res.json())
       .then(data => setInitialData(data))
       .catch(err => console.error("Failed to fetch initial data", err));
+  }, []);
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.includes('?')) {
+      const params = new URLSearchParams(hash.split('?')[1]);
+      const preKelas = params.get('kelas');
+      const preMapel = params.get('mapel');
+      const preJam = params.get('jam');
+      
+      if (preKelas) {
+        setKelas(preKelas);
+        setIsFromSchedule(true);
+      }
+      if (preMapel || preJam) {
+        setPembelajaran([{
+          id: Date.now(),
+          mataPelajaran: preMapel || '',
+          jamPembelajaran: preJam ? preJam.split(',').map(Number) : [],
+          materi: ''
+        }]);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -102,9 +144,8 @@ export default function Jurnal({ user, onNavigate }: { user: any, onNavigate: (p
       });
       const data = await res.json();
       if (data.success) {
-        alert('Jurnal berhasil disimpan!');
         setShowSummary(false);
-        onNavigate('main');
+        setShowSuccessPopup(true);
       } else {
         alert('Gagal menyimpan jurnal: ' + data.message);
       }
@@ -115,8 +156,39 @@ export default function Jurnal({ user, onNavigate }: { user: any, onNavigate: (p
     }
   };
 
+  const handleCloseSuccess = () => {
+    setShowSuccessPopup(false);
+    window.location.hash = '';
+    onNavigate('main');
+  };
+
+  const handleAddCatatan = (type: string) => {
+    setSelectedCatatanType(type);
+    setShowCatatanPopup(true);
+  };
+
+  const handleSaveCatatan = (studentName: string) => {
+    setCatatan([...catatan, { type: selectedCatatanType, student: studentName }]);
+    setShowCatatanPopup(false);
+    setSelectedCatatanType('');
+    setCustomCatatan('');
+  };
+
+  const handleRemoveCatatan = (index: number) => {
+    setCatatan(catatan.filter((_, i) => i !== index));
+  };
+
   const uniqueKelas = Array.isArray(initialData?.murid) ? [...new Set(initialData.murid.map((m: any) => m.Kelas))].sort() : [];
   const mapelOptions = user?.Mengajar ? user.Mengajar.split(';').map((s: string) => s.trim()) : [];
+  const hash = window.location.hash;
+  let preMapel = '';
+  if (hash.includes('?')) {
+    const params = new URLSearchParams(hash.split('?')[1]);
+    preMapel = params.get('mapel') || '';
+  }
+  if (preMapel && !mapelOptions.includes(preMapel)) {
+    mapelOptions.push(preMapel);
+  }
 
   return (
     <div className="min-h-screen w-full flex flex-col bg-slate-50 dark:bg-slate-900 transition-colors">
@@ -134,29 +206,6 @@ export default function Jurnal({ user, onNavigate }: { user: any, onNavigate: (p
       
       <main className="flex-grow p-4 md:p-6 mt-4 relative">
         <div className="max-w-3xl mx-auto">
-          {/* Jadwal Hari Ini Section */}
-          <div className="mb-8 bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 animate-in fade-in slide-in-from-top-4 duration-500">
-            <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-slate-200 flex items-center gap-2">
-              <span className="w-2 h-6 bg-green-500 rounded-full"></span> Jadwal Mengajar Hari Ini
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                { jam: '07:00 - 08:10', kelas: 'Kelas 5', mapel: 'Matematika' },
-                { jam: '08:10 - 09:20', kelas: 'Kelas 3', mapel: 'Bahasa Indonesia' },
-              ].map((item, idx) => (
-                <div key={idx} className="flex items-center p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700">
-                  <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center font-bold mr-4">
-                    {idx + 1}
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-800 dark:text-white">{item.mapel}</p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{item.kelas} • {item.jam}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* Progress Bar */}
           <div className="mb-8 px-2 md:px-0">
             <div className="flex items-center justify-between relative">
@@ -180,14 +229,20 @@ export default function Jurnal({ user, onNavigate }: { user: any, onNavigate: (p
                 <h3 className="font-bold text-lg border-b dark:border-slate-700 pb-3 text-slate-800 dark:text-slate-200">1. Pilih Kelas & Isi Kehadiran</h3>
                 <div>
                   <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Pilih Kelas</label>
-                  <select 
-                    value={kelas} 
-                    onChange={e => setKelas(e.target.value)}
-                    className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 bg-slate-50 dark:bg-slate-700 dark:text-white"
-                  >
-                    <option value="">-- Pilih Kelas --</option>
-                    {uniqueKelas.map((k: any) => <option key={k} value={k}>Kelas {k}</option>)}
-                  </select>
+                  {isFromSchedule ? (
+                    <div className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 bg-slate-100 dark:bg-slate-800 dark:text-white font-semibold">
+                      {kelas}
+                    </div>
+                  ) : (
+                    <select 
+                      value={kelas} 
+                      onChange={e => setKelas(e.target.value)}
+                      className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 bg-slate-50 dark:bg-slate-700 dark:text-white"
+                    >
+                      <option value="">-- Pilih Kelas --</option>
+                      {uniqueKelas.map((k: any) => <option key={k} value={k}>Kelas {k}</option>)}
+                    </select>
+                  )}
                 </div>
 
                 {kelas && (
@@ -233,7 +288,7 @@ export default function Jurnal({ user, onNavigate }: { user: any, onNavigate: (p
                     type="button" 
                     onClick={() => setStep(2)} 
                     disabled={!kelas}
-                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 disabled:opacity-50 transition-colors"
+                    className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
                   >
                     Selanjutnya <ArrowRight className="w-5 h-5" />
                   </button>
@@ -298,29 +353,31 @@ export default function Jurnal({ user, onNavigate }: { user: any, onNavigate: (p
                   ))}
                 </div>
 
-                <div className="flex justify-between items-center pt-4 border-t border-slate-100 dark:border-slate-700">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
                   <button 
                     type="button" 
                     onClick={() => setStep(1)} 
-                    className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 px-4 py-2 font-medium flex items-center gap-2"
+                    className="w-full sm:w-auto text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 px-4 py-2 font-medium flex items-center justify-center gap-2 order-3 sm:order-1"
                   >
                     <ArrowLeft className="w-5 h-5" /> Kembali
                   </button>
-                  <button 
-                    type="button" 
-                    onClick={handleAddPembelajaran}
-                    className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors"
-                  >
-                    <Plus className="w-5 h-5" /> Tambah Mapel
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => setStep(3)} 
-                    disabled={pembelajaran.some(p => !p.mataPelajaran || p.jamPembelajaran.length === 0)}
-                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 disabled:opacity-50 transition-colors"
-                  >
-                    Selanjutnya <ArrowRight className="w-5 h-5" />
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto order-1 sm:order-2">
+                    <button 
+                      type="button" 
+                      onClick={handleAddPembelajaran}
+                      className="w-full sm:w-auto bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 px-4 py-3 sm:py-2 rounded-xl sm:rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <Plus className="w-5 h-5" /> Tambah Mapel
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => setStep(3)} 
+                      disabled={pembelajaran.some(p => !p.mataPelajaran || p.jamPembelajaran.length === 0)}
+                      className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
+                    >
+                      Selanjutnya <ArrowRight className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -328,24 +385,59 @@ export default function Jurnal({ user, onNavigate }: { user: any, onNavigate: (p
             {step === 3 && (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                 <h3 className="font-bold text-lg border-b dark:border-slate-700 pb-3 text-slate-800 dark:text-slate-200">3. Catatan Kedisiplinan</h3>
-                <div className="p-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50">
-                  <p className="text-slate-500 dark:text-slate-400 mb-4">Tidak ada catatan kedisiplinan (Opsional)</p>
-                  <button type="button" className="text-green-600 dark:text-green-400 font-semibold flex items-center gap-2 mx-auto hover:text-green-700 dark:hover:text-green-300">
-                    <Plus className="w-5 h-5" /> Tambah Catatan
+                
+                {catatan.length === 0 ? (
+                  <div className="p-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50">
+                    <p className="text-slate-500 dark:text-slate-400 mb-4">Tidak ada catatan kedisiplinan (Opsional)</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {catatan.map((c, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/30 rounded-xl">
+                        <div>
+                          <p className="font-bold text-red-700 dark:text-red-400">{c.type}</p>
+                          <p className="text-sm text-red-600 dark:text-red-300">{c.student}</p>
+                        </div>
+                        <button type="button" onClick={() => handleRemoveCatatan(idx)} className="text-red-400 hover:text-red-600">
+                          <XCircle className="w-5 h-5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                  {catatanOptions.map((opt, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleAddCatatan(opt)}
+                      className="text-left px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors text-sm text-slate-700 dark:text-slate-300"
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => handleAddCatatan('Manual')}
+                    className="text-left px-4 py-3 rounded-xl border border-dashed border-green-300 dark:border-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors text-sm text-green-700 dark:text-green-400 font-medium flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" /> Tambah Catatan Manual
                   </button>
                 </div>
-                <div className="flex justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
+
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
                   <button 
                     type="button" 
                     onClick={() => setStep(2)} 
-                    className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 px-4 py-2 font-medium flex items-center gap-2"
+                    className="w-full sm:w-auto text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 px-4 py-2 font-medium flex items-center justify-center gap-2 order-2 sm:order-1"
                   >
                     <ArrowLeft className="w-5 h-5" /> Kembali
                   </button>
                   <button 
                     type="button" 
                     onClick={() => setStep(4)} 
-                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-colors"
+                    className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors order-1 sm:order-2"
                   >
                     Selanjutnya <ArrowRight className="w-5 h-5" />
                   </button>
@@ -401,17 +493,17 @@ export default function Jurnal({ user, onNavigate }: { user: any, onNavigate: (p
                   )}
                 </div>
 
-                <div className="flex justify-between pt-6 border-t border-slate-100 dark:border-slate-700">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-6 border-t border-slate-100 dark:border-slate-700">
                   <button 
                     type="button" 
                     onClick={() => setStep(3)} 
-                    className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 px-4 py-2 font-medium flex items-center gap-2"
+                    className="w-full sm:w-auto text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 px-4 py-2 font-medium flex items-center justify-center gap-2 order-2 sm:order-1"
                   >
                     <ArrowLeft className="w-5 h-5" /> Kembali
                   </button>
                   <button 
                     type="submit" 
-                    className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-green-200 dark:shadow-none transition-all"
+                    className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-200 dark:shadow-none transition-all order-1 sm:order-2"
                   >
                     Review & Kirim
                   </button>
@@ -421,6 +513,78 @@ export default function Jurnal({ user, onNavigate }: { user: any, onNavigate: (p
           </form>
         </div>
       </main>
+
+      {/* Catatan Popup */}
+      {showCatatanPopup && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+              <h3 className="font-bold text-lg text-slate-800 dark:text-white">Pilih Siswa</h3>
+              <button onClick={() => setShowCatatanPopup(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto flex-grow">
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-4">
+                Catatan: <span className="text-red-600 dark:text-red-400">{selectedCatatanType === 'Manual' ? 'Catatan Manual' : selectedCatatanType}</span>
+              </p>
+              
+              {selectedCatatanType === 'Manual' && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Isi Catatan</label>
+                  <input 
+                    type="text" 
+                    value={customCatatan}
+                    onChange={(e) => setCustomCatatan(e.target.value)}
+                    placeholder="Masukkan catatan kedisiplinan..."
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 bg-slate-50 dark:bg-slate-700 dark:text-white"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {muridList.map((m, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      if (selectedCatatanType === 'Manual' && !customCatatan.trim()) {
+                        alert('Silakan isi catatan manual terlebih dahulu');
+                        return;
+                      }
+                      const finalNote = selectedCatatanType === 'Manual' ? customCatatan : selectedCatatanType;
+                      setSelectedCatatanType(finalNote);
+                      handleSaveCatatan(m['Nama Murid']);
+                    }}
+                    className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-slate-700 dark:text-slate-200"
+                  >
+                    {m['Nama Murid']}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Popup */}
+      {showSuccessPopup && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden text-center p-8">
+            <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Check className="w-10 h-10 text-green-600 dark:text-green-400" />
+            </div>
+            <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Berhasil!</h3>
+            <p className="text-slate-600 dark:text-slate-300 mb-6">Data anda telah terkirim</p>
+            <p className="text-green-600 dark:text-green-400 font-bold italic mb-8">"Selamat Berkhidmah Untuk Anak Bangsa"</p>
+            <button 
+              onClick={handleCloseSuccess}
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl transition-colors"
+            >
+              Kembali ke Dashboard
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Summary Modal */}
       {showSummary && (
