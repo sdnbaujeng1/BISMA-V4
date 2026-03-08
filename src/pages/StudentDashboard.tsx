@@ -126,10 +126,10 @@ export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkM
            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 flex justify-between items-center border border-slate-100 dark:border-slate-700">
             <span className="font-bold text-slate-700 dark:text-slate-200">PORTAL SISWA</span>
             <div className="flex flex-col items-end">
-              <span className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                 {time.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               </span>
-              <span className="font-mono text-blue-600 dark:text-blue-400 font-semibold text-sm sm:text-lg">
+              <span className="font-mono text-blue-600 dark:text-blue-400 font-semibold text-lg">
                 {time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
