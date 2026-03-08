@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Camera, CheckCircle2 } from 'lucide-react';
-import { QrReader } from 'react-qr-reader';
+import { Scanner } from '@yudiel/react-qr-scanner';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -13,16 +13,13 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const handleScanResult = async (result: any, error: any) => {
-    if (result) {
+  const handleScanResult = async (detectedCodes: any[]) => {
+    if (detectedCodes && detectedCodes.length > 0) {
       setScanning(false);
-      const scannedNisn = result?.text;
+      const scannedNisn = detectedCodes[0].rawValue;
       if (scannedNisn) {
         await processPresensi(scannedNisn);
       }
-    }
-    if (error && error.message !== 'No QR code found') {
-      console.error(error);
     }
   };
 
@@ -134,10 +131,9 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="mb-6 relative border-4 border-green-500 rounded-2xl overflow-hidden aspect-video bg-slate-900 flex items-center justify-center shadow-inner">
                   {scanning ? (
-                    <QrReader
-                      onResult={handleScanResult}
-                      constraints={{ facingMode: 'environment' }}
-                      className="w-full h-full object-cover"
+                    <Scanner
+                      onScan={handleScanResult}
+                      onError={(error) => console.error(error)}
                     />
                   ) : (
                     <div className="text-slate-500 flex flex-col items-center gap-3">

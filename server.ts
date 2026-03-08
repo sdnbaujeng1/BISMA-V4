@@ -1512,7 +1512,7 @@ app.get('/api/admin/stats', async (req, res) => {
   });
 
 
-  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  if (process.env.NODE_ENV !== 'production') {
     const viteModule = 'vite';
     const { createServer: createViteServer } = await import(viteModule);
     const vite = await createViteServer({
@@ -1522,7 +1522,7 @@ app.get('/api/admin/stats', async (req, res) => {
     app.use(vite.middlewares);
   }
 
-  if (!process.env.VERCEL) {
+  if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on http://localhost:${PORT}`);
     });
