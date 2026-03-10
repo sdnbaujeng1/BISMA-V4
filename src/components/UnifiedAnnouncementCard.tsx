@@ -125,7 +125,7 @@ export default function UnifiedAnnouncementCard({ type = 'public', guruName }: U
           <div className="flex justify-between items-start mb-2">
             <div>
               <h3 className={`font-bold drop-shadow-md ${isMinimized ? 'text-xs sm:text-base' : 'text-sm sm:text-lg mb-1'}`}>{displayTitle}</h3>
-              {!isMinimized && <p className="text-blue-100 text-[10px] sm:text-sm mb-2 sm:mb-4 font-medium">{displayDate}</p>}
+              {!isMinimized && isGuruMode && <p className="text-blue-100 text-[10px] sm:text-sm mb-2 sm:mb-4 font-medium">{displayDate}</p>}
             </div>
             <button 
               onClick={() => setIsMinimized(!isMinimized)}

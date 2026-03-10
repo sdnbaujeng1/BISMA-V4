@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import { ArrowLeft, Printer } from 'lucide-react';
 
 export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (page: string) => void }) {
@@ -154,33 +154,88 @@ export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (
                 <thead className="bg-slate-100 dark:bg-slate-700 print:bg-slate-100">
                   <tr>
                     <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-12">No</th>
-                    <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-left w-48">Hari, Tanggal</th>
+                    <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-left w-40">Hari, Tanggal</th>
                     <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-20">Kelas</th>
-                    <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-left">Materi</th>
-                    <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-left w-48">Ketidakhadiran</th>
+                    <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-left w-32">Materi</th>
+                    <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-24">Jam Ke</th>
+                    <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-left">Materi/Kegiatan</th>
+                    <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-left w-40">Ketidakhadiran</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredData.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-6 text-center text-slate-500 dark:text-slate-400 italic">Tidak ada data jurnal.</td>
+                      <td colSpan={7} className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-6 text-center text-slate-500 dark:text-slate-400 italic">Tidak ada data jurnal.</td>
                     </tr>
                   ) : (
-                    filteredData.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 print:hover:bg-transparent">
-                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center">{idx + 1}</td>
-                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3">
-                          {new Date(item.Timestamp).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                        </td>
-                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold">{item.Kelas}</td>
-                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3">
-                          <span className="font-semibold">{item.Mata_Pelajaran}</span>: {item.Materi}
-                        </td>
-                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-slate-600 dark:text-slate-300 print:text-slate-600">
-                          {item.Ketidakhadiran === '[]' ? 'Nihil' : item.Ketidakhadiran}
-                        </td>
-                      </tr>
-                    ))
+                    filteredData.map((item, idx) => {
+                      let parsedMateri = [];
+                      try {
+                        parsedMateri = JSON.parse(item.Materi);
+                        if (!Array.isArray(parsedMateri)) {
+                          parsedMateri = [{ mataPelajaran: item.Mata_Pelajaran || '-', jamPembelajaran: [], materi: item.Materi }];
+                        }
+                      } catch (e) {
+                        parsedMateri = [{ mataPelajaran: item.Mata_Pelajaran || '-', jamPembelajaran: [], materi: item.Materi }];
+                      }
+
+                      return (
+                        <Fragment key={idx}>
+                          {parsedMateri.map((m: any, i: number) => {
+                            const jams = m.jamPembelajaran || [];
+                            let jamText = jams.join(', ');
+                            if (jams.length > 1) {
+                              const sortedJams = [...jams].map(Number).sort((a, b) => a - b);
+                              const isSequential = sortedJams.every((val, idx, arr) => idx === 0 || val === arr[idx - 1] + 1);
+                              if (isSequential) {
+                                jamText = `${sortedJams[0]}-${sortedJams[sortedJams.length - 1]}`;
+                              }
+                            }
+
+                            return (
+                              <tr key={`${idx}-${i}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 print:hover:bg-transparent">
+                                {i === 0 && (
+                                  <>
+                                    <td rowSpan={parsedMateri.length} className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center align-top">{idx + 1}</td>
+                                    <td rowSpan={parsedMateri.length} className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 align-top">
+                                      {new Date(item.Timestamp).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                                    </td>
+                                    <td rowSpan={parsedMateri.length} className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold align-top">{item.Kelas}</td>
+                                  </>
+                                )}
+                                <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 align-top">{m.mataPelajaran}</td>
+                                <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center align-top">{jamText}</td>
+                                <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 align-top">{m.materi}</td>
+                                {i === 0 && (
+                                  <td rowSpan={parsedMateri.length} className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-slate-600 dark:text-slate-300 print:text-slate-600 align-top">
+                                    {(() => {
+                                      if (!item.Ketidakhadiran || item.Ketidakhadiran === '[]' || item.Ketidakhadiran === 'Nihil') return 'Nihil';
+                                      try {
+                                        const parsedAbsen = JSON.parse(item.Ketidakhadiran);
+                                        if (Array.isArray(parsedAbsen)) {
+                                          return (
+                                            <ul className="list-disc pl-4 space-y-1">
+                                              {parsedAbsen.map((a: any, i: number) => (
+                                                <li key={i}>
+                                                  <span className="font-medium">{a.nama}</span> - {a.keterangan}
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          );
+                                        }
+                                      } catch (e) {
+                                        // Fallback if not JSON
+                                      }
+                                      return item.Ketidakhadiran;
+                                    })()}
+                                  </td>
+                                )}
+                              </tr>
+                            );
+                          })}
+                        </Fragment>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

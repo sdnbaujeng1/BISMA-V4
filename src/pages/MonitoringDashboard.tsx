@@ -7,6 +7,31 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [search, setSearch] = useState('');
   const [activeModal, setActiveModal] = useState<'ketidakhadiran' | 'keterlaksanaan' | 'kebersihan' | null>(null);
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [ketidakhadiranData, setKetidakhadiranData] = useState<any[]>([]);
+  const [loadingKetidakhadiran, setLoadingKetidakhadiran] = useState(false);
+
+  const fetchKetidakhadiran = async () => {
+    setLoadingKetidakhadiran(true);
+    try {
+      const res = await fetch(`/api/monitoring/ketidakhadiran?start=${startDate}&end=${endDate}`);
+      const json = await res.json();
+      if (json.success) {
+        setKetidakhadiranData(json.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch ketidakhadiran data", error);
+    } finally {
+      setLoadingKetidakhadiran(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeModal === 'ketidakhadiran') {
+      fetchKetidakhadiran();
+    }
+  }, [activeModal]);
 
   const fetchData = async () => {
     try {
@@ -247,30 +272,66 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
             </div>
             <div className="p-4 overflow-y-auto flex-1">
               {activeModal === 'ketidakhadiran' && (
-                data?.details?.ketidakhadiran?.length > 0 ? (
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400">
-                      <tr>
-                        <th className="py-2 px-3 font-medium">Nama Siswa</th>
-                        <th className="py-2 px-3 font-medium">Kelas</th>
-                        <th className="py-2 px-3 font-medium">Guru</th>
-                        <th className="py-2 px-3 font-medium">Mapel</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                      {data.details.ketidakhadiran.map((k: any, idx: number) => (
-                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
-                          <td className="py-2 px-3 font-medium">{k.nama}</td>
-                          <td className="py-2 px-3">{k.kelas}</td>
-                          <td className="py-2 px-3">{k.guru}</td>
-                          <td className="py-2 px-3">{k.mapel}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div className="text-center py-8 text-slate-500">Tidak ada data ketidakhadiran hari ini.</div>
-                )
+                <div className="flex flex-col h-full">
+                  <div className="flex items-center gap-2 mb-4">
+                    <input 
+                      type="date" 
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-700"
+                    />
+                    <span className="text-slate-500">-</span>
+                    <input 
+                      type="date" 
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-700"
+                    />
+                    <button 
+                      onClick={fetchKetidakhadiran}
+                      disabled={loadingKetidakhadiran}
+                      className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      {loadingKetidakhadiran ? 'Memuat...' : 'Filter'}
+                    </button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto">
+                    {ketidakhadiranData.length > 0 ? (
+                      <table className="w-full text-sm text-left">
+                        <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400">
+                          <tr>
+                            <th className="py-2 px-3 font-medium">Tanggal</th>
+                            <th className="py-2 px-3 font-medium">Nama Siswa</th>
+                            <th className="py-2 px-3 font-medium">Kelas</th>
+                            <th className="py-2 px-3 font-medium">Keterangan</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                          {ketidakhadiranData.map((k: any, idx: number) => (
+                            <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                              <td className="py-2 px-3">{new Date(k.tanggal).toLocaleDateString('id-ID')}</td>
+                              <td className="py-2 px-3 font-medium">{k.nama}</td>
+                              <td className="py-2 px-3">{k.kelas}</td>
+                              <td className="py-2 px-3">
+                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                  k.keterangan === 'Sakit' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                  k.keterangan === 'Izin' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                  k.keterangan === 'Alpa' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                  'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                }`}>
+                                  {k.keterangan}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div className="text-center py-8 text-slate-500">Tidak ada data ketidakhadiran pada periode ini.</div>
+                    )}
+                  </div>
+                </div>
               )}
 
               {activeModal === 'keterlaksanaan' && (

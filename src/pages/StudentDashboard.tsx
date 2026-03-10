@@ -405,7 +405,25 @@ function JadwalHariIni({ user, onBack }: { user: any, onBack: () => void }) {
         const res = await fetch(`/api/jadwal?kelas=${kelas}&hari=${dayName}`);
         const data = await res.json();
         if (data.success) {
-           setJadwal(data.data);
+          const groupedJadwal: any[] = [];
+          if (data.data) {
+            data.data.sort((a: any, b: any) => a.jam - b.jam).forEach((j: any) => {
+              const last = groupedJadwal[groupedJadwal.length - 1];
+              if (last && last.mapel === j.mapel && last.guru === j.guru) {
+                last.jamArray.push(j.jam);
+              } else {
+                groupedJadwal.push({ ...j, jamArray: [j.jam] });
+              }
+            });
+            groupedJadwal.forEach(g => {
+              if (g.jamArray.length > 1) {
+                g.jam = `${g.jamArray[0]}-${g.jamArray[g.jamArray.length - 1]}`;
+              } else {
+                g.jam = String(g.jamArray[0]);
+              }
+            });
+          }
+          setJadwal(groupedJadwal);
         }
       } catch (e) {
         console.error(e);

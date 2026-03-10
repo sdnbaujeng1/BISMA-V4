@@ -189,6 +189,9 @@ export default function Jurnal({ user, onNavigate }: { user: any, onNavigate: (p
   if (preMapel && !mapelOptions.includes(preMapel)) {
     mapelOptions.push(preMapel);
   }
+  if (!mapelOptions.includes('Kegiatan Sekolah')) {
+    mapelOptions.push('Kegiatan Sekolah');
+  }
 
   return (
     <div className="min-h-screen w-full flex flex-col bg-slate-50 dark:bg-slate-900 transition-colors">
@@ -240,12 +243,16 @@ export default function Jurnal({ user, onNavigate }: { user: any, onNavigate: (p
                       className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 bg-slate-50 dark:bg-slate-700 dark:text-white"
                     >
                       <option value="">-- Pilih Kelas --</option>
-                      {uniqueKelas.map((k: any) => <option key={k} value={k}>Kelas {k}</option>)}
+                      {uniqueKelas.map((k: any) => {
+                        const label = String(k).toLowerCase().startsWith('kelas') ? k : `Kelas ${k}`;
+                        return <option key={k} value={k}>{label}</option>;
+                      })}
+                      <option value="Kegiatan Sekolah">Kegiatan Sekolah</option>
                     </select>
                   )}
                 </div>
 
-                {kelas && (
+                {kelas && kelas !== 'Kegiatan Sekolah' && (
                   <div className="mt-6">
                     <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-xl">
                       <table className="w-full text-sm">
@@ -371,7 +378,7 @@ export default function Jurnal({ user, onNavigate }: { user: any, onNavigate: (p
                     </button>
                     <button 
                       type="button" 
-                      onClick={() => setStep(3)} 
+                      onClick={() => setStep(kelas === 'Kegiatan Sekolah' ? 4 : 3)} 
                       disabled={pembelajaran.some(p => !p.mataPelajaran || p.jamPembelajaran.length === 0)}
                       className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
                     >
@@ -496,7 +503,7 @@ export default function Jurnal({ user, onNavigate }: { user: any, onNavigate: (p
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-6 border-t border-slate-100 dark:border-slate-700">
                   <button 
                     type="button" 
-                    onClick={() => setStep(3)} 
+                    onClick={() => setStep(kelas === 'Kegiatan Sekolah' ? 2 : 3)} 
                     className="w-full sm:w-auto text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 px-4 py-2 font-medium flex items-center justify-center gap-2 order-2 sm:order-1"
                   >
                     <ArrowLeft className="w-5 h-5" /> Kembali

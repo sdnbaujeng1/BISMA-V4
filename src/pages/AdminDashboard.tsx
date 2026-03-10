@@ -1154,7 +1154,11 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
 
   const fetchSchedule = async () => {
     try {
-      const res = await fetch(`/api/jadwal?kelas=${selectedClass}&hari=${selectedDay}`);
+      let url = `/api/jadwal?hari=${selectedDay}`;
+      if (selectedClass !== "(-)") url += `&kelas=${selectedClass}`;
+      if (selectedGuru !== "Semua Guru") url += `&guru=${selectedGuru}`;
+      
+      const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
         setScheduleData(data.data);
@@ -1165,10 +1169,8 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
   };
 
   useEffect(() => {
-    if (selectedClass !== "(-)") {
-      fetchSchedule();
-    }
-  }, [selectedClass, selectedDay]);
+    fetchSchedule();
+  }, [selectedClass, selectedDay, selectedGuru]);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Hapus jadwal ini?")) return;
@@ -1201,6 +1203,17 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
       setFormExtra(item.mapel);
     }
     
+    setIsAdding(true);
+  };
+
+  const handleAddForJam = (jam: number) => {
+    setEditingId(null);
+    setFormHari(selectedDay);
+    setFormKelas(selectedClass !== "(-)" ? selectedClass : "Kelas 1");
+    setFormGuru(selectedGuru !== "Semua Guru" ? selectedGuru : (teachers[0]?.nama || ""));
+    setFormJam([jam]);
+    setFormMapel(subjectsList[0]);
+    setFormExtra("");
     setIsAdding(true);
   };
 
@@ -1345,29 +1358,73 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map(jam => {
-                    const item = scheduleData.find(s => s.jam === jam);
-                    return (
-                      <tr key={jam} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                        <td className="px-6 py-4 font-bold text-slate-400">#{jam}</td>
-                        <td className="px-6 py-4 font-medium text-slate-800 dark:text-white">
-                          {item ? item.mapel : '-'}
-                        </td>
-                        <td className="px-6 py-4">{item ? item.guru : '-'}</td>
-                        <td className="px-6 py-4">
-                          {item && <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs px-2 py-1 rounded-full font-bold">{item.peran}</span>}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          {item && (
+                  {selectedClass !== "(-)" || selectedGuru !== "Semua Guru" ? (
+                    [1, 2, 3, 4, 5, 6, 7, 8].map(jam => {
+                      const items = scheduleData.filter(s => s.jam === jam);
+                      if (items.length === 0) {
+                        return (
+                          <tr key={`empty-${jam}`} onClick={() => handleAddForJam(jam)} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer group">
+                            <td className="px-6 py-4 font-bold text-slate-400">#{jam}</td>
+                            <td className="px-6 py-4 font-medium text-slate-400 dark:text-slate-500 italic">-</td>
+                            <td className="px-6 py-4 text-slate-400 dark:text-slate-500 italic">-</td>
+                            <td className="px-6 py-4"></td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-xs text-fuchsia-500 font-medium px-2 py-1 bg-fuchsia-50 dark:bg-fuchsia-900/20 rounded">Klik untuk tambah</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }
+                      return items.map((item, idx) => (
+                        <tr key={item.id || `${jam}-${idx}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                          <td className="px-6 py-4 font-bold text-slate-400">#{item.jam}</td>
+                          <td className="px-6 py-4 font-medium text-slate-800 dark:text-white">
+                            {item.mapel}
+                            {selectedClass === "(-)" && <span className="ml-2 text-xs bg-slate-200 dark:bg-slate-600 px-2 py-1 rounded">{item.kelas}</span>}
+                          </td>
+                          <td className="px-6 py-4">{item.guru}</td>
+                          <td className="px-6 py-4">
+                            <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs px-2 py-1 rounded-full font-bold">{item.peran}</span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
                             <div className="flex justify-end gap-2">
                               <button onClick={() => handleEdit(item)} className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
                               <button onClick={() => handleDelete(item.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
                             </div>
-                          )}
+                          </td>
+                        </tr>
+                      ));
+                    })
+                  ) : (
+                    scheduleData.length > 0 ? (
+                      scheduleData.sort((a, b) => a.jam - b.jam).map((item, idx) => (
+                        <tr key={item.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                          <td className="px-6 py-4 font-bold text-slate-400">#{item.jam}</td>
+                          <td className="px-6 py-4 font-medium text-slate-800 dark:text-white">
+                            {item.mapel}
+                            {selectedClass === "(-)" && <span className="ml-2 text-xs bg-slate-200 dark:bg-slate-600 px-2 py-1 rounded">{item.kelas}</span>}
+                          </td>
+                          <td className="px-6 py-4">{item.guru}</td>
+                          <td className="px-6 py-4">
+                            <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs px-2 py-1 rounded-full font-bold">{item.peran}</span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex justify-end gap-2">
+                              <button onClick={() => handleEdit(item)} className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
+                              <button onClick={() => handleDelete(item.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
+                          Tidak ada jadwal ditemukan.
                         </td>
                       </tr>
-                    );
-                  })}
+                    )
+                  )}
                 </tbody>
               </table>
             </div>

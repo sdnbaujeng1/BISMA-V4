@@ -146,7 +146,7 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
               <h1 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight leading-tight uppercase">
                 {data?.appName || "BISMA"}
               </h1>
-              <p className="text-slate-500 dark:text-slate-400 text-xs hidden sm:block font-bold uppercase">
+              <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase">
                 {schoolIdentity?.schoolName || "UPT Satuan Pendidikan SDN Baujeng 1"}
               </p>
             </div>

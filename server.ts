@@ -113,15 +113,18 @@ app.get('/api/admin/stats', async (req, res) => {
           try {
             const absenList = typeof j.ketidakhadiran === 'string' ? JSON.parse(j.ketidakhadiran) : j.ketidakhadiran;
             if (Array.isArray(absenList)) {
-              absenList.forEach((absen: any) => {
-                // Avoid duplicates if multiple journals record the same student (though unlikely in this schema, good safety)
-                if (!absentStudents.some(s => s.name === absen.nama && s.class === j.kelas)) {
-                  absentStudents.push({
-                    name: absen.nama,
-                    class: j.kelas,
-                    reason: absen.keterangan
-                  });
-                }
+              absenList.forEach((absenGroup: any) => {
+                const type = absenGroup.type || 'Tidak Hadir';
+                const students = absenGroup.students || [];
+                students.forEach((studentName: string) => {
+                  if (!absentStudents.some(s => s.name === studentName && s.class === j.kelas)) {
+                    absentStudents.push({
+                      name: studentName,
+                      class: j.kelas,
+                      reason: type
+                    });
+                  }
+                });
               });
             }
           } catch (e) {
@@ -602,6 +605,65 @@ app.get('/api/admin/stats', async (req, res) => {
 
       res.json({ success: true, data: matrixData });
 
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
+  app.get('/api/monitoring/ketidakhadiran', async (req, res) => {
+    try {
+      const { start, end } = req.query;
+      if (!start || !end) {
+        return res.status(400).json({ success: false, message: 'Start and end dates are required' });
+      }
+
+      const startDate = new Date(start as string);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(end as string);
+      endDate.setHours(23, 59, 59, 999);
+
+      const { data: journals, error } = await supabase
+        .from('jurnal')
+        .select('timestamp, kelas, ketidakhadiran')
+        .gte('timestamp', startDate.toISOString())
+        .lte('timestamp', endDate.toISOString());
+
+      if (error) throw error;
+
+      const absentStudents: any[] = [];
+
+      if (journals) {
+        journals.forEach(j => {
+          try {
+            const absenList = typeof j.ketidakhadiran === 'string' ? JSON.parse(j.ketidakhadiran) : j.ketidakhadiran;
+            if (Array.isArray(absenList)) {
+              absenList.forEach((absenGroup: any) => {
+                const type = absenGroup.type || 'Tidak Hadir';
+                const students = absenGroup.students || [];
+                students.forEach((studentName: string) => {
+                  // Avoid duplicates for the same student on the same day
+                  const dateStr = new Date(j.timestamp).toISOString().split('T')[0];
+                  if (!absentStudents.some(s => s.nama === studentName && s.kelas === j.kelas && s.tanggal === dateStr)) {
+                    absentStudents.push({
+                      tanggal: dateStr,
+                      nama: studentName,
+                      kelas: j.kelas,
+                      keterangan: type
+                    });
+                  }
+                });
+              });
+            }
+          } catch (e) {
+            console.error("Error parsing ketidakhadiran", e);
+          }
+        });
+      }
+
+      // Sort by date descending
+      absentStudents.sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
+
+      res.json({ success: true, data: absentStudents });
     } catch (e: any) {
       res.status(500).json({ success: false, message: e.message });
     }
@@ -1338,11 +1400,12 @@ app.get('/api/admin/stats', async (req, res) => {
   });
 
   app.get('/api/jadwal', async (req, res) => {
-    const { kelas, hari } = req.query;
+    const { kelas, hari, guru } = req.query;
     let query = supabase.from('jadwal_real').select('*').order('jam');
     
     if (kelas) query = query.eq('kelas', kelas);
     if (hari) query = query.eq('hari', hari);
+    if (guru) query = query.eq('guru', guru);
     
     const { data, error } = await query;
     if (error) return res.status(500).json({ success: false, message: error.message });
