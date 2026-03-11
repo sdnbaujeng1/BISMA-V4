@@ -137,7 +137,7 @@ export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (
             </button>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 text-black dark:text-white rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700 print:shadow-none print:border-none print:p-0 print:bg-white print:text-black">
+          <div className="bg-white dark:bg-slate-800 text-black dark:text-white rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700 print:shadow-none print:border-none print:p-0 print:bg-white print:text-black print:w-full print:max-w-[210mm] print:mx-auto">
             <div className="flex items-center gap-6 mb-8 border-b-2 border-black dark:border-white print:border-black pb-6">
               <img src={logoUrl} className="h-24 w-24 object-contain" alt="Logo" />
               <div className="text-left">
@@ -150,95 +150,97 @@ export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (
             {loading ? (
               <div className="text-center py-12 text-slate-500 dark:text-slate-400">Memuat data laporan...</div>
             ) : (
-              <table className="w-full text-sm border-collapse border border-slate-300 dark:border-slate-600 print:border-slate-300">
-                <thead className="bg-slate-100 dark:bg-slate-700 print:bg-slate-100">
-                  <tr>
-                    <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-12">No</th>
-                    <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-left w-40">Hari, Tanggal</th>
-                    <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-20">Kelas</th>
-                    <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-left w-32">Materi</th>
-                    <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-24">Jam Ke</th>
-                    <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-left">Materi/Kegiatan</th>
-                    <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-left w-40">Ketidakhadiran</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredData.length === 0 ? (
+              <div className="overflow-x-auto print:overflow-visible">
+                <table className="w-full text-sm print:text-xs border-collapse border border-slate-300 dark:border-slate-600 print:border-slate-300 table-fixed">
+                  <thead className="bg-slate-100 dark:bg-slate-700 print:bg-slate-100">
                     <tr>
-                      <td colSpan={7} className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-6 text-center text-slate-500 dark:text-slate-400 italic">Tidak ada data jurnal.</td>
+                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-center w-10 print:w-8">No</th>
+                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-left w-32 print:w-24">Hari, Tanggal</th>
+                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-center w-16 print:w-12">Kelas</th>
+                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-left w-24 print:w-20">Mata Pelajaran</th>
+                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-center w-16 print:w-12">Jam Ke</th>
+                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-left">Materi/Kegiatan</th>
+                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-left w-32 print:w-24">Ketidakhadiran</th>
                     </tr>
-                  ) : (
-                    filteredData.map((item, idx) => {
-                      let parsedMateri = [];
-                      try {
-                        parsedMateri = JSON.parse(item.Materi);
-                        if (!Array.isArray(parsedMateri)) {
+                  </thead>
+                  <tbody>
+                    {filteredData.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-6 text-center text-slate-500 dark:text-slate-400 italic">Tidak ada data jurnal.</td>
+                      </tr>
+                    ) : (
+                      filteredData.map((item, idx) => {
+                        let parsedMateri = [];
+                        try {
+                          parsedMateri = JSON.parse(item.Materi);
+                          if (!Array.isArray(parsedMateri)) {
+                            parsedMateri = [{ mataPelajaran: item.Mata_Pelajaran || '-', jamPembelajaran: [], materi: item.Materi }];
+                          }
+                        } catch (e) {
                           parsedMateri = [{ mataPelajaran: item.Mata_Pelajaran || '-', jamPembelajaran: [], materi: item.Materi }];
                         }
-                      } catch (e) {
-                        parsedMateri = [{ mataPelajaran: item.Mata_Pelajaran || '-', jamPembelajaran: [], materi: item.Materi }];
-                      }
 
-                      return (
-                        <Fragment key={idx}>
-                          {parsedMateri.map((m: any, i: number) => {
-                            const jams = m.jamPembelajaran || [];
-                            let jamText = jams.join(', ');
-                            if (jams.length > 1) {
-                              const sortedJams = [...jams].map(Number).sort((a, b) => a - b);
-                              const isSequential = sortedJams.every((val, idx, arr) => idx === 0 || val === arr[idx - 1] + 1);
-                              if (isSequential) {
-                                jamText = `${sortedJams[0]}-${sortedJams[sortedJams.length - 1]}`;
+                        return (
+                          <Fragment key={idx}>
+                            {parsedMateri.map((m: any, i: number) => {
+                              const jams = m.jamPembelajaran || [];
+                              let jamText = jams.join(', ');
+                              if (jams.length > 1) {
+                                const sortedJams = [...jams].map(Number).sort((a, b) => a - b);
+                                const isSequential = sortedJams.every((val, idx, arr) => idx === 0 || val === arr[idx - 1] + 1);
+                                if (isSequential) {
+                                  jamText = `${sortedJams[0]}-${sortedJams[sortedJams.length - 1]}`;
+                                }
                               }
-                            }
 
-                            return (
-                              <tr key={`${idx}-${i}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 print:hover:bg-transparent">
-                                {i === 0 && (
-                                  <>
-                                    <td rowSpan={parsedMateri.length} className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center align-top">{idx + 1}</td>
-                                    <td rowSpan={parsedMateri.length} className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 align-top">
-                                      {new Date(item.Timestamp).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                                    </td>
-                                    <td rowSpan={parsedMateri.length} className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold align-top">{item.Kelas}</td>
-                                  </>
-                                )}
-                                <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 align-top">{m.mataPelajaran}</td>
-                                <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center align-top">{jamText}</td>
-                                <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 align-top">{m.materi}</td>
-                                {i === 0 && (
-                                  <td rowSpan={parsedMateri.length} className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-slate-600 dark:text-slate-300 print:text-slate-600 align-top">
-                                    {(() => {
-                                      if (!item.Ketidakhadiran || item.Ketidakhadiran === '[]' || item.Ketidakhadiran === 'Nihil') return 'Nihil';
-                                      try {
-                                        const parsedAbsen = JSON.parse(item.Ketidakhadiran);
-                                        if (Array.isArray(parsedAbsen)) {
-                                          return (
-                                            <ul className="list-disc pl-4 space-y-1">
-                                              {parsedAbsen.map((a: any, i: number) => (
-                                                <li key={i}>
-                                                  <span className="font-medium">{a.nama}</span> - {a.keterangan}
-                                                </li>
-                                              ))}
-                                            </ul>
-                                          );
+                              return (
+                                <tr key={`${idx}-${i}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 print:hover:bg-transparent break-inside-avoid">
+                                  {i === 0 && (
+                                    <>
+                                      <td rowSpan={parsedMateri.length} className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-center align-top">{idx + 1}</td>
+                                      <td rowSpan={parsedMateri.length} className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 align-top">
+                                        {new Date(item.Timestamp).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                                      </td>
+                                      <td rowSpan={parsedMateri.length} className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-center font-bold align-top">{item.Kelas}</td>
+                                    </>
+                                  )}
+                                  <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 align-top break-words">{m.mataPelajaran}</td>
+                                  <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-center align-top">{jamText}</td>
+                                  <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 align-top break-words whitespace-pre-wrap">{m.materi}</td>
+                                  {i === 0 && (
+                                    <td rowSpan={parsedMateri.length} className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-slate-600 dark:text-slate-300 print:text-slate-600 align-top break-words">
+                                      {(() => {
+                                        if (!item.Ketidakhadiran || item.Ketidakhadiran === '[]' || item.Ketidakhadiran === 'Nihil') return 'Nihil';
+                                        try {
+                                          const parsedAbsen = JSON.parse(item.Ketidakhadiran);
+                                          if (Array.isArray(parsedAbsen)) {
+                                            return (
+                                              <ul className="list-disc pl-4 space-y-1 print:pl-3">
+                                                {parsedAbsen.map((a: any, i: number) => (
+                                                  <li key={i}>
+                                                    <span className="font-medium">{a.nama}</span> - {a.keterangan}
+                                                  </li>
+                                                ))}
+                                              </ul>
+                                            );
+                                          }
+                                        } catch (e) {
+                                          // Fallback if not JSON
                                         }
-                                      } catch (e) {
-                                        // Fallback if not JSON
-                                      }
-                                      return item.Ketidakhadiran;
-                                    })()}
-                                  </td>
-                                )}
-                              </tr>
-                            );
-                          })}
-                        </Fragment>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                                        return item.Ketidakhadiran;
+                                      })()}
+                                    </td>
+                                  )}
+                                </tr>
+                              );
+                            })}
+                          </Fragment>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             )}
 
             <div className="mt-16 grid grid-cols-2 gap-8 text-sm text-black dark:text-white print:text-black">

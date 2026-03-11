@@ -126,24 +126,27 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
     }
   };
 
+  const [showAllMenu, setShowAllMenu] = useState(false);
+
   const menuItems = [
     { id: 'jurnal', icon: FilePenLine, label: 'Isi Jurnal', gradient: 'from-green-400 to-green-600', shadow: 'shadow-green-500/40', roles: ['guru'] },
     { id: 'tugas_guru', icon: ClipboardCheck, label: 'Tugas', gradient: 'from-blue-400 to-blue-600', shadow: 'shadow-blue-500/40', roles: ['guru'] },
     { id: 'nilai_guru', icon: FileSpreadsheet, label: 'Nilai', gradient: 'from-fuchsia-400 to-fuchsia-600', shadow: 'shadow-fuchsia-500/40', roles: ['guru'] },
     { id: 'jadwal_mengajar', icon: CalendarCheck, label: 'Jadwal', gradient: 'from-cyan-400 to-cyan-600', shadow: 'shadow-cyan-500/40', roles: ['guru'] },
-    { id: 'laporan', icon: Printer, label: 'Cetak', gradient: 'from-teal-400 to-teal-600', shadow: 'shadow-teal-500/40', roles: ['guru', 'tendik'] },
     { id: 'rekap_absensi', icon: UserCheck, label: 'Kehadiran', gradient: 'from-orange-400 to-orange-600', shadow: 'shadow-orange-500/40', roles: ['guru', 'tendik'] },
-    { id: 'keterlaksanaan_kbm', icon: ClipboardCheck, label: 'Keterlaksanaan', gradient: 'from-blue-400 to-blue-600', shadow: 'shadow-blue-500/40', roles: ['guru'] },
     { id: 'kedisiplinan', icon: ShieldAlert, label: 'Kedisiplinan', gradient: 'from-red-400 to-red-600', shadow: 'shadow-red-500/40', roles: ['guru', 'tendik'] },
+    { id: 'bank_sampah_guru', icon: Trash2, label: 'Bank Sampah', gradient: 'from-emerald-400 to-emerald-600', shadow: 'shadow-emerald-500/40', roles: ['guru', 'tendik'] },
+    { id: 'edugame', url: 'https://edugamev2.netlify.app/', icon: Gamepad, label: 'Edugame', gradient: 'from-green-400 to-emerald-600', shadow: 'shadow-green-500/40', roles: ['guru', 'tendik'] },
+    // Hidden by default
+    { id: 'laporan', icon: Printer, label: 'Cetak', gradient: 'from-teal-400 to-teal-600', shadow: 'shadow-teal-500/40', roles: ['guru', 'tendik'] },
+    { id: 'keterlaksanaan_kbm', icon: ClipboardCheck, label: 'Keterlaksanaan', gradient: 'from-blue-400 to-blue-600', shadow: 'shadow-blue-500/40', roles: ['guru'] },
     { id: 'presensi_qr', icon: QrCode, label: 'Scan QR', gradient: 'from-purple-400 to-purple-600', shadow: 'shadow-purple-500/40', roles: ['guru', 'tendik'] },
     { id: 'rpp_generator', icon: NotebookPen, label: 'RPP', gradient: 'from-indigo-400 to-indigo-600', shadow: 'shadow-indigo-500/40', roles: ['guru'] },
     { id: 'kasih_ibu_guru', icon: HeartHandshake, label: 'Kasih Ibu', gradient: 'from-pink-400 to-pink-600', shadow: 'shadow-pink-500/40', roles: ['walikelas'] },
-    { id: 'bank_sampah_guru', icon: Trash2, label: 'Bank Sampah', gradient: 'from-emerald-400 to-emerald-600', shadow: 'shadow-emerald-500/40', roles: ['guru', 'tendik'] },
     { id: 'galeri_kegiatan', icon: GalleryThumbnails, label: 'Galeri', gradient: 'from-violet-400 to-violet-600', shadow: 'shadow-violet-500/40', roles: ['guru', 'tendik'] },
     { id: 'kemendikdasmen', url: 'https://guru.kemendikdasmen.go.id/', img: 'https://lh3.googleusercontent.com/d/1s5VpgdLJFBL5tGDqKCZ3Wem1YnYbH9zt', label: 'PMM', gradient: 'from-slate-100 to-slate-200', shadow: 'shadow-slate-300/40', roles: ['guru', 'tendik'] },
     { id: 'bangkomar', url: 'https://bangkomar.pasuruankab.go.id/', icon: Globe, label: 'Bangkomar', gradient: 'from-blue-500 to-cyan-500', shadow: 'shadow-blue-500/40', roles: ['guru', 'tendik'] },
     { id: 'game_generator', url: 'https://sdnbaujeng1.github.io/gamegenerator/', icon: Gamepad2, label: 'Game Generator', gradient: 'from-yellow-400 to-orange-500', shadow: 'shadow-orange-500/40', roles: ['guru'] },
-    { id: 'edugame', url: 'https://edugamev2.netlify.app/', icon: Gamepad, label: 'Edugame', gradient: 'from-green-400 to-emerald-600', shadow: 'shadow-green-500/40', roles: ['guru', 'tendik'] },
   ];
 
   const filteredMenuItems = menuItems.filter(item => {
@@ -154,6 +157,8 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
     if (item.id === 'bank_sampah_guru' && (user?.role === 'tendik' || user?.waliKelas)) return true;
     return false;
   });
+
+  const visibleMenuItems = showAllMenu ? filteredMenuItems : filteredMenuItems.slice(0, 8);
 
   return (
     <div className="min-h-screen w-full flex flex-col bg-slate-50 dark:bg-slate-900 transition-colors pb-24">
@@ -350,7 +355,7 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
 
           {activeTab === 'kbm' && (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-5 animate-in fade-in duration-300">
-              {filteredMenuItems.map(item => (
+              {visibleMenuItems.map(item => (
                 <button 
                   key={item.id}
                   onClick={() => {
@@ -373,6 +378,21 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
                   <span className="text-xs font-bold text-center text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{item.label}</span>
                 </button>
               ))}
+              
+              {filteredMenuItems.length > 8 && (
+                <button 
+                  onClick={() => setShowAllMenu(!showAllMenu)}
+                  className="group relative bg-white dark:bg-slate-800 p-4 rounded-[2rem] flex flex-col items-center justify-center aspect-square transition-all duration-300 hover:-translate-y-2 shadow-[0_10px_20px_rgba(0,0,0,0.05),inset_0_2px_0_rgba(255,255,255,1)] dark:shadow-[0_10px_20px_rgba(0,0,0,0.2),inset_0_2px_0_rgba(255,255,255,0.05)] border border-slate-100 dark:border-slate-700"
+                >
+                  <div className={`p-4 rounded-2xl mb-3 transition-all duration-300 group-hover:scale-110 bg-gradient-to-br from-slate-400 to-slate-600 shadow-slate-500/40 shadow-lg ring-1 ring-white/20 dark:ring-white/10 relative overflow-hidden flex items-center justify-center`}>
+                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-white/60 opacity-50"></div>
+                    <LayoutDashboard className="w-8 h-8 text-white relative z-10 transition-transform duration-300 group-hover:rotate-12 drop-shadow-[0_2px_3px_rgba(0,0,0,0.3)]" strokeWidth={2.5} />
+                  </div>
+                  <span className="text-xs font-bold text-center text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                    {showAllMenu ? 'Tutup Menu' : 'Menu Lainnya'}
+                  </span>
+                </button>
+              )}
             </div>
           )}
 

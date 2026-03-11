@@ -22,7 +22,8 @@ import {
   Clock,
   Save,
   FileSpreadsheet,
-  Gamepad
+  Gamepad,
+  FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import UnifiedAnnouncementCard from '../components/UnifiedAnnouncementCard';
@@ -71,9 +72,9 @@ export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkM
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardHome user={user} onNavigate={setActiveTab} />;
+        return <DashboardHome user={user} onNavigate={setActiveTab} onExternalNavigate={onNavigate} />;
       case 'kbm':
-        return <MenuKBM user={user} onNavigate={setActiveTab} />;
+        return <MenuKBM user={user} onNavigate={setActiveTab} onExternalNavigate={onNavigate} />;
       case 'profil':
         return <Profil user={user} onLogout={onLogout} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />;
       case 'chatbot':
@@ -84,6 +85,8 @@ export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkM
         return <BankSampah user={user} onBack={() => setActiveTab('kbm')} />;
       case 'kasih_ibu':
         return <KasihIbu onBack={() => setActiveTab('kbm')} />;
+      case 'jurnal_kasih_ibu':
+        return <JurnalKasihIbu user={user} onBack={() => setActiveTab('kbm')} />;
       case 'kehadiran':
         return <Kehadiran user={user} onBack={() => setActiveTab('kbm')} />;
       case 'pelanggaran':
@@ -97,7 +100,7 @@ export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkM
       case 'nilai_siswa':
         return <NilaiSiswa user={user} onBack={() => setActiveTab('kbm')} />;
       default:
-        return <DashboardHome user={user} onNavigate={setActiveTab} />;
+        return <DashboardHome user={user} onNavigate={setActiveTab} onExternalNavigate={onNavigate} />;
     }
   };
 
@@ -269,7 +272,7 @@ export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkM
   );
 }
 
-function DashboardHome({ user, onNavigate }: { user: any, onNavigate: (page: string) => void }) {
+function DashboardHome({ user, onNavigate, onExternalNavigate }: { user: any, onNavigate: (page: string) => void, onExternalNavigate: (page: string) => void }) {
   return (
     <div className="space-y-6">
       {/* Unified Announcement Card & Point Reward Card */}
@@ -285,12 +288,19 @@ function DashboardHome({ user, onNavigate }: { user: any, onNavigate: (page: str
           { id: 'nilai_siswa', label: 'Nilai', icon: FileSpreadsheet, color: 'bg-fuchsia-500', shadow: 'shadow-fuchsia-200' },
           { id: 'kehadiran', label: 'Absensi', icon: UserCheck, color: 'bg-indigo-500', shadow: 'shadow-indigo-200' },
           { id: 'pelanggaran', label: 'Disiplin', icon: AlertTriangle, color: 'bg-red-500', shadow: 'shadow-red-200' },
+          { id: 'jurnal_kasih_ibu', label: 'Jurnal Kasih Ibu', icon: FileText, color: 'bg-rose-500', shadow: 'shadow-rose-200' },
           { id: 'rumah_pendidikan', label: 'Rumah Pendidikan', img: 'https://lh3.googleusercontent.com/d/1DgxC8VjC0SS_xWtmTqnIReQmGpCqzGDO', color: 'bg-white', shadow: 'shadow-slate-200' },
           { id: 'edugame', label: 'Edugame', icon: Gamepad, color: 'bg-green-500', shadow: 'shadow-green-200' },
         ].map((item) => (
           <button
             key={item.id}
-            onClick={() => onNavigate(item.id)}
+            onClick={() => {
+              if (item.id === 'edugame' || item.id === 'rumah_pendidikan') {
+                onExternalNavigate(item.id);
+              } else {
+                onNavigate(item.id);
+              }
+            }}
             className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition-all flex flex-col items-center gap-3 group hover:-translate-y-1"
           >
             <div className={`${item.color} w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg ${item.shadow} dark:shadow-none group-hover:scale-110 transition-transform overflow-hidden`}>
@@ -308,7 +318,7 @@ function DashboardHome({ user, onNavigate }: { user: any, onNavigate: (page: str
   );
 }
 
-function MenuKBM({ user, onNavigate }: { user: any, onNavigate: (page: string) => void }) {
+function MenuKBM({ user, onNavigate, onExternalNavigate }: { user: any, onNavigate: (page: string) => void, onExternalNavigate: (page: string) => void }) {
   const menuItems = [
     { id: 'jadwal', icon: Calendar, label: 'Jadwal Pelajaran', color: 'bg-purple-500', shadow: 'shadow-purple-200' },
     { id: 'tugas', icon: ClipboardList, label: 'Tugas Sekolah', color: 'bg-blue-500', shadow: 'shadow-blue-200' },
@@ -317,6 +327,7 @@ function MenuKBM({ user, onNavigate }: { user: any, onNavigate: (page: string) =
     { id: 'tahfidz', icon: BookHeart, label: 'Tahfidz Quran', color: 'bg-emerald-500', shadow: 'shadow-emerald-200' },
     { id: 'bank_sampah', icon: Trash2, label: 'Bank Sampah', color: 'bg-green-500', shadow: 'shadow-green-200' },
     { id: 'kasih_ibu', icon: Heart, label: 'Kasih Ibu', color: 'bg-pink-500', shadow: 'shadow-pink-200' },
+    { id: 'jurnal_kasih_ibu', icon: FileText, label: 'Jurnal Kasih Ibu', color: 'bg-rose-500', shadow: 'shadow-rose-200' },
     { id: 'kehadiran', icon: UserCheck, label: 'Rekap Absensi', color: 'bg-indigo-500', shadow: 'shadow-indigo-200' },
     { id: 'pelanggaran', icon: AlertTriangle, label: 'Catatan Disiplin', color: 'bg-red-500', shadow: 'shadow-red-200' },
     { id: 'rumah_pendidikan', label: 'Rumah Pendidikan', img: 'https://lh3.googleusercontent.com/d/1DgxC8VjC0SS_xWtmTqnIReQmGpCqzGDO', color: 'bg-white', shadow: 'shadow-slate-200' },
@@ -328,7 +339,13 @@ function MenuKBM({ user, onNavigate }: { user: any, onNavigate: (page: string) =
       {menuItems.map((item) => (
         <button
           key={item.id}
-          onClick={() => onNavigate(item.id)}
+          onClick={() => {
+            if (item.id === 'edugame' || item.id === 'rumah_pendidikan') {
+              onExternalNavigate(item.id);
+            } else {
+              onNavigate(item.id);
+            }
+          }}
           className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition-all flex flex-col items-center gap-3 group hover:-translate-y-1"
         >
           <div className={`${item.color} w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg ${item.shadow} dark:shadow-none group-hover:scale-110 transition-transform overflow-hidden`}>
@@ -558,6 +575,110 @@ function BankSampah({ user, onBack }: { user: any, onBack: () => void }) {
   );
 }
 
+function JurnalKasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
+  const [jurnalData, setJurnalData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchJurnal = async () => {
+      if (!user?.NIS) return;
+      try {
+        const response = await fetch(`/api/kasih-ibu?nis=${user.NIS}`);
+        const data = await response.json();
+        if (data.success) {
+          setJurnalData(data.data);
+        }
+      } catch (e) {
+        console.error("Error fetching jurnal kasih ibu:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchJurnal();
+  }, [user]);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <div className="space-y-6">
+      <header className="flex items-center justify-between gap-4 mb-6 print:hidden">
+        <div className="flex items-center gap-4">
+          <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+            <X className="w-6 h-6 text-slate-500" />
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Jurnal Kasih Ibu</h2>
+            <p className="text-slate-500 dark:text-slate-400">Riwayat pembiasaan karakter baik</p>
+          </div>
+        </div>
+        <button 
+          onClick={handlePrint}
+          className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow-sm transition-colors"
+        >
+          <FileText className="w-5 h-5" /> Cetak
+        </button>
+      </header>
+
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6 print:shadow-none print:border-none print:p-0 print:w-full print:max-w-[210mm] print:mx-auto">
+        <div className="hidden print:block mb-6 text-center border-b-2 border-black pb-4">
+          <h2 className="text-2xl font-bold uppercase">Jurnal Kasih Ibu</h2>
+          <p className="text-lg mt-1">Nama: {user?.Nama_Murid || user?.name}</p>
+          <p className="text-md">Kelas: {user?.Kelas}</p>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12 text-slate-500 dark:text-slate-400 print:hidden">Memuat data...</div>
+        ) : jurnalData.length === 0 ? (
+          <div className="text-center py-12 text-slate-500 dark:text-slate-400 italic">Belum ada data jurnal.</div>
+        ) : (
+          <div className="overflow-x-auto print:overflow-visible">
+            <table className="w-full text-sm print:text-xs border-collapse border border-slate-200 dark:border-slate-700 print:border-slate-300 table-fixed">
+              <thead className="bg-slate-50 dark:bg-slate-900/50 print:bg-slate-100">
+                <tr>
+                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-left w-28 print:w-24">Tanggal</th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-left w-20 print:w-16">Waktu</th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-left w-36 print:w-32">Pembiasaan</th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-left">Keterangan</th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-center w-24 print:w-20">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {jurnalData.map((item, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 print:hover:bg-transparent break-inside-avoid">
+                    <td className="border-b border-slate-100 dark:border-slate-800 print:border-slate-300 p-3 print:p-2 align-top">
+                      {item.tanggal_kegiatan ? new Date(item.tanggal_kegiatan).toLocaleDateString('id-ID') : new Date(item.timestamp).toLocaleDateString('id-ID')}
+                    </td>
+                    <td className="border-b border-slate-100 dark:border-slate-800 print:border-slate-300 p-3 print:p-2 align-top">
+                      {item.waktu_kegiatan || '-'}
+                    </td>
+                    <td className="border-b border-slate-100 dark:border-slate-800 print:border-slate-300 p-3 print:p-2 align-top font-medium text-slate-800 dark:text-slate-200 print:text-black">
+                      {item.jenis_kebiasaan}
+                    </td>
+                    <td className="border-b border-slate-100 dark:border-slate-800 print:border-slate-300 p-3 print:p-2 align-top text-slate-600 dark:text-slate-400 print:text-black break-words">
+                      {item.keterangan || '-'}
+                    </td>
+                    <td className="border-b border-slate-100 dark:border-slate-800 print:border-slate-300 p-3 print:p-2 align-top text-center">
+                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase print:border print:border-slate-300 print:bg-transparent print:text-black ${
+                        item.validasi_walikelas === 'Valid' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                        item.validasi_walikelas === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                        'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      }`}>
+                        {item.validasi_walikelas || 'Menunggu'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function KasihIbu({ onBack }: { onBack: () => void }) {
   const habits = [
     { id: 'bangun_pagi', label: 'Bangun Pagi', desc: 'Menanamkan disiplin', icon: '🌅' },
@@ -683,21 +804,21 @@ function KasihIbu({ onBack }: { onBack: () => void }) {
       {/* Modal Input */}
       <AnimatePresence>
         {selectedHabit && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative"
+              className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative max-h-[90vh] flex flex-col"
             >
               <button 
                 onClick={() => setSelectedHabit(null)}
-                className="absolute top-4 right-4 p-2 bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 rounded-full transition-colors"
+                className="absolute top-4 right-4 p-2 bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 rounded-full transition-colors z-10"
               >
                 <X className="w-5 h-5 text-slate-500" />
               </button>
               
-              <div className="p-8">
+              <div className="p-8 overflow-y-auto flex-1">
                 <div className="text-center mb-6">
                   <span className="text-6xl mb-4 block">{selectedHabit.icon}</span>
                   <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{selectedHabit.label}</h2>
@@ -1076,21 +1197,21 @@ function Tugas({ user, onBack }: { user: any, onBack: () => void }) {
       {/* Detail Modal */}
       <AnimatePresence>
         {selectedTugas && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden relative"
+              className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden relative max-h-[90vh] flex flex-col"
             >
               <button 
                 onClick={() => setSelectedTugas(null)}
-                className="absolute top-4 right-4 p-2 bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 rounded-full transition-colors"
+                className="absolute top-4 right-4 p-2 bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 rounded-full transition-colors z-10"
               >
                 <X className="w-5 h-5 text-slate-500" />
               </button>
               
-              <div className="p-8">
+              <div className="p-8 overflow-y-auto flex-1">
                 <span className="px-3 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-full text-xs font-bold uppercase mb-4 inline-block">
                   {selectedTugas.mapel}
                 </span>
