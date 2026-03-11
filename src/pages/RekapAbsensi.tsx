@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Printer } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export default function RekapAbsensi({ user, onNavigate }: { user: any, onNavigate: (page: string) => void }) {
   const [kelas, setKelas] = useState('');
@@ -40,7 +41,6 @@ export default function RekapAbsensi({ user, onNavigate }: { user: any, onNaviga
           if (data.headmasterName) setHeadmasterName(data.headmasterName);
           if (data.headmasterNIP) setHeadmasterNIP(data.headmasterNIP);
         } else {
-          // Fallback
           const stored = localStorage.getItem('school_identity_data');
           if (stored) {
             const data = JSON.parse(stored);
@@ -50,7 +50,6 @@ export default function RekapAbsensi({ user, onNavigate }: { user: any, onNaviga
           }
         }
       } catch (e) {
-        // Fallback
         const stored = localStorage.getItem('school_identity_data');
         if (stored) {
           const data = JSON.parse(stored);
@@ -71,18 +70,122 @@ export default function RekapAbsensi({ user, onNavigate }: { user: any, onNaviga
   };
 
   useEffect(() => {
-    if (kelas) {
+    const fetchData = async () => {
+      if (!kelas) return;
       setLoading(true);
-      // Fetch data from API based on kelas, filterBulan, filterTahun
-      // For now, mocking data
-      setTimeout(() => {
-        setRekapData([
-          { nisn: '001', nama: 'Andi', s: 0, i: 1, a: 0, d: 0, prosentase: '95%' },
-          { nisn: '002', nama: 'Budi', s: 0, i: 0, a: 0, d: 0, prosentase: '100%' },
-        ]);
+
+      try {
+        // 1. Fetch all students in the class
+        const { data: studentsData, error: studentsError } = await supabase
+          .from('murid')
+          .select('NISN, "Nama Lengkap"')
+          .eq('Kelas', kelas);
+
+        if (studentsError) throw studentsError;
+
+        const students = studentsData || [];
+        const studentMap: Record<string, any> = {};
+        students.forEach(s => {
+          studentMap[s['Nama Lengkap']] = {
+            nisn: s.NISN,
+            nama: s['Nama Lengkap'],
+            s: 0, i: 0, a: 0, d: 0,
+            prosentase: '100%'
+          };
+        });
+
+        // 2. Fetch presensi_qr for "Hadir"
+        let qrQuery = supabase.from('presensi_qr').select('nama, jenis, timestamp').eq('kelas', kelas);
+        const { data: qrData, error: qrError } = await qrQuery;
+        if (qrError) throw qrError;
+
+        // Filter by month/year if selected
+        const filteredQrData = (qrData || []).filter(record => {
+          const date = new Date(record.timestamp);
+          const recordMonth = date.getMonth().toString();
+          const recordYear = date.getFullYear().toString();
+          
+          if (filterBulan !== 'semua' && recordMonth !== filterBulan) return false;
+          if (filterTahun !== 'semua' && recordYear !== filterTahun) return false;
+          return true;
+        });
+
+        filteredQrData.forEach(record => {
+          if (record.jenis === 'Hadir' && studentMap[record.nama]) {
+            studentMap[record.nama].d += 1;
+          }
+        });
+
+        // 3. Fetch jurnal for "Sakit", "Izin", "Alpa"
+        let jurnalQuery = supabase.from('jurnal').select('timestamp, ketidakhadiran').eq('kelas', kelas);
+        const { data: jurnalData, error: jurnalError } = await jurnalQuery;
+        if (jurnalError) throw jurnalError;
+
+        // Filter by month/year if selected
+        const filteredJurnalData = (jurnalData || []).filter(record => {
+          const date = new Date(record.timestamp);
+          const recordMonth = date.getMonth().toString();
+          const recordYear = date.getFullYear().toString();
+          
+          if (filterBulan !== 'semua' && recordMonth !== filterBulan) return false;
+          if (filterTahun !== 'semua' && recordYear !== filterTahun) return false;
+          return true;
+        });
+
+        // Calculate total effective days based on Jurnal entries (assuming 1 journal entry = 1 school day)
+        // Actually, let's just count unique dates in Jurnal for this class
+        const uniqueDates = new Set();
+        filteredJurnalData.forEach(record => {
+          uniqueDates.add(record.timestamp.split('T')[0]);
+        });
+        const totalHariEfektif = uniqueDates.size;
+
+        filteredJurnalData.forEach(record => {
+          try {
+            const absents = typeof record.ketidakhadiran === 'string' ? JSON.parse(record.ketidakhadiran) : record.ketidakhadiran;
+            if (Array.isArray(absents)) {
+              absents.forEach((absentRecord: any) => {
+                if (absentRecord.students && Array.isArray(absentRecord.students)) {
+                  absentRecord.students.forEach((studentName: string) => {
+                    if (studentMap[studentName]) {
+                      if (absentRecord.type === 'Sakit') studentMap[studentName].s += 1;
+                      else if (absentRecord.type === 'Izin') studentMap[studentName].i += 1;
+                      else if (absentRecord.type === 'Alpa') studentMap[studentName].a += 1;
+                    }
+                  });
+                }
+              });
+            }
+          } catch (e) {}
+        });
+
+        // Calculate percentage
+        const resultData = Object.values(studentMap).map(student => {
+          const totalAbsen = student.s + student.i + student.a;
+          // If totalHariEfektif is 0, assume 100%
+          let prosentase = 100;
+          if (totalHariEfektif > 0) {
+            prosentase = Math.max(0, Math.round(((totalHariEfektif - totalAbsen) / totalHariEfektif) * 100));
+          }
+          
+          return {
+            ...student,
+            prosentase: `${prosentase}%`
+          };
+        });
+
+        // Sort by name
+        resultData.sort((a, b) => a.nama.localeCompare(b.nama));
+
+        setRekapData(resultData);
+      } catch (error) {
+        console.error('Error fetching rekap absensi:', error);
+      } finally {
         setLoading(false);
-      }, 500);
-    }
+      }
+    };
+
+    fetchData();
   }, [kelas, filterBulan, filterTahun]);
 
   return (

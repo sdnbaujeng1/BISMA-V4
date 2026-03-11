@@ -11,6 +11,9 @@ export default function NilaiGuru({ user, onNavigate }: { user: any, onNavigate:
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
+  const [mapelList, setMapelList] = useState<string[]>([]);
+  const [kelasList, setKelasList] = useState<string[]>([]);
+
   useEffect(() => {
     // Fetch settings for jumlahUlangan
     const fetchSettings = async () => {
@@ -31,7 +34,34 @@ export default function NilaiGuru({ user, onNavigate }: { user: any, onNavigate:
       }
     };
     fetchSettings();
-  }, []);
+
+    // Fetch mapping from jadwal_real
+    const fetchMapping = async () => {
+      try {
+        const res = await fetch(`/api/jadwal?guru=${encodeURIComponent(user?.nama_guru || user?.name || '')}`);
+        const result = await res.json();
+        if (result.success && result.data) {
+          const uniqueMapel = Array.from(new Set(result.data.map((item: any) => item.mapel))).filter(Boolean) as string[];
+          const uniqueKelas = Array.from(new Set(result.data.map((item: any) => item.kelas))).filter(Boolean) as string[];
+          
+          // Sort them
+          uniqueMapel.sort();
+          uniqueKelas.sort();
+          
+          setMapelList(uniqueMapel.length > 0 ? uniqueMapel : (user?.mengajar ? user.mengajar.split(',').map((m: string) => m.trim()) : ['Matematika', 'Bahasa Indonesia', 'IPAS', 'Pendidikan Pancasila']));
+          setKelasList(uniqueKelas.length > 0 ? uniqueKelas : ['1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B', '5A', '5B', '6A', '6B']);
+        }
+      } catch (e) {
+        console.error("Error fetching mapping:", e);
+        setMapelList(user?.mengajar ? user.mengajar.split(',').map((m: string) => m.trim()) : ['Matematika', 'Bahasa Indonesia', 'IPAS', 'Pendidikan Pancasila']);
+        setKelasList(['1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B', '5A', '5B', '6A', '6B']);
+      }
+    };
+    
+    if (user?.nama_guru || user?.name) {
+      fetchMapping();
+    }
+  }, [user]);
 
   useEffect(() => {
     if (kelas && mapel) {
@@ -50,13 +80,30 @@ export default function NilaiGuru({ user, onNavigate }: { user: any, onNavigate:
         setStudents(filteredStudents);
       }
 
-      // Fetch nilai data from localStorage for now (or API if available)
-      const storedNilai = localStorage.getItem(`nilai_${kelas}_${mapel}`);
-      if (storedNilai) {
-        setNilaiData(JSON.parse(storedNilai));
-      } else {
-        setNilaiData({});
+      // Fetch nilai data from API
+      const resPengaturan = await fetch('/api/pengaturan');
+      const resultPengaturan = await resPengaturan.json();
+      
+      let allNilai = {};
+      if (resultPengaturan.success && resultPengaturan.data && resultPengaturan.data.all_student_nilai) {
+        try {
+          allNilai = JSON.parse(resultPengaturan.data.all_student_nilai);
+        } catch (e) {}
       }
+
+      // Extract current class/mapel data
+      const currentNilaiData: any = {};
+      if (resultStudents.success) {
+        const filteredStudents = resultStudents.data.filter((s: any) => s.Kelas === kelas);
+        filteredStudents.forEach((student: any) => {
+          const nisn = student.NISN;
+          if (allNilai[nisn] && allNilai[nisn][mapel]) {
+            currentNilaiData[nisn] = allNilai[nisn][mapel];
+          }
+        });
+      }
+      setNilaiData(currentNilaiData);
+
     } catch (e) {
       console.error(e);
     } finally {
@@ -105,11 +152,17 @@ export default function NilaiGuru({ user, onNavigate }: { user: any, onNavigate:
   const handleSave = async () => {
     setSaving(true);
     try {
-      localStorage.setItem(`nilai_${kelas}_${mapel}`, JSON.stringify(nilaiData));
-      
-      // Also save to a global student map for student portal access
-      const allNilai = JSON.parse(localStorage.getItem('all_student_nilai') || '{}');
-      
+      // Fetch current allNilai from API
+      const resPengaturan = await fetch('/api/pengaturan');
+      const resultPengaturan = await resPengaturan.json();
+      let allNilai: any = {};
+      if (resultPengaturan.success && resultPengaturan.data && resultPengaturan.data.all_student_nilai) {
+        try {
+          allNilai = JSON.parse(resultPengaturan.data.all_student_nilai);
+        } catch (e) {}
+      }
+
+      // Update with new data
       students.forEach(student => {
         const nisn = student.NISN;
         if (!allNilai[nisn]) allNilai[nisn] = {};
@@ -119,9 +172,19 @@ export default function NilaiGuru({ user, onNavigate }: { user: any, onNavigate:
         };
       });
       
-      localStorage.setItem('all_student_nilai', JSON.stringify(allNilai));
+      // Save back to API
+      const saveRes = await fetch('/api/pengaturan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ all_student_nilai: JSON.stringify(allNilai) })
+      });
       
-      setToast({ message: 'Data nilai berhasil disimpan', type: 'success' });
+      const saveResult = await saveRes.json();
+      if (saveResult.success) {
+        setToast({ message: 'Data nilai berhasil disimpan', type: 'success' });
+      } else {
+        throw new Error(saveResult.message || 'Failed to save');
+      }
       setTimeout(() => setToast(null), 3000);
     } catch (e) {
       setToast({ message: 'Gagal menyimpan data', type: 'error' });
@@ -130,9 +193,6 @@ export default function NilaiGuru({ user, onNavigate }: { user: any, onNavigate:
       setSaving(false);
     }
   };
-
-  const mapelList = user?.mengajar ? user.mengajar.split(',').map((m: string) => m.trim()) : ['Matematika', 'Bahasa Indonesia', 'IPAS', 'Pendidikan Pancasila'];
-  const kelasList = ['1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B', '5A', '5B', '6A', '6B'];
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-20">

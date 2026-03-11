@@ -24,7 +24,13 @@ export default function NilaiSiswa({ user, onBack }: { user: any, onBack: () => 
         }
 
         // Fetch student's grades
-        const allNilai = JSON.parse(localStorage.getItem('all_student_nilai') || '{}');
+        let allNilai = {};
+        if (result.success && result.data && result.data.all_student_nilai) {
+          try {
+            allNilai = JSON.parse(result.data.all_student_nilai);
+          } catch (e) {}
+        }
+        
         const myNilai = allNilai[user?.NISN] || {};
         setNilaiData(myNilai);
       } catch (e) {

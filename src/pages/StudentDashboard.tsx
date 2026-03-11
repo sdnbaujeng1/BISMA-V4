@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import UnifiedAnnouncementCard from '../components/UnifiedAnnouncementCard';
+import PointRewardCard from '../components/PointRewardCard';
 import NilaiSiswa from './NilaiSiswa';
 
 export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkMode, onNavigate }: { user: any, onLogout: () => void, darkMode: boolean, toggleDarkMode: () => void, onNavigate: (page: string) => void }) {
@@ -271,8 +272,11 @@ export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkM
 function DashboardHome({ user, onNavigate }: { user: any, onNavigate: (page: string) => void }) {
   return (
     <div className="space-y-6">
-      {/* Unified Announcement Card */}
-      <UnifiedAnnouncementCard type="student" />
+      {/* Unified Announcement Card & Point Reward Card */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <UnifiedAnnouncementCard type="student" />
+        <PointRewardCard user={user} />
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
@@ -567,6 +571,10 @@ function KasihIbu({ onBack }: { onBack: () => void }) {
 
   const [selectedHabit, setSelectedHabit] = useState<any>(null);
   const [keterangan, setKeterangan] = useState('');
+  const [statusPembiasaan, setStatusPembiasaan] = useState<string>('');
+  const [sholatChecklist, setSholatChecklist] = useState<Record<string, string>>({
+    Subuh: '', Dhuhur: '', Ashar: '', Maghrib: '', Isya: ''
+  });
   const [submitting, setSubmitting] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -579,11 +587,33 @@ function KasihIbu({ onBack }: { onBack: () => void }) {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!statusPembiasaan && selectedHabit?.id !== 'beribadah') {
+      alert("Silakan pilih status pembiasaan");
+      return;
+    }
+    
+    if (selectedHabit?.id === 'beribadah') {
+      const allFilled = Object.values(sholatChecklist).every(val => val !== '');
+      if (!allFilled) {
+        alert("Silakan lengkapi checklist sholat");
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
-      // Get user from localStorage or context if available, otherwise we might need to pass it down
       const userStr = localStorage.getItem('bisma_user');
       const user = userStr ? JSON.parse(userStr) : {};
+
+      let finalKeterangan = keterangan;
+      if (selectedHabit?.id === 'beribadah') {
+        const sholatDetails = Object.entries(sholatChecklist)
+          .map(([sholat, status]) => `${sholat}: ${status}`)
+          .join(', ');
+        finalKeterangan = `${keterangan}\n\nChecklist Sholat:\n${sholatDetails}`;
+      } else {
+        finalKeterangan = `${keterangan}\n\nStatus: ${statusPembiasaan}`;
+      }
 
       const res = await fetch('/api/kasih-ibu', {
         method: 'POST',
@@ -594,8 +624,10 @@ function KasihIbu({ onBack }: { onBack: () => void }) {
           kelas: user.Kelas,
           habit_id: selectedHabit.id,
           habit_label: selectedHabit.label,
-          tanggal: currentTime.toISOString(),
-          keterangan: keterangan
+          tanggal: currentTime.toISOString().split('T')[0],
+          waktu: currentTime.toTimeString().split(' ')[0],
+          perasaan: 'Senang', // Default feeling, could be added to UI later
+          keterangan: finalKeterangan
         })
       });
       
@@ -604,6 +636,8 @@ function KasihIbu({ onBack }: { onBack: () => void }) {
         alert("Kegiatan berhasil dicatat! Menunggu validasi wali kelas.");
         setSelectedHabit(null);
         setKeterangan('');
+        setStatusPembiasaan('');
+        setSholatChecklist({ Subuh: '', Dhuhur: '', Ashar: '', Maghrib: '', Isya: '' });
       } else {
         alert("Gagal menyimpan: " + result.message);
       }
@@ -692,10 +726,59 @@ function KasihIbu({ onBack }: { onBack: () => void }) {
                     ></textarea>
                   </div>
 
+                  {selectedHabit.id === 'beribadah' ? (
+                    <div className="space-y-3">
+                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Checklist Sholat Wajib</label>
+                      {['Subuh', 'Dhuhur', 'Ashar', 'Maghrib', 'Isya'].map((sholat) => (
+                        <div key={sholat} className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl">
+                          <span className="font-medium text-slate-700 dark:text-slate-300">{sholat}</span>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSholatChecklist(prev => ({ ...prev, [sholat]: 'Belum Terbiasa' }))}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors ${sholatChecklist[sholat] === 'Belum Terbiasa' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800' : 'bg-white dark:bg-slate-600 text-slate-500 border border-slate-200 dark:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-500'}`}
+                            >
+                              <XCircle className="w-3 h-3" /> Belum
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSholatChecklist(prev => ({ ...prev, [sholat]: 'Sudah Terbiasa' }))}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors ${sholatChecklist[sholat] === 'Sudah Terbiasa' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800' : 'bg-white dark:bg-slate-600 text-slate-500 border border-slate-200 dark:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-500'}`}
+                            >
+                              <CheckCircle className="w-3 h-3" /> Sudah
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Status Pembiasaan</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setStatusPembiasaan('Belum Terbiasa')}
+                          className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${statusPembiasaan === 'Belum Terbiasa' ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400 ring-2 ring-red-500/20' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-700'}`}
+                        >
+                          <XCircle className="w-6 h-6" />
+                          <span className="text-sm font-bold">Belum Terbiasa</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setStatusPembiasaan('Sudah Terbiasa')}
+                          className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${statusPembiasaan === 'Sudah Terbiasa' ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400 ring-2 ring-green-500/20' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-700'}`}
+                        >
+                          <CheckCircle className="w-6 h-6" />
+                          <span className="text-sm font-bold">Sudah Terbiasa</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <button 
                     type="submit" 
                     disabled={submitting}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 dark:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 dark:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-4"
                   >
                     <Save className="w-5 h-5" /> {submitting ? 'Menyimpan...' : 'Simpan Kegiatan'}
                   </button>

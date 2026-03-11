@@ -1032,7 +1032,19 @@ app.get('/api/admin/stats', async (req, res) => {
       const { data: journals, error } = await query;
       if (error) throw error;
 
+      // 2.5 Query presensi_qr for this student
+      const { data: qrData, error: qrError } = await supabase.from('presensi_qr').select('timestamp, jenis, detail').eq('nama', studentName).order('timestamp', { ascending: false });
+      if (qrError) throw qrError;
+
       const attendanceMap: Record<string, any> = {};
+
+      // Process QR presensi first
+      qrData?.forEach(q => {
+        const date = q.timestamp.split('T')[0];
+        if (q.jenis === 'Hadir') {
+          attendanceMap[date] = { date, status: 'Hadir', keterangan: q.detail || '-' };
+        }
+      });
 
       // 3. Process journals
       journals?.forEach(j => {
@@ -1044,18 +1056,10 @@ app.get('/api/admin/stats', async (req, res) => {
         try {
           const absents = typeof j.ketidakhadiran === 'string' ? JSON.parse(j.ketidakhadiran) : j.ketidakhadiran;
           if (Array.isArray(absents)) {
-            // Check if student name is in the list. The list usually contains objects { nama: "...", type: "...", keterangan: "..." }
-            // Or sometimes just strings if older schema. Based on Jurnal.tsx, it pushes names to arrays: { Sakit: [name1], ... }
-            // Wait, Jurnal.tsx handleSubmit sends: ketidakhadiran: [{ type: 'Sakit', students: ['Name1'] }]
-            // Let's check Jurnal.tsx again.
-            // const ketidakhadiran = Object.keys(attData).filter(...).map(k => ({ type: k, students: attData[k] }));
-            
-            // So structure is [{ type: 'Sakit', students: ['Name1', 'Name2'] }, ...]
-            
             absents.forEach((record: any) => {
               if (record.students && record.students.includes(studentName)) {
                 status = record.type;
-                keterangan = '-'; // Jurnal.tsx doesn't seem to save specific reason per student in the array, just the type.
+                keterangan = '-';
               }
             });
           }
@@ -1193,25 +1197,23 @@ app.get('/api/admin/stats', async (req, res) => {
   app.get('/api/kasih-ibu', async (req, res) => {
     try {
       const { kelas, nis } = req.query;
-      let query = supabase.from('jurnal_kebiasaan').select('*').order('timestamp', { ascending: false });
+      let query = supabase.from('kasih_ibu').select('*').order('timestamp', { ascending: false });
       
       if (kelas) query = query.eq('kelas', kelas);
-      if (nis) query = query.eq('nis', nis);
+      if (nis) query = query.eq('nisn', nis);
       
       const { data, error } = await query;
       if (error) throw error;
       
-      // Map to frontend expected format if needed, or just return as is
-      // Frontend expects: id, nama, kelas, habit_label, tanggal, keterangan, status
       const formatted = data?.map(d => ({
         id: d.id,
-        nama: d.nama,
+        nama: d.nama_murid,
         kelas: d.kelas,
-        habit_label: d.habit_type || d.habit_label, // Handle both naming conventions if schema varies
-        tanggal: d.timestamp,
-        keterangan: d.content || d.keterangan,
-        status: d.status || 'Menunggu Validasi', // 'Valid', 'Ditolak', 'Menunggu Validasi'
-        details: d.details
+        habit_label: d.jenis_kebiasaan,
+        tanggal: d.tanggal_kegiatan ? `${d.tanggal_kegiatan} ${d.waktu_kegiatan || ''}`.trim() : d.timestamp,
+        keterangan: d.keterangan,
+        status: d.validasi_walikelas || 'Belum',
+        perasaan: d.perasaan
       }));
 
       res.json({ success: true, data: formatted });
@@ -1223,7 +1225,7 @@ app.get('/api/admin/stats', async (req, res) => {
   app.put('/api/kasih-ibu/validate', async (req, res) => {
     try {
       const { id, status } = req.body; // 'Valid' or 'Ditolak'
-      const { error } = await supabase.from('jurnal_kebiasaan').update({ status }).eq('id', id);
+      const { error } = await supabase.from('kasih_ibu').update({ validasi_walikelas: status }).eq('id', id);
       if (error) throw error;
       res.json({ success: true, message: 'Laporan berhasil divalidasi' });
     } catch (e: any) {
@@ -1233,20 +1235,18 @@ app.get('/api/admin/stats', async (req, res) => {
 
   app.post('/api/kasih-ibu', async (req, res) => {
     try {
-      const { nis, nama, kelas, habit_label, keterangan, tanggal, habit_id } = req.body;
+      const { nis, nama, kelas, habit_label, keterangan, tanggal, waktu, perasaan } = req.body;
       
-      // Map frontend fields to DB columns
-      // Assuming DB has: nis, nama, kelas, habit_type (for label), content (for keterangan), timestamp, status
-      
-      const { error } = await supabase.from('jurnal_kebiasaan').insert({
-        nis, 
-        nama, 
+      const { error } = await supabase.from('kasih_ibu').insert({
+        nisn: nis, 
+        nama_murid: nama, 
         kelas, 
-        habit_type: habit_label, 
-        content: keterangan, 
-        timestamp: tanggal || new Date(),
-        status: 'Menunggu Validasi',
-        details: { habit_id } // Store ID in details JSON if needed
+        jenis_kebiasaan: habit_label, 
+        keterangan, 
+        tanggal_kegiatan: tanggal,
+        waktu_kegiatan: waktu,
+        perasaan: perasaan || 'Senang',
+        validasi_walikelas: 'Belum'
       });
       
       if (error) throw error;

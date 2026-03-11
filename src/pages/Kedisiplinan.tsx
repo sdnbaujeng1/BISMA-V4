@@ -12,6 +12,74 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
   const [endDate, setEndDate] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);
+  const [selectedCatatan, setSelectedCatatan] = useState<any>(null);
+  const [penangananModal, setPenangananModal] = useState(false);
+  const [savingPenanganan, setSavingPenanganan] = useState(false);
+
+  const penangananOptions = [
+    { id: 'Segitiga Restitusi', desc: 'Memperbaiki kesalahan melalui validasi tindakan dan penguatan keyakinan diri siswa.' },
+    { id: 'Konsekuensi Logis', desc: 'Tanggung jawab yang relevan, masuk akal, dan berhubungan dengan pelanggaran.' },
+    { id: 'Jeda Sejenak', desc: 'Ruang tenang untuk menenangkan emosi sebelum mendiskusikan solusi perilaku anak.' },
+    { id: 'Kontrak Perilaku', desc: 'Perjanjian tertulis berisi target perilaku dan komitmen bersama siswa-guru.' },
+    { id: 'Kolaboratif dengan Orang Tua', desc: 'Penyelarasan aturan sekolah dan rumah untuk mendukung perubahan perilaku siswa.' }
+  ];
+
+  const handleSavePenanganan = async (penanganan: string) => {
+    if (!selectedCatatan || !selectedStudent) return;
+    setSavingPenanganan(true);
+    try {
+      // Fetch the current journal entry
+      const { data: journal, error: fetchError } = await supabase
+        .from('jurnal')
+        .select('catatan_mengajar')
+        .eq('id', selectedCatatan.id)
+        .single();
+        
+      if (fetchError) throw fetchError;
+
+      const disiplin = typeof journal.catatan_mengajar === 'string' ? JSON.parse(journal.catatan_mengajar) : journal.catatan_mengajar;
+      
+      // Update the specific student's discipline record
+      const updatedDisiplin = disiplin.map((d: any) => {
+        if (d.student === selectedStudent.nama && d.type === selectedCatatan.type) {
+          return { ...d, penanganan };
+        }
+        return d;
+      });
+
+      // Save back to supabase
+      const { error: updateError } = await supabase
+        .from('jurnal')
+        .update({ catatan_mengajar: JSON.stringify(updatedDisiplin) })
+        .eq('id', selectedCatatan.id);
+
+      if (updateError) throw updateError;
+
+      // Update local state
+      const updatedData = data.map(s => {
+        if (s.nisn === selectedStudent.nisn) {
+          const updatedCatatan = s.catatan.map((c: any) => {
+            if (c.id === selectedCatatan.id && c.type === selectedCatatan.type) {
+              return { ...c, penanganan };
+            }
+            return c;
+          });
+          return { ...s, catatan: updatedCatatan };
+        }
+        return s;
+      });
+      
+      setData(updatedData);
+      setSelectedStudent(updatedData.find(s => s.nisn === selectedStudent.nisn));
+      setPenangananModal(false);
+      setSelectedCatatan(null);
+    } catch (e) {
+      console.error("Error saving penanganan", e);
+      alert("Gagal menyimpan penanganan");
+    } finally {
+      setSavingPenanganan(false);
+    }
+  };
 
   useEffect(() => {
     const fetchClasses = async () => {
@@ -51,7 +119,7 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
         // Fetch journal data for attendance and discipline
         let query = supabase
           .from('jurnal')
-          .select('timestamp, kelas, mata_pelajaran, nama_guru, ketidakhadiran, catatan_mengajar, jam_pembelajaran')
+          .select('id, timestamp, kelas, mata_pelajaran, nama_guru, ketidakhadiran, catatan_mengajar, jam_pembelajaran')
           .eq('kelas', kelas);
 
         if (startDate) {
@@ -123,10 +191,12 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
                     const studentDisiplin = disiplin.filter((d: any) => d.student === studentName);
                     studentDisiplin.forEach((d: any) => {
                         catatan.push({
+                            id: journal.id,
                             date: new Date(journal.timestamp).toLocaleDateString('id-ID'),
                             type: d.type,
                             mapel: journal.mata_pelajaran,
-                            guru: journal.nama_guru
+                            guru: journal.nama_guru,
+                            penanganan: d.penanganan || null
                         });
                     });
                 }
@@ -351,7 +421,15 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
                 ) : (
                   <div className="space-y-4">
                     {selectedStudent.catatan.map((c: any, idx: number) => (
-                      <div key={idx} className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl p-4">
+                      <div 
+                        key={idx} 
+                        className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl p-4 cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
+                        onDoubleClick={() => {
+                          setSelectedCatatan(c);
+                          setPenangananModal(true);
+                        }}
+                        title="Klik dua kali untuk menambahkan penanganan"
+                      >
                         <div className="flex justify-between items-start mb-2">
                           <span className="text-xs font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded">
                             {c.date}
@@ -361,6 +439,12 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
                           </span>
                         </div>
                         <p className="text-slate-800 dark:text-slate-200 font-medium">{c.type}</p>
+                        {c.penanganan && (
+                          <div className="mt-2 bg-white dark:bg-slate-800 p-2 rounded border border-red-100 dark:border-red-900/30">
+                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Penanganan:</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">{c.penanganan}</p>
+                          </div>
+                        )}
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 border-t border-red-100 dark:border-red-900/30 pt-2">
                           Dilaporkan oleh: {c.guru}
                         </p>
@@ -368,6 +452,54 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
                     ))}
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Penanganan Modal */}
+      <AnimatePresence>
+        {penangananModal && selectedCatatan && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
+            >
+              <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                <h3 className="font-bold text-slate-800 dark:text-white">Penanganan Pelanggaran</h3>
+                <button 
+                  onClick={() => {
+                    setPenangananModal(false);
+                    setSelectedCatatan(null);
+                  }}
+                  className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+              <div className="p-4">
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/30">
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{selectedCatatan.type}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{selectedStudent.nama} • {selectedCatatan.date}</p>
+                </div>
+                
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Pilih Tindakan Penanganan:</p>
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+                  {penangananOptions.map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => handleSavePenanganan(opt.id)}
+                      disabled={savingPenanganan}
+                      className="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all group"
+                    >
+                      <p className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">{opt.id}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{opt.desc}</p>
+                    </button>
+                  ))}
+                </div>
               </div>
             </motion.div>
           </div>
