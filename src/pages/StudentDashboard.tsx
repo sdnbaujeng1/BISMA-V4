@@ -20,10 +20,13 @@ import {
   ClipboardList,
   BookHeart,
   Clock,
-  Save
+  Save,
+  FileSpreadsheet,
+  Gamepad
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import UnifiedAnnouncementCard from '../components/UnifiedAnnouncementCard';
+import NilaiSiswa from './NilaiSiswa';
 
 export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkMode, onNavigate }: { user: any, onLogout: () => void, darkMode: boolean, toggleDarkMode: () => void, onNavigate: (page: string) => void }) {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -90,6 +93,8 @@ export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkM
         return <Tugas user={user} onBack={() => setActiveTab('kbm')} />;
       case 'tahfidz':
         return <Tahfidz onBack={() => setActiveTab('kbm')} />;
+      case 'nilai_siswa':
+        return <NilaiSiswa user={user} onBack={() => setActiveTab('kbm')} />;
       default:
         return <DashboardHome user={user} onNavigate={setActiveTab} />;
     }
@@ -273,18 +278,25 @@ function DashboardHome({ user, onNavigate }: { user: any, onNavigate: (page: str
         {[
           { id: 'jadwal', label: 'Jadwal', icon: Calendar, color: 'bg-purple-500', shadow: 'shadow-purple-200' },
           { id: 'tugas', label: 'Tugas', icon: ClipboardList, color: 'bg-blue-500', shadow: 'shadow-blue-200' },
+          { id: 'nilai_siswa', label: 'Nilai', icon: FileSpreadsheet, color: 'bg-fuchsia-500', shadow: 'shadow-fuchsia-200' },
           { id: 'kehadiran', label: 'Absensi', icon: UserCheck, color: 'bg-indigo-500', shadow: 'shadow-indigo-200' },
           { id: 'pelanggaran', label: 'Disiplin', icon: AlertTriangle, color: 'bg-red-500', shadow: 'shadow-red-200' },
+          { id: 'rumah_pendidikan', label: 'Rumah Pendidikan', img: 'https://lh3.googleusercontent.com/d/1DgxC8VjC0SS_xWtmTqnIReQmGpCqzGDO', color: 'bg-white', shadow: 'shadow-slate-200' },
+          { id: 'edugame', label: 'Edugame', icon: Gamepad, color: 'bg-green-500', shadow: 'shadow-green-200' },
         ].map((item) => (
           <button
             key={item.id}
             onClick={() => onNavigate(item.id)}
             className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition-all flex flex-col items-center gap-3 group hover:-translate-y-1"
           >
-            <div className={`${item.color} w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg ${item.shadow} dark:shadow-none group-hover:scale-110 transition-transform`}>
-              <item.icon className="w-6 h-6" />
+            <div className={`${item.color} w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg ${item.shadow} dark:shadow-none group-hover:scale-110 transition-transform overflow-hidden`}>
+              {item.img ? (
+                <img src={item.img} alt={item.label} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : item.icon ? (
+                <item.icon className="w-6 h-6" />
+              ) : null}
             </div>
-            <span className="font-medium text-slate-700 dark:text-slate-300 text-sm">{item.label}</span>
+            <span className="font-medium text-slate-700 dark:text-slate-300 text-sm text-center">{item.label}</span>
           </button>
         ))}
       </div>
@@ -296,12 +308,15 @@ function MenuKBM({ user, onNavigate }: { user: any, onNavigate: (page: string) =
   const menuItems = [
     { id: 'jadwal', icon: Calendar, label: 'Jadwal Pelajaran', color: 'bg-purple-500', shadow: 'shadow-purple-200' },
     { id: 'tugas', icon: ClipboardList, label: 'Tugas Sekolah', color: 'bg-blue-500', shadow: 'shadow-blue-200' },
+    { id: 'nilai_siswa', icon: FileSpreadsheet, label: 'Nilai', color: 'bg-fuchsia-500', shadow: 'shadow-fuchsia-200' },
     { id: 'literasi', icon: BookOpen, label: 'Literasi Digital', color: 'bg-orange-500', shadow: 'shadow-orange-200' },
     { id: 'tahfidz', icon: BookHeart, label: 'Tahfidz Quran', color: 'bg-emerald-500', shadow: 'shadow-emerald-200' },
     { id: 'bank_sampah', icon: Trash2, label: 'Bank Sampah', color: 'bg-green-500', shadow: 'shadow-green-200' },
     { id: 'kasih_ibu', icon: Heart, label: 'Kasih Ibu', color: 'bg-pink-500', shadow: 'shadow-pink-200' },
     { id: 'kehadiran', icon: UserCheck, label: 'Rekap Absensi', color: 'bg-indigo-500', shadow: 'shadow-indigo-200' },
     { id: 'pelanggaran', icon: AlertTriangle, label: 'Catatan Disiplin', color: 'bg-red-500', shadow: 'shadow-red-200' },
+    { id: 'rumah_pendidikan', label: 'Rumah Pendidikan', img: 'https://lh3.googleusercontent.com/d/1DgxC8VjC0SS_xWtmTqnIReQmGpCqzGDO', color: 'bg-white', shadow: 'shadow-slate-200' },
+    { id: 'edugame', label: 'Edugame', icon: Gamepad, color: 'bg-green-500', shadow: 'shadow-green-200' },
   ];
 
   return (
@@ -312,8 +327,12 @@ function MenuKBM({ user, onNavigate }: { user: any, onNavigate: (page: string) =
           onClick={() => onNavigate(item.id)}
           className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition-all flex flex-col items-center gap-3 group hover:-translate-y-1"
         >
-          <div className={`${item.color} w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg ${item.shadow} dark:shadow-none group-hover:scale-110 transition-transform`}>
-            <item.icon className="w-7 h-7" />
+          <div className={`${item.color} w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg ${item.shadow} dark:shadow-none group-hover:scale-110 transition-transform overflow-hidden`}>
+            {item.img ? (
+              <img src={item.img} alt={item.label} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            ) : item.icon ? (
+              <item.icon className="w-7 h-7" />
+            ) : null}
           </div>
           <span className="font-bold text-slate-700 dark:text-slate-300 text-sm text-center">{item.label}</span>
         </button>
@@ -446,34 +465,50 @@ function JadwalHariIni({ user, onBack }: { user: any, onBack: () => void }) {
         </div>
       </header>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {loading ? (
-          <p className="text-center text-slate-500">Memuat jadwal...</p>
+          <div className="flex justify-center p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-fuchsia-500"></div>
+          </div>
         ) : jadwal.length > 0 ? (
-          jadwal.map((item, index) => (
-            <div 
-              key={index}
-              className="flex items-center p-4 rounded-xl border bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700"
-            >
-              <div className="w-16 text-center mr-4">
-                <span className="block text-xs font-bold text-slate-400 uppercase">Jam Ke</span>
-                <span className="text-xl font-bold text-slate-800 dark:text-white">{item.jam}</span>
+          <div className="relative border-l-2 border-fuchsia-100 dark:border-fuchsia-900/30 ml-4 pl-6 space-y-6">
+            {jadwal.map((item, index) => (
+              <div 
+                key={index}
+                className="relative bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 hover:shadow-md transition-all group"
+              >
+                <div className="absolute -left-[35px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-fuchsia-500 border-4 border-white dark:border-slate-900 shadow-sm group-hover:scale-125 transition-transform"></div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-fuchsia-50 dark:bg-fuchsia-900/20 text-fuchsia-600 dark:text-fuchsia-400 px-4 py-2 rounded-xl font-bold text-center min-w-[80px]">
+                      <span className="block text-[10px] uppercase tracking-wider opacity-80 mb-0.5">Jam Ke</span>
+                      <span className="text-lg leading-none">{item.jam}</span>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">
+                        {item.mapel}
+                      </h3>
+                      <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                        <UserCheck className="w-4 h-4" />
+                        <span>{item.guru}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="hidden sm:block text-right">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300">
+                      <Clock className="w-3.5 h-3.5" />
+                      {item.jamArray.length * 35} Menit
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-slate-800 dark:text-white">
-                  {item.mapel}
-                </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">{item.waktu || '-'}</p>
-              </div>
-              <div className="text-right">
-                <span className="text-xs text-slate-400 block">Pengajar</span>
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{item.guru}</span>
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         ) : (
-          <div className="text-center p-8 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-            <p className="text-slate-500">Tidak ada jadwal pelajaran hari ini.</p>
+          <div className="text-center p-12 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 border-dashed">
+            <Calendar className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+            <p className="text-slate-500 font-medium">Tidak ada jadwal pelajaran hari ini.</p>
+            <p className="text-sm text-slate-400 mt-1">Selamat beristirahat!</p>
           </div>
         )}
       </div>

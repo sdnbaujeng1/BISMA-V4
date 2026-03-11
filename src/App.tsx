@@ -18,6 +18,7 @@ import JadwalMengajar from './pages/JadwalMengajar';
 import TugasGuru from './pages/TugasGuru';
 import BankSampahGuru from './pages/BankSampahGuru';
 import KasihIbuGuru from './pages/KasihIbuGuru';
+import NilaiGuru from './pages/NilaiGuru';
 
 import MonitoringDashboard from './pages/MonitoringDashboard';
 
@@ -155,10 +156,15 @@ export default function App() {
       {currentPage === 'presensi_qr' && <PresensiQR user={user} onNavigate={navigate} />}
       {currentPage === 'bank_sampah_guru' && <BankSampahGuru user={user} onNavigate={navigate} />}
       {currentPage === 'kasih_ibu_guru' && <KasihIbuGuru user={user} onNavigate={navigate} />}
+      {currentPage === 'nilai_guru' && <NilaiGuru user={user} onNavigate={navigate} />}
       {currentPage === 'chatbot' && <ChatbotPage onNavigate={navigate} />}
-      {currentPage === 'rpp_generator' && <IframePage title="RPP Generator AI" src="https://sigmabai.netlify.app/" onNavigate={navigate} />}
-      {currentPage === 'kasih_ibu' && <IframePage title="Kasih Ibu" src="https://script.google.com/macros/s/AKfycbwcbvTOoHrgsoWsLgu9db49Po6R7NkqE5BfjCbInPUw2mz9uiDbRCOxesqbh4xT1k7M/exec" onNavigate={navigate} />}
-      {currentPage === 'galeri_kegiatan' && <IframePage title="Galeri Kegiatan" src="https://www.sdnbaujeng1.sch.id/" onNavigate={navigate} />}
+      {currentPage === 'rpp_generator' && <IframePage title="RPP Generator AI" src="https://sigmabai.netlify.app/" onNavigate={navigate} backTo="main" />}
+      {currentPage === 'kasih_ibu' && <IframePage title="Kasih Ibu" src="https://script.google.com/macros/s/AKfycbwcbvTOoHrgsoWsLgu9db49Po6R7NkqE5BfjCbInPUw2mz9uiDbRCOxesqbh4xT1k7M/exec" onNavigate={navigate} backTo="siswa" />}
+      {currentPage === 'galeri_kegiatan' && <IframePage title="Galeri Kegiatan" src="https://www.sdnbaujeng1.sch.id/" onNavigate={navigate} backTo="main" />}
+      {currentPage === 'rumah_pendidikan' && <IframePage title="Rumah Pendidikan" src="https://rumah.pendidikan.go.id/ruang/murid" onNavigate={navigate} backTo="siswa" />}
+      {currentPage === 'bangkomar' && <IframePage title="Bangkomar" src="https://bangkomar.pasuruankab.go.id/" onNavigate={navigate} backTo="main" />}
+      {currentPage === 'game_generator' && <IframePage title="Game Generator" src="https://sdnbaujeng1.github.io/gamegenerator/" onNavigate={navigate} backTo="main" />}
+      {currentPage === 'edugame' && <IframePage title="Edugame" src="https://edugamev2.netlify.app/" onNavigate={navigate} backTo={user?.role === 'siswa' ? 'siswa' : 'main'} />}
     </div>
   );
 }

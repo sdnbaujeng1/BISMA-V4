@@ -1170,7 +1170,7 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
 
   useEffect(() => {
     fetchSchedule();
-  }, [selectedClass, selectedDay, selectedGuru]);
+  }, []);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Hapus jadwal ini?")) return;
@@ -1294,6 +1294,11 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
       <div className="p-6 overflow-y-auto">
         {!isAdding ? (
           <>
+            <div className="flex justify-end mb-4">
+              <button onClick={() => { setEditingId(null); setIsAdding(true); }} className="bg-fuchsia-500 hover:bg-fuchsia-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 font-bold shadow-lg shadow-fuchsia-200 dark:shadow-none transition-all">
+                <Plus className="w-4 h-4" /> Setup Jadwal
+              </button>
+            </div>
             <div className="flex flex-wrap gap-4 mb-6 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
               <div className="flex-1 min-w-[150px]">
                 <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Nama Guru</label>
@@ -1340,8 +1345,8 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
                 </select>
               </div>
               <div className="flex items-end">
-                <button onClick={() => { setEditingId(null); setIsAdding(true); }} className="bg-fuchsia-500 hover:bg-fuchsia-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 font-bold shadow-lg shadow-fuchsia-200 dark:shadow-none transition-all">
-                  <Plus className="w-4 h-4" /> Setup Jadwal
+                <button onClick={fetchSchedule} className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 font-bold shadow-lg shadow-blue-200 dark:shadow-none transition-all">
+                  Tampilkan
                 </button>
               </div>
             </div>
@@ -2501,6 +2506,7 @@ function PengaturanModal({ onClose, showToast }: { onClose: () => void, showToas
   const [logoKop, setLogoKop] = useState("");
   const [tahunAjaran, setTahunAjaran] = useState("2024/2025");
   const [semester, setSemester] = useState("Ganjil");
+  const [jumlahUlangan, setJumlahUlangan] = useState("3");
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -2518,6 +2524,7 @@ function PengaturanModal({ onClose, showToast }: { onClose: () => void, showToas
           setLogoKop(data.logoKop || "");
           setTahunAjaran(data.tahunAjaran || "2024/2025");
           setSemester(data.semester || "Ganjil");
+          setJumlahUlangan(data.jumlahUlangan || "3");
           
           // Also update localStorage for consistency
           localStorage.setItem('school_identity_data', JSON.stringify(data));
@@ -2535,6 +2542,7 @@ function PengaturanModal({ onClose, showToast }: { onClose: () => void, showToas
             setLogoKop(data.logoKop || "");
             setTahunAjaran(data.tahunAjaran || "2024/2025");
             setSemester(data.semester || "Ganjil");
+            setJumlahUlangan(data.jumlahUlangan || "3");
           }
         }
       } catch (error) {
@@ -2552,6 +2560,7 @@ function PengaturanModal({ onClose, showToast }: { onClose: () => void, showToas
           setLogoKop(data.logoKop || "");
           setTahunAjaran(data.tahunAjaran || "2024/2025");
           setSemester(data.semester || "Ganjil");
+          setJumlahUlangan(data.jumlahUlangan || "3");
         }
       }
     };
@@ -2569,7 +2578,8 @@ function PengaturanModal({ onClose, showToast }: { onClose: () => void, showToas
       logo4x3,
       logoKop,
       tahunAjaran,
-      semester
+      semester,
+      jumlahUlangan
     };
     
     try {
@@ -2664,6 +2674,19 @@ function PengaturanModal({ onClose, showToast }: { onClose: () => void, showToas
                     className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-slate-500 outline-none"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Jumlah Ulangan Harian (Per Tengah Semester)</label>
+                <input 
+                  type="number" 
+                  min="1"
+                  max="10"
+                  value={jumlahUlangan}
+                  onChange={(e) => setJumlahUlangan(e.target.value)}
+                  className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-slate-500 outline-none"
+                />
+                <p className="text-xs text-slate-400 mt-1">Mengatur jumlah kolom nilai ulangan harian sebelum STS dan ASAS pada fitur Nilai.</p>
               </div>
             </div>
           </div>
