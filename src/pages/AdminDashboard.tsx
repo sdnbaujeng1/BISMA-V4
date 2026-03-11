@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import TabunganSampahAdmin from './TabunganSampahAdmin';
+import KalenderAkademik from './KalenderAkademik';
 import { 
   Palette,
   Recycle,
@@ -85,6 +86,7 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
     { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { id: 'input_guru', icon: UserPlus, label: 'Input Guru Baru' },
     { id: 'tabungan_sampah', icon: Trash2, label: 'Tabungan Sampah' },
+    { id: 'kalender_akademik', icon: Calendar, label: 'Kalender Akademik' },
     { id: 'color_config', icon: Palette, label: 'Konfigurasi Warna' },
     { id: 'api_config', icon: Key, label: 'Konfigurasi API' },
   ];
@@ -98,6 +100,15 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
       color: 'bg-green-600', 
       shadow: 'shadow-green-200 dark:shadow-green-900/20',
       action: () => setActiveView('tabungan_sampah')
+    },
+    { 
+      id: 'kalender_akademik_card', 
+      title: 'Kalender Akademik', 
+      subtitle: 'HARI EFEKTIF', 
+      icon: Calendar, 
+      color: 'bg-indigo-600', 
+      shadow: 'shadow-indigo-200 dark:shadow-indigo-900/20',
+      action: () => setActiveView('kalender_akademik')
     },
     { 
       id: 'import_master', 
@@ -278,6 +289,8 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
         return <InputGuruBaruView showToast={showToast} />;
       case 'tabungan_sampah':
         return <TabunganSampahAdmin showToast={showToast} />;
+      case 'kalender_akademik':
+        return <KalenderAkademik onBack={() => setActiveView('dashboard')} />;
       case 'color_config':
         return <ColorConfigView showToast={showToast} />;
       case 'api_config':

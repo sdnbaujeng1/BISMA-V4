@@ -69,121 +69,114 @@ export default function Keterlaksanaan({ onNavigate }: { onNavigate: (page: stri
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-              {Object.keys(data || {}).sort().map((cls, index) => (
-                <motion.div 
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  key={cls} 
-                  className="bg-white dark:bg-slate-800 rounded-[2rem] shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col hover:translate-y-[-5px] transition-transform duration-300"
-                >
-                  <div className={`bg-gradient-to-br ${getClassColor(cls)} px-6 py-5 text-white relative overflow-hidden`}>
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl transform translate-x-10 -translate-y-10"></div>
-                    <div className="relative z-10 flex justify-between items-center">
-                      <div>
-                        <span className="text-xs font-bold uppercase tracking-wider opacity-80">Kelas</span>
-                        <h3 className="text-3xl font-black">{cls}</h3>
-                      </div>
-                      <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg border border-white/30">
-                        <span className="text-sm font-bold">{(data[cls] || []).length} JP</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="p-4 flex-grow bg-slate-50/50 dark:bg-slate-800/50">
-                    <div className="space-y-3">
-                      {(() => {
-                        const grouped: any[] = [];
-                        const rawData = data[cls] || [];
-                        
-                        // Sort by jam first
-                        const sortedData = [...rawData].sort((a: any, b: any) => a.jam - b.jam);
+              {Object.keys(data || {}).sort().map((cls, index) => {
+                const classMatch = cls.match(/\d+/);
+                const classNum = classMatch ? classMatch[0] : cls;
+                
+                const headerColors: Record<string, string> = {
+                  '1': 'bg-blue-600',
+                  '2': 'bg-emerald-600',
+                  '3': 'bg-rose-600',
+                  '4': 'bg-orange-600',
+                  '5': 'bg-purple-600',
+                  '6': 'bg-indigo-600'
+                };
+                const headerColor = headerColors[classNum] || 'bg-slate-600';
 
-                        sortedData.forEach((row: any) => {
-                          const last = grouped[grouped.length - 1];
-                          // Group if same teacher and subject and consecutive hours (optional logic for consecutive)
-                          // For simplicity, grouping by teacher + subject
-                          if (last && last.guru === row.guru && last.mapel === row.mapel) {
-                             // Check if jam is consecutive? 
-                             // Let's just append for now
-                             last.jamEnd = row.jam;
-                             last.jams.push(row.jam);
-                             if (row.mapel !== 'X') {
-                                last.isCompleted = true;
-                             }
-                          } else {
-                            grouped.push({ 
-                              ...row, 
-                              jamStart: row.jam, 
-                              jamEnd: row.jam, 
-                              jams: [row.jam],
-                              isCompleted: row.mapel !== 'X'
+                return (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    key={cls} 
+                    className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col"
+                  >
+                    <div className={`${headerColor} text-white text-center py-3 font-bold tracking-wider relative`}>
+                      <div className="text-xl uppercase">Kelas {classNum}</div>
+                    </div>
+                    
+                    <div className="p-0 flex-1 overflow-y-auto overflow-x-hidden max-h-[60vh]">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 sticky top-0 z-10">
+                          <tr>
+                            <th className="py-2 px-3 text-left font-medium w-16">Jam</th>
+                            <th className="py-2 px-3 text-left font-medium">Guru / Mapel</th>
+                            <th className="py-2 px-3 text-center font-medium w-12">Sts</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                          {(() => {
+                            const grouped: any[] = [];
+                            const rawData = data[cls] || [];
+                            
+                            // Sort by jam first
+                            const sortedData = [...rawData].sort((a: any, b: any) => a.jam - b.jam);
+
+                            sortedData.forEach((row: any) => {
+                              const last = grouped[grouped.length - 1];
+                              // Group if same teacher and subject
+                              if (last && last.guru === row.guru && last.mapel === row.mapel) {
+                                last.jam = `${last.jam}, ${row.jam}`;
+                                if (row.mapel !== 'X') {
+                                  last.isCompleted = true;
+                                }
+                              } else {
+                                grouped.push({ 
+                                  ...row, 
+                                  jam: String(row.jam),
+                                  isCompleted: row.mapel !== 'X'
+                                });
+                              }
                             });
-                          }
-                        });
 
-                        return grouped.map((row: any, idx: number) => {
-                          const isCompleted = row.isCompleted;
-                          const jamDisplay = row.jamStart === row.jamEnd ? `${row.jamStart}` : `${row.jamStart}-${row.jamEnd}`;
-                          
-                          return (
-                            <div 
-                              key={idx} 
-                              className={`relative overflow-hidden rounded-2xl p-4 transition-all duration-300 border ${
-                                isCompleted 
-                                  ? 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 shadow-sm' 
-                                  : 'bg-slate-100 dark:bg-slate-900 border-transparent opacity-80'
-                              }`}
-                            >
-                              <div className="flex items-start gap-4 relative z-10">
-                                <div className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl shadow-sm border ${
-                                  isCompleted 
-                                    ? 'bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800 text-green-600 dark:text-green-400' 
-                                    : 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400'
-                                }`}>
-                                  <span className="text-[10px] font-bold uppercase">JP</span>
-                                  <span className="text-lg font-black leading-none">{jamDisplay}</span>
-                                </div>
-                                
-                                <div className="flex-grow min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <User className="w-3 h-3 text-slate-400" />
-                                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide truncate">
+                            return grouped.length > 0 ? (
+                              grouped.map((row: any, idx: number) => (
+                                <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group">
+                                  <td className="py-3 px-3 text-slate-500 dark:text-slate-400 font-mono text-xs align-top pt-4">
+                                    {row.jam.split(',').map((t: string) => (
+                                      <span key={t} className="block bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-center mb-1 last:mb-0">
+                                        {t.trim()}
+                                      </span>
+                                    ))}
+                                  </td>
+                                  <td className="py-3 px-3 align-top">
+                                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-fuchsia-600 dark:group-hover:text-fuchsia-400 transition-colors">
                                       {row.guru}
-                                    </p>
+                                    </div>
+                                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 bg-slate-100 dark:bg-slate-700/50 inline-block px-2 py-1 rounded-md border border-slate-200 dark:border-slate-600">
+                                      {row.isCompleted ? row.mapel : 'Belum Terisi'}
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-3 text-center align-middle">
+                                    {row.isCompleted ? (
+                                      <div className="bg-emerald-100 dark:bg-emerald-900/30 p-1.5 rounded-full inline-flex">
+                                        <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                                      </div>
+                                    ) : (
+                                      <div className="bg-red-100 dark:bg-red-900/30 p-1.5 rounded-full inline-flex">
+                                        <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                                      </div>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan={3} className="py-12 text-center text-slate-400 dark:text-slate-500 italic">
+                                  <div className="flex flex-col items-center gap-2">
+                                    <Calendar className="w-8 h-8 opacity-20" />
+                                    <span>Tidak ada jadwal</span>
                                   </div>
-                                  <h4 className={`text-sm font-bold truncate ${isCompleted ? 'text-slate-800 dark:text-white' : 'text-slate-400 dark:text-slate-500 italic'}`}>
-                                    {isCompleted ? row.mapel : 'Belum Terisi'}
-                                  </h4>
-                                </div>
-
-                                <div className="flex-shrink-0 self-center">
-                                  {isCompleted ? (
-                                    <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center shadow-lg shadow-green-200 dark:shadow-none">
-                                      <CheckCircle2 className="w-5 h-5" />
-                                    </div>
-                                  ) : (
-                                    <div className="w-8 h-8 rounded-full bg-slate-300 dark:bg-slate-600 text-white flex items-center justify-center">
-                                      <XCircle className="w-5 h-5" />
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              
-                              {/* Progress bar decoration */}
-                              {isCompleted && (
-                                <div className="absolute bottom-0 left-0 w-full h-1 bg-green-100 dark:bg-green-900/30">
-                                  <div className="h-full bg-green-500 w-full rounded-r-full"></div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        });
-                      })()}
+                                </td>
+                              </tr>
+                            );
+                          })()}
+                        </tbody>
+                      </table>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </div>
           )}
         </div>

@@ -11,6 +11,8 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [ketidakhadiranData, setKetidakhadiranData] = useState<any[]>([]);
   const [loadingKetidakhadiran, setLoadingKetidakhadiran] = useState(false);
+  const [analisaData, setAnalisaData] = useState<{ absentees: any[], violators: any[] }>({ absentees: [], violators: [] });
+  const [analisaMonth, setAnalisaMonth] = useState(new Date().toISOString().slice(0, 7));
 
   const fetchKetidakhadiran = async () => {
     setLoadingKetidakhadiran(true);
@@ -48,10 +50,30 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
     }
   };
 
+  const fetchAnalisa = async () => {
+    try {
+      const res = await fetch(`/api/monitoring/analisa-siswa?month=${analisaMonth}`);
+      const json = await res.json();
+      if (json.success) {
+        setAnalisaData(json.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch analisa data", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnalisa();
+  }, [analisaMonth]);
+
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 3000); // Auto-refresh every 3 seconds
-    return () => clearInterval(interval);
+    const analisaInterval = setInterval(fetchAnalisa, 60000); // Refresh analisa every 60 seconds
+    return () => {
+      clearInterval(interval);
+      clearInterval(analisaInterval);
+    };
   }, []);
 
   if (loading && !data) {
@@ -173,7 +195,7 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
           return (
             <div key={kelas} className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
               <div className={`${headerColor} text-white text-center py-3 font-bold tracking-wider relative`}>
-                <div className="text-xl uppercase">{classNum}</div>
+                <div className="text-xl uppercase">Kelas {classNum}</div>
               </div>
               <div className="p-0 flex-1 overflow-y-auto overflow-x-hidden max-h-[60vh]">
                 <table className="w-full text-sm">
@@ -251,6 +273,111 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
             </div>
           );
         })}
+      </div>
+
+      {/* Analisa Data Siswa */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Analisa Data Siswa</h2>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Pilih Bulan:</span>
+            <input 
+              type="month" 
+              value={analisaMonth} 
+              onChange={(e) => setAnalisaMonth(e.target.value)}
+              className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent outline-none transition-all"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg">
+              <Users className="w-5 h-5" />
+            </div>
+            <h2 className="text-lg font-bold">Siswa Sering Absen (S, I, A &gt; 3)</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400">
+                <tr>
+                  <th className="py-3 px-4 text-left font-medium rounded-tl-lg">Nama Siswa</th>
+                  <th className="py-3 px-4 text-center font-medium">Kelas</th>
+                  <th className="py-3 px-4 text-center font-medium">S</th>
+                  <th className="py-3 px-4 text-center font-medium">I</th>
+                  <th className="py-3 px-4 text-center font-medium">A</th>
+                  <th className="py-3 px-4 text-center font-medium rounded-tr-lg">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                {analisaData.absentees.length > 0 ? (
+                  analisaData.absentees.map((s, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                      <td className="py-3 px-4 font-medium">{s.nama}</td>
+                      <td className="py-3 px-4 text-center">{s.kelas}</td>
+                      <td className="py-3 px-4 text-center">{s.s}</td>
+                      <td className="py-3 px-4 text-center">{s.i}</td>
+                      <td className="py-3 px-4 text-center text-red-600 font-bold">{s.a}</td>
+                      <td className="py-3 px-4 text-center font-bold">{s.total}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-slate-400 italic">Tidak ada siswa dengan absensi lebih dari 3 kali.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-lg">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <h2 className="text-lg font-bold">Siswa Sering Melanggar Disiplin (&gt; 3)</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400">
+                <tr>
+                  <th className="py-3 px-4 text-left font-medium rounded-tl-lg">Nama Siswa</th>
+                  <th className="py-3 px-4 text-center font-medium">Kelas</th>
+                  <th className="py-3 px-4 text-center font-medium">Pelanggaran</th>
+                  <th className="py-3 px-4 text-center font-medium rounded-tr-lg">Tindak Lanjut</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                {analisaData.violators.length > 0 ? (
+                  analisaData.violators.map((s, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                      <td className="py-3 px-4 font-medium">{s.nama}</td>
+                      <td className="py-3 px-4 text-center">{s.kelas}</td>
+                      <td className="py-3 px-4 text-center font-bold text-orange-600">{s.violations}</td>
+                      <td className="py-3 px-4 text-center">
+                        {s.unhandled === 0 ? (
+                          <div className="flex items-center justify-center gap-1 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-full text-xs font-bold">
+                            <CheckCircle2 className="w-4 h-4" /> Sudah
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded-full text-xs font-bold">
+                            <AlertTriangle className="w-4 h-4" /> Belum
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-slate-400 italic">Tidak ada siswa dengan pelanggaran lebih dari 3 kali.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
       </div>
 
       {/* Modals */}

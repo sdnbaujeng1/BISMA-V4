@@ -610,6 +610,93 @@ app.get('/api/admin/stats', async (req, res) => {
     }
   });
 
+  app.get('/api/monitoring/analisa-siswa', async (req, res) => {
+    try {
+      const { month } = req.query;
+      let query = supabase.from('jurnal').select('ketidakhadiran, catatan_mengajar, kelas, timestamp');
+
+      if (month) {
+        const [year, m] = (month as string).split('-');
+        const startDate = `${year}-${m}-01T00:00:00Z`;
+        const endDate = new Date(Number(year), Number(m), 0, 23, 59, 59).toISOString();
+        query = query.gte('timestamp', startDate).lte('timestamp', endDate);
+      }
+
+      const { data: journals, error } = await query;
+
+      if (error) throw error;
+
+      const attendanceMap: Record<string, { nama: string, kelas: string, s: number, i: number, a: number, total: number }> = {};
+      const disciplineMap: Record<string, { nama: string, kelas: string, violations: number, handled: number, unhandled: number }> = {};
+
+      journals.forEach(j => {
+        // Process Attendance
+        if (j.ketidakhadiran && j.ketidakhadiran !== 'Nihil' && j.ketidakhadiran !== '[]') {
+          try {
+            const parsed = JSON.parse(j.ketidakhadiran);
+            if (Array.isArray(parsed)) {
+              parsed.forEach((absent: any) => {
+                const key = `${absent.nama}-${j.kelas}`;
+                if (!attendanceMap[key]) {
+                  attendanceMap[key] = { nama: absent.nama, kelas: j.kelas, s: 0, i: 0, a: 0, total: 0 };
+                }
+                const ket = (absent.keterangan || '').toLowerCase();
+                if (ket.includes('sakit') || ket === 's') attendanceMap[key].s++;
+                else if (ket.includes('izin') || ket === 'i') attendanceMap[key].i++;
+                else if (ket.includes('alpa') || ket.includes('alpha') || ket === 'a') attendanceMap[key].a++;
+                
+                attendanceMap[key].total = attendanceMap[key].s + attendanceMap[key].i + attendanceMap[key].a;
+              });
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+
+        // Process Discipline
+        if (j.catatan_mengajar && j.catatan_mengajar !== 'Nihil' && j.catatan_mengajar !== '[]') {
+          try {
+            const parsed = typeof j.catatan_mengajar === 'string' ? JSON.parse(j.catatan_mengajar) : j.catatan_mengajar;
+            if (Array.isArray(parsed)) {
+              parsed.forEach((d: any) => {
+                const key = `${d.student}-${j.kelas}`;
+                if (!disciplineMap[key]) {
+                  disciplineMap[key] = { nama: d.student, kelas: j.kelas, violations: 0, handled: 0, unhandled: 0 };
+                }
+                disciplineMap[key].violations++;
+                if (d.penanganan) {
+                  disciplineMap[key].handled++;
+                } else {
+                  disciplineMap[key].unhandled++;
+                }
+              });
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+      });
+
+      const topAbsentees = Object.values(attendanceMap)
+        .filter(s => s.total > 3)
+        .sort((a, b) => b.total - a.total);
+
+      const topViolators = Object.values(disciplineMap)
+        .filter(s => s.violations > 3)
+        .sort((a, b) => b.violations - a.violations);
+
+      res.json({
+        success: true,
+        data: {
+          absentees: topAbsentees,
+          violators: topViolators
+        }
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
   app.get('/api/monitoring/ketidakhadiran', async (req, res) => {
     try {
       const { start, end } = req.query;
