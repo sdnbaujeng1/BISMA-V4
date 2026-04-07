@@ -10,14 +10,29 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1Ni
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+let waProgress = {
+  isRunning: false,
+  total: 0,
+  sent: 0,
+  failed: 0,
+  logs: [] as string[]
+};
+
 async function sendWAReminders() {
+  if (waProgress.isRunning) {
+    return { success: false, message: 'Proses pengiriman sedang berjalan.' };
+  }
+  
+  waProgress = { isRunning: true, total: 0, sent: 0, failed: 0, logs: [] };
+  
   try {
     // 1. Get Fonnte API Key
     const { data: settings } = await supabase.from('pengaturan').select('value').eq('key', 'whatsapp_api_key').single();
     const fonnteToken = settings?.value;
 
     if (!fonnteToken) {
-      console.log('WhatsApp API Key (Fonnte) belum dikonfigurasi di Pengaturan.');
+      waProgress.logs.push('WhatsApp API Key (Fonnte) belum dikonfigurasi di Pengaturan.');
+      waProgress.isRunning = false;
       return { success: false, message: 'WhatsApp API Key (Fonnte) belum dikonfigurasi di Pengaturan.' };
     }
 
@@ -53,15 +68,14 @@ async function sendWAReminders() {
 
     if (journalError) throw journalError;
 
-    let sentCount = 0;
-
-    // 5. Process each teacher
+    // Filter teachers who need reminders
+    const teachersToRemind = [];
     for (const teacher of teachers) {
       const phone = teacher['No. Hp'];
-      if (!phone) continue; // Skip if no phone number
+      if (!phone) continue;
 
       const mySchedules = schedules.filter(s => s.guru === teacher.nama_guru);
-      if (mySchedules.length === 0) continue; // Skip if no schedule today
+      if (mySchedules.length === 0) continue;
 
       let hasMissingJournal = false;
       let scheduleDetails = '';
@@ -86,41 +100,64 @@ async function sendWAReminders() {
       }
 
       if (hasMissingJournal) {
-        const classListStr = Array.from(classesTaught).join(', ');
-        const message = `SDN BAUJENG I BEJI\nBISMA\n=============\nYth. ${teacher.nama_guru}\n\nBerikut ini kami sampaikan laporan keterlaksanaan KBM Bapak/Ibu di kelas ${classListStr} pada hari ${hariIniIndo}, ${formattedDate}, pukul ${formattedTime} WIB.\n===============\nBerikut ini kami laporkan jadwal dan keterlaksanaan KBM yang telah Ibu/Bapak isi pada aplikasi BISMA, Jadwal dan keterlaksanaan KBM hari ini:\n=================\n${scheduleDetails}=================\nSegera masuk kelas untuk melaksanakan KBM sesuai jadwal dan semoga menjadi amal ibadah. Amiin\n===============\nRaih Berkah dengan Khidmah\nKet: ✅ = Hadir  |  ❌ = Tidak Hadir |`;
-
-        // Send via Fonnte
-        try {
-          const response = await fetch('https://api.fonnte.com/send', {
-            method: 'POST',
-            headers: {
-              'Authorization': fonnteToken
-            },
-            body: new URLSearchParams({
-              target: phone,
-              message: message,
-              countryCode: '62'
-            })
-          });
-          const result = await response.json();
-          if (result.status) {
-            sentCount++;
-          } else {
-            console.error(`Fonnte error for ${teacher.nama_guru}:`, result.reason);
-          }
-        } catch (err) {
-          console.error(`Failed to send WA to ${teacher.nama_guru}:`, err);
-        }
-        
-        // Delay 10 seconds before sending the next message to avoid WhatsApp ban
-        await new Promise(resolve => setTimeout(resolve, 10000));
+        teachersToRemind.push({ teacher, phone, classesTaught, scheduleDetails });
       }
     }
 
-    return { success: true, count: sentCount };
+    waProgress.total = teachersToRemind.length;
+    waProgress.logs.push(`Ditemukan ${teachersToRemind.length} guru yang perlu diingatkan.`);
+
+    if (teachersToRemind.length === 0) {
+      waProgress.isRunning = false;
+      return { success: true, count: 0 };
+    }
+
+    // 5. Process each teacher
+    for (const item of teachersToRemind) {
+      const { teacher, phone, classesTaught, scheduleDetails } = item;
+      const classListStr = Array.from(classesTaught).join(', ');
+      const message = `SDN BAUJENG I BEJI\nBISMA\n=============\nYth. ${teacher.nama_guru}\n\nBerikut ini kami sampaikan laporan keterlaksanaan KBM Bapak/Ibu di kelas ${classListStr} pada hari ${hariIniIndo}, ${formattedDate}, pukul ${formattedTime} WIB.\n===============\nBerikut ini kami laporkan jadwal dan keterlaksanaan KBM yang telah Ibu/Bapak isi pada aplikasi BISMA, Jadwal dan keterlaksanaan KBM hari ini:\n=================\n${scheduleDetails}=================\nSegera masuk kelas untuk melaksanakan KBM sesuai jadwal dan semoga menjadi amal ibadah. Amiin\n===============\nRaih Berkah dengan Khidmah\nKet: ✅ = Hadir  |  ❌ = Tidak Hadir |`;
+
+      // Send via Fonnte
+      try {
+        const response = await fetch('https://api.fonnte.com/send', {
+          method: 'POST',
+          headers: {
+            'Authorization': fonnteToken
+          },
+          body: new URLSearchParams({
+            target: phone,
+            message: message,
+            countryCode: '62'
+          })
+        });
+        const result = await response.json();
+        if (result.status) {
+          waProgress.sent++;
+          waProgress.logs.push(`Berhasil mengirim ke ${teacher.nama_guru} (${phone})`);
+        } else {
+          waProgress.failed++;
+          waProgress.logs.push(`Gagal mengirim ke ${teacher.nama_guru} (${phone}): ${result.reason}`);
+          console.error(`Fonnte error for ${teacher.nama_guru}:`, result.reason);
+        }
+      } catch (err: any) {
+        waProgress.failed++;
+        waProgress.logs.push(`Error jaringan saat mengirim ke ${teacher.nama_guru} (${phone}): ${err.message}`);
+        console.error(`Failed to send WA to ${teacher.nama_guru}:`, err);
+      }
+      
+      // Delay 10 seconds before sending the next message to avoid WhatsApp ban
+      await new Promise(resolve => setTimeout(resolve, 10000));
+    }
+
+    waProgress.isRunning = false;
+    waProgress.logs.push('Proses pengiriman selesai.');
+    return { success: true, count: waProgress.sent };
 
   } catch (e: any) {
     console.error('Send WA error:', e);
+    waProgress.isRunning = false;
+    waProgress.logs.push(`Terjadi kesalahan sistem: ${e.message}`);
     return { success: false, message: e.message };
   }
 }
@@ -793,6 +830,10 @@ app.get('/api/admin/stats', async (req, res) => {
       console.error('Send WA error:', e);
       res.status(500).json({ success: false, message: e.message });
     }
+  });
+
+  app.get('/api/admin/wa-progress', (req, res) => {
+    res.json({ success: true, data: waProgress });
   });
 
   app.get('/api/monitoring/matrix', async (req, res) => {
@@ -1972,7 +2013,13 @@ app.get('/api/admin/stats', async (req, res) => {
       res.json({ success: true, reply: response.text });
     } catch (e: any) {
       console.error("Chatbot error:", e);
-      res.status(500).json({ success: false, message: e.message || 'Failed to generate response' });
+      let errorMessage = 'Gagal terhubung ke AI. Silakan coba lagi.';
+      if (e.message && e.message.includes('API key not valid')) {
+        errorMessage = 'API Key Gemini tidak valid. Silakan periksa kembali di menu Konfigurasi API.';
+      } else if (e.message && e.message.includes('high demand')) {
+        errorMessage = 'Server AI sedang sibuk. Silakan coba beberapa saat lagi.';
+      }
+      res.status(500).json({ success: false, message: errorMessage });
     }
   });
 
