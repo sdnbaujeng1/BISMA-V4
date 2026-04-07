@@ -32,7 +32,8 @@ import {
   Download,
   Key,
   ArrowRightLeft,
-  MapPin
+  MapPin,
+  Menu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -385,18 +386,18 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
         )}
       </AnimatePresence>
 
-      {/* Sidebar Toggle Button for Mobile */}
+      {/* Sidebar Toggle Button for Mobile (Removed in favor of top header menu) */}
+
+      {/* Mobile Sidebar Backdrop */}
       <AnimatePresence>
-        {!isSidebarVisible && (
-          <motion.button
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            onClick={() => setIsSidebarVisible(true)}
-            className="fixed top-1/2 left-0 -translate-y-1/2 z-50 bg-blue-600 text-white p-2 rounded-r-xl shadow-lg lg:hidden"
-          >
-            <ArrowRightLeft className="w-5 h-5" />
-          </motion.button>
+        {isSidebarVisible && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarVisible(false)}
+            className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          />
         )}
       </AnimatePresence>
 
@@ -416,7 +417,10 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
           {menuItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveView(item.id)}
+              onClick={() => {
+                setActiveView(item.id);
+                if (window.innerWidth < 1024) setIsSidebarVisible(false);
+              }}
               className={`p-3 rounded-xl flex justify-center transition-all group relative ${
                 activeView === item.id 
                   ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' 
@@ -434,19 +438,28 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
         <div className="flex flex-col gap-4 w-full px-2 mt-auto">
           <button
             onClick={toggleDarkMode}
-            className="p-3 rounded-xl flex justify-center text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-600 dark:hover:text-slate-300 transition-all"
+            className="p-3 rounded-xl flex justify-center text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-600 dark:hover:text-slate-300 transition-all group relative"
           >
             {darkMode ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
+            <span className="absolute left-16 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+              {darkMode ? 'Mode Terang' : 'Mode Gelap'}
+            </span>
           </button>
           <button 
-            onClick={() => setActiveView('profile')}
-            className={`p-3 rounded-xl flex justify-center transition-all ${
+            onClick={() => {
+              setActiveView('profile');
+              if (window.innerWidth < 1024) setIsSidebarVisible(false);
+            }}
+            className={`p-3 rounded-xl flex justify-center transition-all group relative ${
               activeView === 'profile'
                 ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                 : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-600 dark:hover:text-slate-300'
             }`}
           >
             <User className="w-6 h-6" />
+            <span className="absolute left-16 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+              Profil
+            </span>
           </button>
           <button
             onClick={onLogout}
@@ -461,8 +474,26 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-8 relative">
-        {renderContent()}
+      <main className="flex-1 overflow-y-auto relative flex flex-col">
+        {/* Mobile Header */}
+        <div className="lg:hidden bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-4 flex items-center justify-between sticky top-0 z-20">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsSidebarVisible(true)}
+              className="p-2 -ml-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <h1 className="font-bold text-slate-800 dark:text-white">Admin BISMA</h1>
+          </div>
+          <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm">
+            A
+          </div>
+        </div>
+        
+        <div className="p-4 md:p-8">
+          {renderContent()}
+        </div>
       </main>
 
       {/* Modals */}
@@ -2276,7 +2307,8 @@ function ApiConfigView({ showToast }: { showToast: (msg: string, type?: 'success
   const [apiKeys, setApiKeys] = useState({
     gemini_api_key: '',
     whatsapp_api_key: '',
-    other_api_key: ''
+    other_api_key: '',
+    wa_message_template: ''
   });
   const [loading, setLoading] = useState(false);
 
@@ -2289,7 +2321,8 @@ function ApiConfigView({ showToast }: { showToast: (msg: string, type?: 'success
           setApiKeys({
             gemini_api_key: data.data.gemini_api_key || '',
             whatsapp_api_key: data.data.whatsapp_api_key || '',
-            other_api_key: data.data.other_api_key || ''
+            other_api_key: data.data.other_api_key || '',
+            wa_message_template: data.data.wa_message_template || ''
           });
         }
       } catch (error) {
@@ -2387,6 +2420,20 @@ function ApiConfigView({ showToast }: { showToast: (msg: string, type?: 'success
                 placeholder="Masukkan API Key"
               />
             </div>
+          </div>
+
+          <div className="mt-8 bg-slate-50 dark:bg-slate-700/50 p-6 rounded-xl border border-slate-100 dark:border-slate-700">
+            <h3 className="font-bold text-slate-800 dark:text-white mb-2">Template Pesan WhatsApp</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              Gunakan variabel berikut: <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{nama_guru}}"}</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{kelas}}"}</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{hari_tanggal}}"}</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{detail_jadwal}}"}</code>
+            </p>
+            <textarea 
+              rows={8}
+              value={apiKeys.wa_message_template}
+              onChange={(e) => setApiKeys({...apiKeys, wa_message_template: e.target.value})}
+              className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 bg-white dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+              placeholder="Masukkan template pesan WA di sini... Kosongkan untuk menggunakan template default."
+            />
           </div>
 
           <div className="flex justify-end pt-4">

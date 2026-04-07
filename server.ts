@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import path from 'path';
 import fs from 'fs';
 import cron from 'node-cron';
+import { GoogleGenAI } from "@google/genai";
 
 const envUrl = process.env.VITE_SUPABASE_URL;
 const supabaseUrl = (envUrl && envUrl.startsWith('http')) ? envUrl : 'https://qisjuugbxrcjvpdnzxhz.supabase.co';
@@ -26,9 +27,10 @@ async function sendWAReminders() {
   waProgress = { isRunning: true, total: 0, sent: 0, failed: 0, logs: [] };
   
   try {
-    // 1. Get Fonnte API Key
-    const { data: settings } = await supabase.from('pengaturan').select('value').eq('key', 'whatsapp_api_key').single();
-    const fonnteToken = settings?.value;
+    // 1. Get Fonnte API Key and Message Template
+    const { data: settingsData } = await supabase.from('pengaturan').select('key, value');
+    const fonnteToken = settingsData?.find(s => s.key === 'whatsapp_api_key')?.value;
+    const waTemplate = settingsData?.find(s => s.key === 'wa_message_template')?.value;
 
     if (!fonnteToken) {
       waProgress.logs.push('WhatsApp API Key (Fonnte) belum dikonfigurasi di Pengaturan.');
@@ -116,7 +118,17 @@ async function sendWAReminders() {
     for (const item of teachersToRemind) {
       const { teacher, phone, classesTaught, scheduleDetails } = item;
       const classListStr = Array.from(classesTaught).join(', ');
-      const message = `SDN BAUJENG I BEJI\nBISMA\n=============\nYth. ${teacher.nama_guru}\n\nBerikut ini kami sampaikan laporan keterlaksanaan KBM Bapak/Ibu di kelas ${classListStr} pada hari ${hariIniIndo}, ${formattedDate}, pukul ${formattedTime} WIB.\n===============\nBerikut ini kami laporkan jadwal dan keterlaksanaan KBM yang telah Ibu/Bapak isi pada aplikasi BISMA, Jadwal dan keterlaksanaan KBM hari ini:\n=================\n${scheduleDetails}=================\nSegera masuk kelas untuk melaksanakan KBM sesuai jadwal dan semoga menjadi amal ibadah. Amiin\n===============\nRaih Berkah dengan Khidmah\nKet: ✅ = Hadir  |  ❌ = Tidak Hadir |`;
+      
+      let message = '';
+      if (waTemplate && waTemplate.trim() !== '') {
+        message = waTemplate
+          .replace(/\{\{nama_guru\}\}/g, teacher.nama_guru)
+          .replace(/\{\{kelas\}\}/g, classListStr)
+          .replace(/\{\{hari_tanggal\}\}/g, `${hariIniIndo}, ${formattedDate}`)
+          .replace(/\{\{detail_jadwal\}\}/g, scheduleDetails);
+      } else {
+        message = `SDN BAUJENG I BEJI\nBISMA\n=============\nYth. ${teacher.nama_guru}\n\nBerikut ini kami sampaikan laporan keterlaksanaan KBM Bapak/Ibu di kelas ${classListStr} pada hari ${hariIniIndo}, ${formattedDate}, pukul ${formattedTime} WIB.\n===============\nBerikut ini kami laporkan jadwal dan keterlaksanaan KBM yang telah Ibu/Bapak isi pada aplikasi BISMA, Jadwal dan keterlaksanaan KBM hari ini:\n=================\n${scheduleDetails}=================\nSegera masuk kelas untuk melaksanakan KBM sesuai jadwal dan semoga menjadi amal ibadah. Amiin\n===============\nRaih Berkah dengan Khidmah\nKet: ✅ = Hadir  |  ❌ = Tidak Hadir |`;
+      }
 
       // Send via Fonnte
       try {
@@ -167,7 +179,6 @@ cron.schedule('30 7 * * *', () => {
   console.log('Running scheduled WA reminder at 07:30');
   sendWAReminders();
 }, {
-  scheduled: true,
   timezone: "Asia/Jakarta"
 });
 
@@ -175,7 +186,6 @@ cron.schedule('0 12 * * *', () => {
   console.log('Running scheduled WA reminder at 12:00');
   sendWAReminders();
 }, {
-  scheduled: true,
   timezone: "Asia/Jakarta"
 });
 
@@ -1986,7 +1996,6 @@ app.get('/api/admin/stats', async (req, res) => {
   });
 
   // --- CHATBOT ---
-  import { GoogleGenAI } from "@google/genai";
 
   app.post('/api/chatbot', async (req, res) => {
     try {
@@ -2006,7 +2015,7 @@ app.get('/api/admin/stats', async (req, res) => {
 
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3-flash-preview",
         contents: message,
       });
 
