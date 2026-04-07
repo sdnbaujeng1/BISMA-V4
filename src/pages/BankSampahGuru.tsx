@@ -18,6 +18,12 @@ export default function BankSampahGuru({ user, onNavigate }: { user: any, onNavi
   const [loading, setLoading] = useState(false);
   const [students, setStudents] = useState<any[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
+  const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const fetchData = async () => {
     try {
@@ -106,15 +112,15 @@ export default function BankSampahGuru({ user, onNavigate }: { user: any, onNavi
 
       const result = await res.json();
       if (result.success) {
-        alert("Data Bank Sampah berhasil disimpan!");
+        showToast("Data Bank Sampah berhasil disimpan!", "success");
         setShowModal(false);
         setFormData({ siswa: '', kelas: 'Kelas 1', jenisSampah: '', berat: '', nilai: '' });
         fetchData(); // Refresh
       } else {
-        alert("Gagal menyimpan data: " + result.message);
+        showToast("Gagal menyimpan data: " + result.message, "error");
       }
     } catch (error) {
-      alert("Terjadi kesalahan jaringan");
+      showToast("Terjadi kesalahan jaringan", "error");
     } finally {
       setLoading(false);
     }
@@ -122,6 +128,22 @@ export default function BankSampahGuru({ user, onNavigate }: { user: any, onNavi
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors p-6">
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-xl shadow-lg font-bold text-white ${
+              toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            }`}
+          >
+            {toast.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <header className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button onClick={() => onNavigate('main')} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">

@@ -4,31 +4,30 @@ import { supabase } from '../lib/supabase';
 
 export default function RekapAbsensi({ user, onNavigate }: { user: any, onNavigate: (page: string) => void }) {
   const [kelas, setKelas] = useState('');
-  const [filterBulan, setFilterBulan] = useState('semua');
-  const [filterTahun, setFilterTahun] = useState('semua');
+  const [availableClasses, setAvailableClasses] = useState<string[]>([]);
+  const [filterTanggal, setFilterTanggal] = useState(new Date().toISOString().split('T')[0]);
   const [rekapData, setRekapData] = useState<any[]>([]);
+  const [summary, setSummary] = useState({ hadirPercent: 0, izin: 0, sakit: 0, alpha: 0, dispensasi: 0 });
   const [loading, setLoading] = useState(false);
 
   const [headmasterName, setHeadmasterName] = useState("Drs. H. Ahmad");
   const [headmasterNIP, setHeadmasterNIP] = useState("196001011980031001");
   const [schoolName, setSchoolName] = useState("UPT SDN Baujeng 1");
 
-  const months = [
-    { value: '0', label: 'Januari' },
-    { value: '1', label: 'Februari' },
-    { value: '2', label: 'Maret' },
-    { value: '3', label: 'April' },
-    { value: '4', label: 'Mei' },
-    { value: '5', label: 'Juni' },
-    { value: '6', label: 'Juli' },
-    { value: '7', label: 'Agustus' },
-    { value: '8', label: 'September' },
-    { value: '9', label: 'Oktober' },
-    { value: '10', label: 'November' },
-    { value: '11', label: 'Desember' }
-  ];
-
-  const years = ['2025', '2026', '2027'];
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const { data, error } = await supabase.from('murid').select('"Kelas"');
+        if (!error && data) {
+          const unique = [...new Set(data.map(item => item['Kelas'] || item.Kelas))].filter(Boolean).sort();
+          setAvailableClasses(unique as string[]);
+        }
+      } catch (e) {
+        console.error("Failed to fetch classes", e);
+      }
+    };
+    fetchClasses();
+  }, []);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -78,8 +77,8 @@ export default function RekapAbsensi({ user, onNavigate }: { user: any, onNaviga
         // 1. Fetch all students in the class
         const { data: studentsData, error: studentsError } = await supabase
           .from('murid')
-          .select('NISN, "Nama Lengkap"')
-          .eq('Kelas', kelas);
+          .select('"NISN", "Nama Lengkap", "Kelas"')
+          .eq('"Kelas"', kelas);
 
         if (studentsError) throw studentsError;
 
@@ -89,68 +88,62 @@ export default function RekapAbsensi({ user, onNavigate }: { user: any, onNaviga
           studentMap[s['Nama Lengkap']] = {
             nisn: s.NISN,
             nama: s['Nama Lengkap'],
-            s: 0, i: 0, a: 0, d: 0,
-            prosentase: '100%'
+            s: 0, i: 0, a: 0, d: 0, h: 0,
+            finalStatus: 'H' // Default to Hadir
           };
         });
 
-        // 2. Fetch presensi_qr for "Hadir"
-        let qrQuery = supabase.from('presensi_qr').select('nama, jenis, timestamp').eq('kelas', kelas);
-        const { data: qrData, error: qrError } = await qrQuery;
-        if (qrError) throw qrError;
-
-        // Filter by month/year if selected
-        const filteredQrData = (qrData || []).filter(record => {
-          const date = new Date(record.timestamp);
-          const recordMonth = date.getMonth().toString();
-          const recordYear = date.getFullYear().toString();
-          
-          if (filterBulan !== 'semua' && recordMonth !== filterBulan) return false;
-          if (filterTahun !== 'semua' && recordYear !== filterTahun) return false;
-          return true;
-        });
-
-        filteredQrData.forEach(record => {
-          if (record.jenis === 'Hadir' && studentMap[record.nama]) {
-            studentMap[record.nama].d += 1;
-          }
-        });
-
-        // 3. Fetch jurnal for "Sakit", "Izin", "Alpa"
-        let jurnalQuery = supabase.from('jurnal').select('timestamp, ketidakhadiran').eq('kelas', kelas);
+        // 2. Fetch jurnal for attendance
+        let jurnalQuery = supabase.from('jurnal').select('timestamp, ketidakhadiran, jam_pembelajaran').eq('kelas', kelas);
         const { data: jurnalData, error: jurnalError } = await jurnalQuery;
         if (jurnalError) throw jurnalError;
 
-        // Filter by month/year if selected
+        // Filter by date
         const filteredJurnalData = (jurnalData || []).filter(record => {
-          const date = new Date(record.timestamp);
-          const recordMonth = date.getMonth().toString();
-          const recordYear = date.getFullYear().toString();
-          
-          if (filterBulan !== 'semua' && recordMonth !== filterBulan) return false;
-          if (filterTahun !== 'semua' && recordYear !== filterTahun) return false;
-          return true;
+          const recordDate = new Date(record.timestamp).toLocaleDateString('en-CA'); // YYYY-MM-DD local
+          // Also check split('T')[0] just in case
+          const altDate = record.timestamp.split('T')[0];
+          return recordDate === filterTanggal || altDate === filterTanggal;
         });
 
-        // Calculate total effective days based on Jurnal entries (assuming 1 journal entry = 1 school day)
-        // Actually, let's just count unique dates in Jurnal for this class
-        const uniqueDates = new Set();
-        filteredJurnalData.forEach(record => {
-          uniqueDates.add(record.timestamp.split('T')[0]);
+        let totalDayJP = 0;
+        const studentAbsentJP: Record<string, number> = {};
+        const studentStatuses: Record<string, Set<string>> = {};
+
+        Object.keys(studentMap).forEach(name => {
+          studentAbsentJP[name] = 0;
+          studentStatuses[name] = new Set();
         });
-        const totalHariEfektif = uniqueDates.size;
 
         filteredJurnalData.forEach(record => {
+          let jpCount = 1;
+          if (record.jam_pembelajaran) {
+            jpCount = String(record.jam_pembelajaran).split(',').filter(s => s.trim() !== '').length;
+            if (jpCount === 0) jpCount = 1;
+          }
+          totalDayJP += jpCount;
+
           try {
             const absents = typeof record.ketidakhadiran === 'string' ? JSON.parse(record.ketidakhadiran) : record.ketidakhadiran;
             if (Array.isArray(absents)) {
+              const countedStudents = new Set();
               absents.forEach((absentRecord: any) => {
                 if (absentRecord.students && Array.isArray(absentRecord.students)) {
                   absentRecord.students.forEach((studentName: string) => {
-                    if (studentMap[studentName]) {
-                      if (absentRecord.type === 'Sakit') studentMap[studentName].s += 1;
-                      else if (absentRecord.type === 'Izin') studentMap[studentName].i += 1;
-                      else if (absentRecord.type === 'Alpa') studentMap[studentName].a += 1;
+                    if (studentMap[studentName] && !countedStudents.has(studentName)) {
+                      countedStudents.add(studentName);
+                      
+                      studentAbsentJP[studentName] = (studentAbsentJP[studentName] || 0) + jpCount;
+
+                      if (absentRecord.type === 'Sakit') {
+                        studentStatuses[studentName].add('S');
+                      } else if (absentRecord.type === 'Izin') {
+                        studentStatuses[studentName].add('I');
+                      } else if (absentRecord.type === 'Alpa' || absentRecord.type === 'Tidak Hadir') {
+                        studentStatuses[studentName].add('A');
+                      } else if (absentRecord.type === 'Dispensasi') {
+                        studentStatuses[studentName].add('D');
+                      }
                     }
                   });
                 }
@@ -159,23 +152,67 @@ export default function RekapAbsensi({ user, onNavigate }: { user: any, onNaviga
           } catch (e) {}
         });
 
-        // Calculate percentage
-        const resultData = Object.values(studentMap).map(student => {
-          const totalAbsen = student.s + student.i + student.a;
-          // If totalHariEfektif is 0, assume 100%
-          let prosentase = 100;
-          if (totalHariEfektif > 0) {
-            prosentase = Math.max(0, Math.round(((totalHariEfektif - totalAbsen) / totalHariEfektif) * 100));
-          }
+        // Process daily statuses to calculate final status for the day
+        Object.keys(studentMap).forEach(studentName => {
+          const statuses = studentStatuses[studentName];
+          const absentJP = studentAbsentJP[studentName];
           
+          // If student was absent for fewer JPs than the total JPs for the day, they have an implicit 'H'
+          if (totalDayJP > 0 && absentJP < totalDayJP) {
+            statuses.add('H');
+          }
+
+          if (statuses.has('S')) {
+            studentMap[studentName].finalStatus = 'S';
+          } else if (statuses.has('I')) {
+            studentMap[studentName].finalStatus = 'I';
+          } else if (statuses.has('D')) {
+            studentMap[studentName].finalStatus = 'D';
+          } else if (statuses.has('A') && !statuses.has('H')) {
+            studentMap[studentName].finalStatus = 'A';
+          } else {
+            studentMap[studentName].finalStatus = 'H';
+          }
+        });
+
+        const resultData = Object.values(studentMap).map(student => {
           return {
             ...student,
-            prosentase: `${prosentase}%`
+            s_display: student.finalStatus === 'S' ? '✓' : '',
+            i_display: student.finalStatus === 'I' ? '✓' : '',
+            a_display: student.finalStatus === 'A' ? '✓' : '',
+            d_display: student.finalStatus === 'D' ? '✓' : '',
+            ket: student.finalStatus === 'H' ? 'Hadir' : ''
           };
         });
 
         // Sort by name
         resultData.sort((a, b) => a.nama.localeCompare(b.nama));
+
+        let totalSakit = 0;
+        let totalIzin = 0;
+        let totalAlpha = 0;
+        let totalDispensasi = 0;
+        let totalHadir = 0;
+
+        resultData.forEach(m => {
+          if (m.finalStatus === 'S') totalSakit++;
+          else if (m.finalStatus === 'I') totalIzin++;
+          else if (m.finalStatus === 'A') totalAlpha++;
+          else if (m.finalStatus === 'D') totalDispensasi++;
+          else totalHadir++;
+        });
+
+        const totalStudents = resultData.length;
+        const hadirPercent = totalStudents > 0 ? Math.round((totalHadir / totalStudents) * 100) : 100;
+
+        setSummary({
+          hadirPercent,
+          sakit: totalSakit,
+          izin: totalIzin,
+          alpha: totalAlpha,
+          dispensasi: totalDispensasi
+        });
 
         setRekapData(resultData);
       } catch (error) {
@@ -186,7 +223,7 @@ export default function RekapAbsensi({ user, onNavigate }: { user: any, onNaviga
     };
 
     fetchData();
-  }, [kelas, filterBulan, filterTahun]);
+  }, [kelas, filterTanggal]);
 
   return (
     <div className="min-h-screen w-full flex flex-col bg-slate-50 dark:bg-slate-900 transition-colors">
@@ -211,39 +248,19 @@ export default function RekapAbsensi({ user, onNavigate }: { user: any, onNaviga
                   className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 bg-slate-50 dark:bg-slate-700 dark:text-white"
                 >
                   <option value="">-- Pilih Kelas --</option>
-                  <option value="1">Kelas 1</option>
-                  <option value="2">Kelas 2</option>
-                  <option value="3">Kelas 3</option>
-                  <option value="4">Kelas 4</option>
-                  <option value="5">Kelas 5</option>
-                  <option value="6">Kelas 6</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Bulan</label>
-                <select 
-                  value={filterBulan}
-                  onChange={e => setFilterBulan(e.target.value)}
-                  className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 bg-slate-50 dark:bg-slate-700 dark:text-white"
-                >
-                  <option value="semua">Semua</option>
-                  {months.map(m => (
-                    <option key={m.value} value={m.value}>{m.label}</option>
+                  {availableClasses.map(c => (
+                    <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Tahun</label>
-                <select 
-                  value={filterTahun}
-                  onChange={e => setFilterTahun(e.target.value)}
+                <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Tanggal</label>
+                <input 
+                  type="date"
+                  value={filterTanggal}
+                  onChange={e => setFilterTanggal(e.target.value)}
                   className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 bg-slate-50 dark:bg-slate-700 dark:text-white"
-                >
-                  <option value="semua">Semua</option>
-                  {years.map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
+                />
               </div>
             </div>
             <button 
@@ -257,12 +274,38 @@ export default function RekapAbsensi({ user, onNavigate }: { user: any, onNaviga
 
           {kelas && (
             <div className="bg-white dark:bg-slate-800 text-black dark:text-white rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700 print:shadow-none print:border-none print:p-0 print:bg-white print:text-black">
+              {/* Summary Header */}
+              {!loading && rekapData.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8 print:hidden">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800">
+                    <p className="text-sm text-blue-600 dark:text-blue-400 font-medium mb-1">Total Hadir</p>
+                    <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{summary.hadirPercent}%</p>
+                  </div>
+                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-100 dark:border-green-800">
+                    <p className="text-sm text-green-600 dark:text-green-400 font-medium mb-1">Total Sakit</p>
+                    <p className="text-2xl font-bold text-green-700 dark:text-green-300">{summary.sakit}</p>
+                  </div>
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-xl border border-yellow-100 dark:border-yellow-800">
+                    <p className="text-sm text-yellow-600 dark:text-yellow-400 font-medium mb-1">Total Izin</p>
+                    <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">{summary.izin}</p>
+                  </div>
+                  <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-100 dark:border-red-800">
+                    <p className="text-sm text-red-600 dark:text-red-400 font-medium mb-1">Total Alpha</p>
+                    <p className="text-2xl font-bold text-red-700 dark:text-red-300">{summary.alpha}</p>
+                  </div>
+                  <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border border-purple-100 dark:border-purple-800">
+                    <p className="text-sm text-purple-600 dark:text-purple-400 font-medium mb-1">Total Dispensasi</p>
+                    <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">{summary.dispensasi}</p>
+                  </div>
+                </div>
+              )}
+
               {/* Header Sekolah untuk Print */}
               <div className="hidden print:block text-center mb-8 border-b-2 border-black pb-4">
                 <h1 className="text-2xl font-bold uppercase">{schoolName}</h1>
-                <p className="text-sm">Laporan Kehadiran Murid</p>
+                <p className="text-sm">Laporan Kehadiran Murid Harian</p>
                 <p className="text-sm mt-2">Kelas: {kelas}</p>
-                <p className="text-sm">Periode: {filterBulan === 'semua' ? 'Semua Bulan' : months.find(m => m.value === filterBulan)?.label} {filterTahun === 'semua' ? 'Semua Tahun' : filterTahun}</p>
+                <p className="text-sm">Tanggal: {new Date(filterTanggal).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
               </div>
 
               {loading ? (
@@ -277,8 +320,8 @@ export default function RekapAbsensi({ user, onNavigate }: { user: any, onNaviga
                       <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-12 bg-green-50 dark:bg-green-900/20 print:bg-green-50">S</th>
                       <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-12 bg-yellow-50 dark:bg-yellow-900/20 print:bg-yellow-50">I</th>
                       <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-12 bg-red-50 dark:bg-red-900/20 print:bg-red-50">A</th>
-                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-12 bg-blue-50 dark:bg-blue-900/20 print:bg-blue-50">D</th>
-                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-20 font-bold">%</th>
+                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-12 bg-purple-50 dark:bg-purple-900/20 print:bg-purple-50">D</th>
+                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-24 font-bold">Ket</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -287,11 +330,11 @@ export default function RekapAbsensi({ user, onNavigate }: { user: any, onNaviga
                         <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center text-slate-500 dark:text-slate-400 print:text-slate-500">{i + 1}</td>
                         <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-mono">{m.nisn}</td>
                         <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 font-medium">{m.nama}</td>
-                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center">{m.s}</td>
-                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center">{m.i}</td>
-                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center">{m.a}</td>
-                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center">{m.d}</td>
-                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold text-green-700 dark:text-green-400 print:text-green-700">{m.prosentase}</td>
+                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold text-green-600">{m.s_display}</td>
+                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold text-yellow-600">{m.i_display}</td>
+                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold text-red-600">{m.a_display}</td>
+                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold text-purple-600">{m.d_display}</td>
+                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold text-blue-700 dark:text-blue-400 print:text-blue-700">{m.ket}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -1,11 +1,146 @@
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
+import path from 'path';
+import fs from 'fs';
+import cron from 'node-cron';
 
 const envUrl = process.env.VITE_SUPABASE_URL;
 const supabaseUrl = (envUrl && envUrl.startsWith('http')) ? envUrl : 'https://qisjuugbxrcjvpdnzxhz.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpc2p1dWdieHJjanZwZG56eGh6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTI1NTczNywiZXhwIjoyMDg0ODMxNzM3fQ.5oKj5RL6OnI5kw9ciLIjAmxL1dNZwkZTEuijtnSCO5Q';
 
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function sendWAReminders() {
+  try {
+    // 1. Get Fonnte API Key
+    const { data: settings } = await supabase.from('pengaturan').select('value').eq('key', 'whatsapp_api_key').single();
+    const fonnteToken = settings?.value;
+
+    if (!fonnteToken) {
+      console.log('WhatsApp API Key (Fonnte) belum dikonfigurasi di Pengaturan.');
+      return { success: false, message: 'WhatsApp API Key (Fonnte) belum dikonfigurasi di Pengaturan.' };
+    }
+
+    const today = new Date();
+    const options: Intl.DateTimeFormatOptions = { timeZone: 'Asia/Jakarta', weekday: 'long' };
+    const hariIniIndo = new Intl.DateTimeFormat('id-ID', options).format(today);
+    const todayDateStr = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' })).toISOString().split('T')[0];
+    const formattedDate = today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    const formattedTime = today.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
+
+    // 2. Get all teachers with phone numbers
+    const { data: teachers, error: teacherError } = await supabase
+      .from('guru')
+      .select('nip, nama_guru, "No. Hp"');
+    
+    if (teacherError) throw teacherError;
+
+    // 3. Get today's schedule
+    const { data: schedules, error: scheduleError } = await supabase
+      .from('jadwal_real')
+      .select('guru, jam, kelas, mapel')
+      .eq('hari', hariIniIndo)
+      .order('jam');
+
+    if (scheduleError) throw scheduleError;
+
+    // 4. Get today's journals
+    const { data: journals, error: journalError } = await supabase
+      .from('jurnal')
+      .select('nama_guru, kelas, jam_pembelajaran')
+      .gte('timestamp', `${todayDateStr}T00:00:00Z`)
+      .lte('timestamp', `${todayDateStr}T23:59:59Z`);
+
+    if (journalError) throw journalError;
+
+    let sentCount = 0;
+
+    // 5. Process each teacher
+    for (const teacher of teachers) {
+      const phone = teacher['No. Hp'];
+      if (!phone) continue; // Skip if no phone number
+
+      const mySchedules = schedules.filter(s => s.guru === teacher.nama_guru);
+      if (mySchedules.length === 0) continue; // Skip if no schedule today
+
+      let hasMissingJournal = false;
+      let scheduleDetails = '';
+      let classesTaught = new Set<string>();
+
+      for (let i = 1; i <= 8; i++) {
+        const sch = mySchedules.find(s => String(s.jam) === String(i));
+        if (sch) {
+          classesTaught.add(sch.kelas);
+          const myJournals = journals.filter(j => j.nama_guru === teacher.nama_guru && j.kelas === sch.kelas);
+          const isFilled = myJournals.some(j => {
+            if (!j.jam_pembelajaran) return true;
+            const jamList = String(j.jam_pembelajaran).split(',').map(x => x.trim());
+            return jamList.includes(String(i));
+          });
+
+          if (!isFilled) hasMissingJournal = true;
+          scheduleDetails += `Jam ke-${i} : ${sch.kelas} / ${sch.mapel} ${isFilled ? '✅' : '❌'}\n`;
+        } else {
+          scheduleDetails += `Jam ke-${i} : - / - -\n`;
+        }
+      }
+
+      if (hasMissingJournal) {
+        const classListStr = Array.from(classesTaught).join(', ');
+        const message = `SDN BAUJENG I BEJI\nBISMA\n=============\nYth. ${teacher.nama_guru}\n\nBerikut ini kami sampaikan laporan keterlaksanaan KBM Bapak/Ibu di kelas ${classListStr} pada hari ${hariIniIndo}, ${formattedDate}, pukul ${formattedTime} WIB.\n===============\nBerikut ini kami laporkan jadwal dan keterlaksanaan KBM yang telah Ibu/Bapak isi pada aplikasi BISMA, Jadwal dan keterlaksanaan KBM hari ini:\n=================\n${scheduleDetails}=================\nSegera masuk kelas untuk melaksanakan KBM sesuai jadwal dan semoga menjadi amal ibadah. Amiin\n===============\nRaih Berkah dengan Khidmah\nKet: ✅ = Hadir  |  ❌ = Tidak Hadir |`;
+
+        // Send via Fonnte
+        try {
+          const response = await fetch('https://api.fonnte.com/send', {
+            method: 'POST',
+            headers: {
+              'Authorization': fonnteToken
+            },
+            body: new URLSearchParams({
+              target: phone,
+              message: message,
+              countryCode: '62'
+            })
+          });
+          const result = await response.json();
+          if (result.status) {
+            sentCount++;
+          } else {
+            console.error(`Fonnte error for ${teacher.nama_guru}:`, result.reason);
+          }
+        } catch (err) {
+          console.error(`Failed to send WA to ${teacher.nama_guru}:`, err);
+        }
+        
+        // Delay 10 seconds before sending the next message to avoid WhatsApp ban
+        await new Promise(resolve => setTimeout(resolve, 10000));
+      }
+    }
+
+    return { success: true, count: sentCount };
+
+  } catch (e: any) {
+    console.error('Send WA error:', e);
+    return { success: false, message: e.message };
+  }
+}
+
+// Setup cron jobs for 07:30 and 12:00 Asia/Jakarta time
+cron.schedule('30 7 * * *', () => {
+  console.log('Running scheduled WA reminder at 07:30');
+  sendWAReminders();
+}, {
+  scheduled: true,
+  timezone: "Asia/Jakarta"
+});
+
+cron.schedule('0 12 * * *', () => {
+  console.log('Running scheduled WA reminder at 12:00');
+  sendWAReminders();
+}, {
+  scheduled: true,
+  timezone: "Asia/Jakarta"
+});
 
 const app = express();
 app.use(express.json());
@@ -14,7 +149,7 @@ const PORT = 3000;
 app.get('/api/admin/stats', async (req, res) => {
     try {
       // 1. Student Counts per Class
-      const { data: muridData, error: muridError } = await supabase.from('murid').select('Kelas');
+      const { data: muridData, error: muridError } = await supabase.from('murid').select('"Kelas"');
       if (muridError) throw muridError;
 
       const kelasCounts: Record<string, number> = {};
@@ -85,6 +220,7 @@ app.get('/api/admin/stats', async (req, res) => {
 
       const { data: todaysSchedule } = await supabase.from('jadwal_real').select('*').eq('hari', hariIniIndo);
       const { data: todaysJurnal } = await supabase.from('jurnal').select('*').gte('timestamp', `${todayDateStr}T00:00:00Z`).lte('timestamp', `${todayDateStr}T23:59:59Z`);
+      const { data: todaysPresensi } = await supabase.from('presensi').select('*').gte('timestamp', `${todayDateStr}T00:00:00Z`).lte('timestamp', `${todayDateStr}T23:59:59Z`);
 
       let completedKBM = 0;
       const notYetTaught: any[] = [];
@@ -104,6 +240,20 @@ app.get('/api/admin/stats', async (req, res) => {
               kelas: schedule.kelas,
               mapel: schedule.mapel
             });
+          }
+        });
+      }
+
+      if (todaysPresensi) {
+        todaysPresensi.forEach(p => {
+          if (p.presensi !== 'Hadir' && p.presensi !== 'H' && p.presensi !== 'Terlambat') {
+            if (!absentStudents.some(s => s.name === p.nama_murid && s.class === p.kelas)) {
+              absentStudents.push({
+                name: p.nama_murid,
+                class: p.kelas || '-',
+                reason: p.presensi
+              });
+            }
           }
         });
       }
@@ -161,20 +311,43 @@ app.get('/api/admin/stats', async (req, res) => {
   });
 
   app.get('/api/pengumuman', async (req, res) => {
-    const { data, error } = await supabase.from('pengumuman').select('*').order('tanggal', { ascending: false }).order('id', { ascending: false });
+    const { role } = req.query;
+    let query = supabase.from('pengumuman').select('*').order('tanggal', { ascending: false }).order('id', { ascending: false });
+    
+    if (role) {
+      // Role mapping
+      let targetRole = 'Publik';
+      if (role === 'student') targetRole = 'Siswa';
+      else if (role === 'guru') targetRole = 'Guru';
+      else if (role === 'tendik') targetRole = 'Staff';
+      else if (role === 'admin') targetRole = 'Admin'; // Or maybe admin sees all?
+      
+      if (role !== 'admin') {
+        query = query.contains('target_roles', [targetRole]);
+        
+        // Also filter by date
+        const today = new Date().toISOString().split('T')[0];
+        query = query.or(`tanggal_terbit.lte.${today},tanggal_terbit.is.null`)
+                     .or(`tanggal_kedaluwarsa.gte.${today},tanggal_kedaluwarsa.is.null`);
+      }
+    }
+
+    const { data, error } = await query;
     if (error) return res.status(500).json({ success: false, message: error.message });
     res.json({ success: true, data });
   });
 
   app.post('/api/pengumuman', async (req, res) => {
-    const { judul, tanggal, isi } = req.body;
+    const { judul, isi, target_roles, tanggal_terbit, tanggal_kedaluwarsa } = req.body;
     
     // We'll just insert a new record for now, or we could update the latest one.
     // Let's insert a new one so we keep history.
     const { error } = await supabase.from('pengumuman').insert({
       judul,
-      tanggal,
-      isi
+      isi,
+      target_roles,
+      tanggal_terbit,
+      tanggal_kedaluwarsa
     });
 
     if (error) return res.status(500).json({ success: false, message: error.message });
@@ -202,7 +375,7 @@ app.get('/api/admin/stats', async (req, res) => {
         return res.json({ success: true, user: { role: 'tendik', NIP: user.nip, 'Nama Guru': user.nama_tendik } });
       }
     } else if (role === 'siswa') {
-      const { data: user } = await supabase.from('murid').select('"NISN", "NIS", "Nama Lengkap", "Kelas", "Password (Default: baujeng(kelas))"').eq('NIS', nip).single();
+      const { data: user } = await supabase.from('murid').select('"NISN", "NIS", "Nama Lengkap", "Kelas", "Password (Default: baujeng(kelas))"').eq('"NIS"', nip).single();
       if (user && user['Password (Default: baujeng(kelas))'] === password) {
         return res.json({ success: true, user: { role: 'siswa', NISN: user.NISN, NIS: user.NIS, Nama_Murid: user['Nama Lengkap'], Kelas: user.Kelas } });
       }
@@ -484,14 +657,14 @@ app.get('/api/admin/stats', async (req, res) => {
       updateData["Password (Default: baujeng(kelas))"] = Password;
     }
 
-    const { error } = await supabase.from('murid').update(updateData).eq('NISN', nisn);
+    const { error } = await supabase.from('murid').update(updateData).eq('"NISN"', nisn);
     if (error) return res.status(500).json({ success: false, message: error.message });
     res.json({ success: true, message: 'Data murid berhasil diupdate' });
   });
 
   app.delete('/api/murid/:nisn', async (req, res) => {
     const { nisn } = req.params;
-    const { error } = await supabase.from('murid').delete().eq('NISN', nisn);
+    const { error } = await supabase.from('murid').delete().eq('"NISN"', nisn);
     if (error) return res.status(500).json({ success: false, message: error.message });
     res.json({ success: true, message: 'Data murid berhasil dihapus' });
   });
@@ -521,23 +694,82 @@ app.get('/api/admin/stats', async (req, res) => {
       return res.status(500).json({ success: false, message: error.message });
     }
 
+    // Insert into presensi table
+    try {
+      // Get all students in this class
+      const { data: students, error: studentError } = await supabase
+        .from('murid')
+        .select('"NISN", "Nama Lengkap"')
+        .eq('"Kelas"', kelas);
+
+      if (!studentError && students) {
+        const presensiRecords: any[] = [];
+        
+        students.forEach(student => {
+          let status = 'Hadir';
+          
+          if (Array.isArray(ketidakhadiran)) {
+            ketidakhadiran.forEach((k: any) => {
+              if (k.students && Array.isArray(k.students) && k.students.includes(student['Nama Lengkap'])) {
+                status = k.type;
+              }
+            });
+          }
+
+          let presensiCode = 'H';
+          if (status === 'Sakit') presensiCode = 'S';
+          else if (status === 'Izin') presensiCode = 'I';
+          else if (status === 'Alpa') presensiCode = 'A';
+          else if (status === 'Dispensasi') presensiCode = 'D';
+
+          if (presensiCode !== 'H') {
+            presensiRecords.push({
+              nip: nip,
+              nama_guru: guru,
+              nisn: student.NISN,
+              nama_murid: student['Nama Lengkap'],
+              kelas: kelas,
+              presensi: presensiCode,
+              ekstra: jamPembelajaranStr // Store JP in ekstra for calculation
+            });
+          }
+        });
+
+        if (presensiRecords.length > 0) {
+          await supabase.from('presensi').insert(presensiRecords);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to insert presensi:", e);
+    }
+
     res.json({ success: true, message: 'Data jurnal berhasil disimpan.' });
   });
 
   app.get('/api/keterlaksanaan', async (req, res) => {
-    const { data: scheduleList } = await supabase.from('jadwal_real').select('kelas, jam, guru, mapel');
-    const todayDateStr = new Date().toISOString().split('T')[0];
+    const today = new Date();
+    const options: Intl.DateTimeFormatOptions = { timeZone: 'Asia/Jakarta', weekday: 'long' };
+    let hariIniIndo = new Intl.DateTimeFormat('id-ID', options).format(today);
+    hariIniIndo = hariIniIndo.charAt(0).toUpperCase() + hariIniIndo.slice(1);
+
+    const { data: scheduleList } = await supabase.from('jadwal_real').select('kelas, jam, guru, mapel').eq('hari', hariIniIndo);
+    const todayDateStr = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' })).toISOString().split('T')[0];
     const { data: todaysJurnal } = await supabase.from('jurnal').select('*').gte('timestamp', `${todayDateStr}T00:00:00Z`).lte('timestamp', `${todayDateStr}T23:59:59Z`);
 
     const dataByClass: any = {};
     if (scheduleList) {
       scheduleList.forEach(item => {
-        const matchedJurnal = todaysJurnal?.find(j => j.kelas === item.kelas && j.nama_guru === item.guru);
+        const matchedJurnal = todaysJurnal?.find(j => {
+          if (j.kelas !== item.kelas || j.nama_guru !== item.guru) return false;
+          if (!j.jam_pembelajaran) return true; // fallback if jam_pembelajaran is empty
+          const jamList = j.jam_pembelajaran.split(',').map((s: string) => s.trim());
+          return jamList.includes(String(item.jam));
+        });
         
         if (!dataByClass[item.kelas]) dataByClass[item.kelas] = [];
         dataByClass[item.kelas].push({
           ...item,
-          mapel: matchedJurnal ? matchedJurnal.mata_pelajaran : 'X',
+          isCompleted: !!matchedJurnal,
           materi: matchedJurnal ? matchedJurnal.materi : '-',
           kebersihan: matchedJurnal ? matchedJurnal.kebersihan_kelas : '-'
         });
@@ -545,6 +777,22 @@ app.get('/api/admin/stats', async (req, res) => {
     }
 
     res.json({ success: true, data: dataByClass });
+  });
+
+  app.post('/api/admin/send-wa-reminder', async (req, res) => {
+    try {
+      // Run in background to prevent timeout due to 10s delay per message
+      sendWAReminders().then(result => {
+        console.log('Manual WA reminder finished:', result);
+      }).catch(e => {
+        console.error('Manual WA reminder failed:', e);
+      });
+      
+      res.json({ success: true, message: 'Proses pengiriman notifikasi WA sedang berjalan di latar belakang.' });
+    } catch (e: any) {
+      console.error('Send WA error:', e);
+      res.status(500).json({ success: false, message: e.message });
+    }
   });
 
   app.get('/api/monitoring/matrix', async (req, res) => {
@@ -570,6 +818,16 @@ app.get('/api/admin/stats', async (req, res) => {
 
       if (scheduleError) throw scheduleError;
 
+      // 2.5 Get today's journals for all teachers
+      const todayDateStr = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' })).toISOString().split('T')[0];
+      const { data: journals, error: journalError } = await supabase
+        .from('jurnal')
+        .select('nama_guru, kelas, jam_pembelajaran')
+        .gte('timestamp', `${todayDateStr}T00:00:00Z`)
+        .lte('timestamp', `${todayDateStr}T23:59:59Z`);
+
+      if (journalError) throw journalError;
+
       // 3. Map schedules to teachers
       const matrixData = teachers.map(teacher => {
         const teacherSchedule: Record<string, any> = {};
@@ -583,15 +841,20 @@ app.get('/api/admin/stats', async (req, res) => {
         if (schedules) {
           const mySchedules = schedules.filter(s => s.guru === teacher.nama_guru);
           mySchedules.forEach(s => {
-            // s.jam is expected to be "1", "2", etc. or maybe "07:00-08:00"
-            // If it's just the hour number (1-8), we can use it directly.
-            // If it's a time range, we might need to map it.
-            // Based on previous code (JadwalModal), jam is stored as integer 1-8.
-            // Let's assume it's stored as string "1", "2" or int 1, 2.
-            
+            let isFilled = false;
+            if (journals) {
+              const myJournals = journals.filter(j => j.nama_guru === teacher.nama_guru && j.kelas === s.kelas);
+              isFilled = myJournals.some(j => {
+                if (!j.jam_pembelajaran) return true; // If no specific jam, assume filled for the class
+                const jamList = String(j.jam_pembelajaran).split(',').map(x => x.trim());
+                return jamList.includes(String(s.jam));
+              });
+            }
+
             teacherSchedule[s.jam] = {
               kelas: s.kelas,
-              mapel: s.mapel
+              mapel: s.mapel,
+              isFilled
             };
           });
         }
@@ -780,7 +1043,7 @@ app.get('/api/admin/stats', async (req, res) => {
         .lte('timestamp', `${todayDateStr}T23:59:59Z`);
 
       // Fetch all students to count per class
-      const { data: allMurid } = await supabase.from('murid').select('Kelas');
+      const { data: allMurid } = await supabase.from('murid').select('"Kelas"');
       const studentCountByClass: Record<string, number> = {};
       (allMurid || []).forEach(m => {
         const cls = String(m.Kelas).replace(/\D/g, ''); // Normalize "Kelas 1" to "1"
@@ -1104,66 +1367,238 @@ app.get('/api/admin/stats', async (req, res) => {
 
   app.get('/api/siswa/kehadiran', async (req, res) => {
     try {
-      const { nis, semester } = req.query;
+      const { nisn, month, year } = req.query;
       
-      // 1. Get student info
-      const { data: student } = await supabase.from('murid').select('"Nama Lengkap", "Kelas"').eq('NIS', nis).single();
+      // 1. Get student info using NISN or NIS
+      const { data: student } = await supabase.from('murid').select('"Nama Lengkap", "Kelas"').or(`"NISN".eq."${nisn}","NIS".eq."${nisn}"`).single();
       if (!student) return res.status(404).json({ success: false, message: 'Siswa tidak ditemukan' });
 
       const studentName = student['Nama Lengkap'];
       const studentClass = student['Kelas'];
 
       // 2. Query journals for this class
-      let query = supabase.from('jurnal').select('timestamp, ketidakhadiran, mata_pelajaran').eq('kelas', studentClass).order('timestamp', { ascending: false });
+      let query = supabase.from('jurnal').select('id, timestamp, ketidakhadiran, mata_pelajaran, jam_pembelajaran').eq('kelas', studentClass).order('timestamp', { ascending: false });
       
       const { data: journals, error } = await query;
       if (error) throw error;
 
-      // 2.5 Query presensi_qr for this student
-      const { data: qrData, error: qrError } = await supabase.from('presensi_qr').select('timestamp, jenis, detail').eq('nama', studentName).order('timestamp', { ascending: false });
-      if (qrError) throw qrError;
+      // 2.5 Query presensi_qr for this student (using name and class)
+      let qrData: any[] = [];
+      try {
+        const { data, error } = await supabase.from('presensi_qr').select('timestamp, jenis, detail').eq('nama', studentName).eq('kelas', studentClass).order('timestamp', { ascending: false });
+        if (!error) {
+          qrData = data || [];
+        }
+      } catch (e) {
+        // Ignore if table doesn't exist
+      }
+
+      // 2.6 Query presensi table for this student (using name and class)
+      const { data: presensiData, error: presensiError } = await supabase.from('presensi').select('id, timestamp, presensi, ekstra').eq('nama_murid', studentName).eq('kelas', studentClass).order('timestamp', { ascending: false });
+      if (presensiError) throw presensiError;
+
+      console.log(`Attendance for ${studentName} (${nisn}):`);
+      console.log(`Journals: ${journals?.length}`);
+      console.log(`QR Data: ${qrData?.length}`);
+      console.log(`Presensi Data: ${presensiData?.length}`);
 
       const attendanceMap: Record<string, any> = {};
+      
+      let totalJP = 0;
+      let sakitJP = 0;
+      let izinJP = 0;
+      let alphaJP = 0;
+
+      // Filter journals by month and year if provided
+      const filteredJournals = (journals || []).filter(j => {
+        const date = new Date(j.timestamp);
+        const recordMonth = date.getMonth().toString();
+        const recordYear = date.getFullYear().toString();
+        
+        if (month && month !== 'semua' && recordMonth !== month) return false;
+        if (year && year !== 'semua' && recordYear !== year) return false;
+        return true;
+      });
+
+      // Filter QR data by month and year if provided
+      const filteredQrData = (qrData || []).filter(q => {
+        const date = new Date(q.timestamp);
+        const recordMonth = date.getMonth().toString();
+        const recordYear = date.getFullYear().toString();
+        
+        if (month && month !== 'semua' && recordMonth !== month) return false;
+        if (year && year !== 'semua' && recordYear !== year) return false;
+        return true;
+      });
+
+      // Filter Presensi data by month and year if provided
+      const filteredPresensiData = (presensiData || []).filter(p => {
+        const date = new Date(p.timestamp);
+        const recordMonth = date.getMonth().toString();
+        const recordYear = date.getFullYear().toString();
+        
+        if (month && month !== 'semua' && recordMonth !== month) return false;
+        if (year && year !== 'semua' && recordYear !== year) return false;
+        return true;
+      });
+
+      const dayTotalJP: Record<string, number> = {};
+      const studentAbsentJP: Record<string, number> = {};
+      const studentDailyStatus: Record<string, Set<string>> = {};
+      const processedPresensiDates = new Set<string>();
+      const allDates = new Set<string>();
+
+      // Calculate total JP per day from journals
+      filteredJournals.forEach(j => {
+        const date = j.timestamp.split('T')[0];
+        allDates.add(date);
+        let jpCount = 1;
+        if (j.jam_pembelajaran) {
+          jpCount = String(j.jam_pembelajaran).split(',').filter(s => s.trim() !== '').length;
+          if (jpCount === 0) jpCount = 1;
+        }
+        dayTotalJP[date] = (dayTotalJP[date] || 0) + jpCount;
+        totalJP += jpCount;
+      });
 
       // Process QR presensi first
-      qrData?.forEach(q => {
+      filteredQrData.forEach(q => {
         const date = q.timestamp.split('T')[0];
+        allDates.add(date);
         if (q.jenis === 'Hadir') {
-          attendanceMap[date] = { date, status: 'Hadir', keterangan: q.detail || '-' };
+          if (!studentDailyStatus[date]) studentDailyStatus[date] = new Set();
+          studentDailyStatus[date].add('H');
         }
       });
 
-      // 3. Process journals
-      journals?.forEach(j => {
+      // Process Presensi table data
+      filteredPresensiData.forEach(p => {
+        const date = p.timestamp.split('T')[0];
+        allDates.add(date);
+        let status = p.presensi;
+        processedPresensiDates.add(date);
+        
+        let jpCount = 1;
+        if (p.ekstra) {
+          jpCount = String(p.ekstra).split(',').filter(s => s.trim() !== '').length;
+          if (jpCount === 0) jpCount = 1;
+        }
+
+        studentAbsentJP[date] = (studentAbsentJP[date] || 0) + jpCount;
+        if (!studentDailyStatus[date]) studentDailyStatus[date] = new Set();
+
+        if (status === 'Sakit' || status === 'S') { sakitJP += jpCount; studentDailyStatus[date].add('S'); }
+        else if (status === 'Izin' || status === 'I') { izinJP += jpCount; studentDailyStatus[date].add('I'); }
+        else if (status === 'Alpa' || status === 'A' || status === 'Tidak Hadir') { alphaJP += jpCount; studentDailyStatus[date].add('A'); }
+        else if (status === 'Dispensasi' || status === 'D') { studentDailyStatus[date].add('D'); }
+        else if (status === 'Hadir' || status === 'H') { 
+          studentDailyStatus[date].add('H'); 
+          studentAbsentJP[date] -= jpCount; // Hadir is not absent
+        }
+      });
+
+      // Process journals for old data (where presensi might not exist)
+      filteredJournals.forEach(j => {
         const date = j.timestamp.split('T')[0];
         
-        let status = 'Hadir';
-        let keterangan = '-';
+        let jpCount = 1;
+        if (j.jam_pembelajaran) {
+          jpCount = String(j.jam_pembelajaran).split(',').filter(s => s.trim() !== '').length;
+          if (jpCount === 0) jpCount = 1;
+        }
 
         try {
           const absents = typeof j.ketidakhadiran === 'string' ? JSON.parse(j.ketidakhadiran) : j.ketidakhadiran;
           if (Array.isArray(absents)) {
+            let alreadyCounted = false;
             absents.forEach((record: any) => {
-              if (record.students && record.students.includes(studentName)) {
-                status = record.type;
-                keterangan = '-';
+              if (!alreadyCounted && record.students && record.students.includes(studentName) && !processedPresensiDates.has(date)) {
+                if (!studentDailyStatus[date]) studentDailyStatus[date] = new Set();
+                studentAbsentJP[date] = (studentAbsentJP[date] || 0) + jpCount;
+
+                let status = record.type || 'Alpa'; // Default to Alpa if type is missing
+                if (status === 'Sakit') { sakitJP += jpCount; studentDailyStatus[date].add('S'); }
+                else if (status === 'Izin') { izinJP += jpCount; studentDailyStatus[date].add('I'); }
+                else if (status === 'Alpa' || status === 'Tidak Hadir' || status === 'A') { alphaJP += jpCount; studentDailyStatus[date].add('A'); }
+                else if (status === 'Dispensasi') { studentDailyStatus[date].add('D'); }
+                alreadyCounted = true;
               }
             });
           }
         } catch (e) {}
+      });
 
-        if (!attendanceMap[date]) {
-          attendanceMap[date] = { date, status, keterangan };
-        } else {
-           if (attendanceMap[date].status === 'Hadir' && status !== 'Hadir') {
-             attendanceMap[date] = { date, status, keterangan };
-           }
+      // Build attendanceMap based on priority
+      Array.from(allDates).forEach(date => {
+        const statuses = studentDailyStatus[date] || new Set();
+        const absentJP = studentAbsentJP[date] || 0;
+        const totalDay = dayTotalJP[date] || 0;
+
+        if (totalDay > 0 && absentJP < totalDay) {
+          statuses.add('H');
+        } else if (totalDay === 0 && statuses.size === 0) {
+           // If no journal and no specific status, but date exists (e.g. from QR), assume Hadir
+           statuses.add('H');
         }
+
+        let finalStatus = 'Hadir';
+        if (statuses.has('S')) finalStatus = 'Sakit';
+        else if (statuses.has('I')) finalStatus = 'Izin';
+        else if (statuses.has('D')) finalStatus = 'Dispensasi';
+        else if (statuses.has('A') && !statuses.has('H')) finalStatus = 'Alpa';
+
+        attendanceMap[date] = { date, status: finalStatus, keterangan: '-' };
       });
 
       const attendanceList = Object.values(attendanceMap).sort((a: any, b: any) => b.date.localeCompare(a.date));
+      
+      let dispensasiJP = 0;
+      Object.keys(studentDailyStatus).forEach(date => {
+        if (studentDailyStatus[date].has('D')) {
+          dispensasiJP += studentAbsentJP[date] || 0;
+        }
+      });
 
-      res.json({ success: true, data: attendanceList });
+      const totalAbsenJP = sakitJP + izinJP + alphaJP + dispensasiJP;
+      let hadirPercent = 100;
+      if (totalJP > 0) {
+        hadirPercent = Math.min(100, Math.max(0, Math.round(((totalJP - totalAbsenJP) / totalJP) * 100)));
+      } else if (attendanceList.length > 0) {
+        // Fallback to days if no JP data
+        let totalAbsenHari = 0;
+        attendanceList.forEach((record: any) => {
+          if (record.status === 'Sakit' || record.status === 'Izin' || record.status === 'Alpa' || record.status === 'Tidak Hadir' || record.status === 'Dispensasi') {
+            totalAbsenHari++;
+          }
+        });
+        hadirPercent = Math.min(100, Math.max(0, Math.round(((attendanceList.length - totalAbsenHari) / attendanceList.length) * 100)));
+      }
+
+      // Calculate absence in days
+      let sakitHari = 0;
+      let izinHari = 0;
+      let alphaHari = 0;
+      let dispensasiHari = 0;
+      
+      attendanceList.forEach((record: any) => {
+        if (record.status === 'Sakit') sakitHari++;
+        else if (record.status === 'Izin') izinHari++;
+        else if (record.status === 'Alpa' || record.status === 'Tidak Hadir') alphaHari++;
+        else if (record.status === 'Dispensasi') dispensasiHari++;
+      });
+
+      res.json({ 
+        success: true, 
+        data: attendanceList,
+        summary: {
+          hadirPercent,
+          totalJP,
+          sakit: sakitHari,
+          izin: izinHari,
+          alpha: alphaHari,
+          dispensasi: dispensasiHari
+        }
+      });
 
     } catch (e: any) {
       res.status(500).json({ success: false, message: e.message });
@@ -1190,9 +1625,22 @@ app.get('/api/admin/stats', async (req, res) => {
 
       // If studentId is provided, fetch submission status
       if (studentId && tugasList) {
+        // Filter tasks by target_students if it exists
+        const filteredTugasList = tugasList.filter(t => {
+          if (t.target_students) {
+            try {
+              const targets = typeof t.target_students === 'string' ? JSON.parse(t.target_students) : t.target_students;
+              if (Array.isArray(targets) && targets.length > 0) {
+                return targets.includes(studentId);
+              }
+            } catch (e) {}
+          }
+          return true; // If no target_students, it's for everyone in the class
+        });
+
         const { data: submissions } = await supabase.from('pengumpulan_tugas').select('*').eq('student_id', studentId);
         
-        const tugasWithStatus = tugasList.map(t => {
+        const tugasWithStatus = filteredTugasList.map(t => {
           const sub = submissions?.find(s => s.tugas_id === t.id);
           return {
             ...t,
@@ -1214,12 +1662,68 @@ app.get('/api/admin/stats', async (req, res) => {
 
   app.post('/api/tugas', async (req, res) => {
     try {
-      const { teacher_id, kelas, mapel, judul, deskripsi, deadline } = req.body;
+      const { guru_id, guru_nama, kelas, mapel, judul, deskripsi, deadline, target_students } = req.body;
       const { error } = await supabase.from('tugas').insert({
-        teacher_id, kelas, mapel, judul, deskripsi, deadline, created_at: new Date()
+        teacher_id: guru_id, 
+        guru_nama,
+        kelas, 
+        mapel, 
+        judul, 
+        deskripsi, 
+        deadline, 
+        target_students: target_students && target_students.length > 0 ? JSON.stringify(target_students) : null,
+        created_at: new Date()
       });
       if (error) throw error;
       res.json({ success: true, message: 'Tugas berhasil dibuat' });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
+  app.get('/api/tugas/:id/submissions', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { data: tugas } = await supabase.from('tugas').select('*').eq('id', id).single();
+      if (!tugas) throw new Error('Tugas tidak ditemukan');
+
+      const { data: submissions, error } = await supabase.from('pengumpulan_tugas').select('*').eq('tugas_id', id);
+      if (error) throw error;
+
+      // Fetch student names
+      let studentsQuery = supabase.from('murid').select('"NISN", "Nama Lengkap", "Kelas"');
+      if (tugas.kelas) {
+        // Filter by class
+        studentsQuery = studentsQuery.or(`"Kelas".eq.${tugas.kelas},"Kelas".eq.${tugas.kelas.replace('Kelas ', '')}`);
+      }
+      const { data: students } = await studentsQuery;
+
+      let targetStudents = students || [];
+      if (tugas.target_students) {
+        try {
+          const targets = typeof tugas.target_students === 'string' ? JSON.parse(tugas.target_students) : tugas.target_students;
+          if (Array.isArray(targets) && targets.length > 0) {
+            targetStudents = targetStudents.filter(s => targets.includes(s.NISN));
+          }
+        } catch (e) {}
+      }
+      
+      const submissionsWithNames = targetStudents.map(student => {
+        const sub = submissions?.find(s => s.student_id === student.NISN);
+        return {
+          id: sub ? sub.id : `mock-${student.NISN}`,
+          tugas_id: id,
+          student_id: student.NISN,
+          siswa_nama: student['Nama Lengkap'],
+          status: sub ? sub.status : 'Belum',
+          validation_status: sub ? sub.validation_status : 'Pending',
+          tanggal_kumpul: sub && sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString('id-ID') : '-',
+          content: sub ? sub.content : null,
+          is_mock: !sub
+        };
+      });
+
+      res.json({ success: true, data: submissionsWithNames });
     } catch (e: any) {
       res.status(500).json({ success: false, message: e.message });
     }
@@ -1253,15 +1757,39 @@ app.get('/api/admin/stats', async (req, res) => {
 
   app.put('/api/tugas/validate', async (req, res) => {
     try {
-      const { submission_id, validation_status } = req.body; // 'Valid' or 'Invalid'
-      const status = validation_status === 'Valid' ? 'Selesai' : 'Belum Selesai';
+      const { submission_id, validation_status, status, tugas_id, student_id } = req.body; 
       
-      const { error } = await supabase.from('pengumpulan_tugas').update({
-        validation_status,
-        status
-      }).eq('id', submission_id);
+      // Support both old validation_status and new status
+      let finalStatus = status;
+      let finalValidation = validation_status;
       
-      if (error) throw error;
+      if (status) {
+        finalStatus = status;
+        finalValidation = status === 'Selesai' ? 'Valid' : 'Invalid';
+      } else if (validation_status) {
+        finalStatus = validation_status === 'Valid' ? 'Selesai' : 'Belum Selesai';
+        finalValidation = validation_status;
+      }
+
+      if (typeof submission_id === 'string' && submission_id.startsWith('mock-')) {
+        // Insert new record
+        const { error } = await supabase.from('pengumpulan_tugas').insert({
+          tugas_id,
+          student_id,
+          status: finalStatus,
+          validation_status: finalValidation,
+          submitted_at: new Date(),
+          content: 'Dinilai oleh guru'
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('pengumpulan_tugas').update({
+          validation_status: finalValidation,
+          status: finalStatus
+        }).eq('id', submission_id);
+        if (error) throw error;
+      }
+      
       res.json({ success: true, message: 'Tugas divalidasi' });
     } catch (e: any) {
       res.status(500).json({ success: false, message: e.message });
@@ -1283,25 +1811,40 @@ app.get('/api/admin/stats', async (req, res) => {
 
   app.get('/api/kasih-ibu', async (req, res) => {
     try {
-      const { kelas, nis } = req.query;
+      const { kelas, nis, nama } = req.query;
       let query = supabase.from('kasih_ibu').select('*').order('timestamp', { ascending: false });
       
       if (kelas) query = query.eq('kelas', kelas);
-      if (nis) query = query.eq('nisn', nis);
+      
+      if (nis && nis !== '' && nama && nama !== '') {
+        query = query.or(`nisn.eq.${nis},nama_murid.eq.${nama}`);
+      } else if (nis && nis !== '') {
+        query = query.eq('nisn', nis);
+      } else if (nama && nama !== '') {
+        query = query.eq('nama_murid', nama);
+      }
       
       const { data, error } = await query;
       if (error) throw error;
       
-      const formatted = data?.map(d => ({
-        id: d.id,
-        nama: d.nama_murid,
-        kelas: d.kelas,
-        habit_label: d.jenis_kebiasaan,
-        tanggal: d.tanggal_kegiatan ? `${d.tanggal_kegiatan} ${d.waktu_kegiatan || ''}`.trim() : d.timestamp,
-        keterangan: d.keterangan,
-        status: d.validasi_walikelas || 'Belum',
-        perasaan: d.perasaan
-      }));
+      const formatted = data?.map(d => {
+        let dateStr = d.timestamp;
+        if (d.tanggal_kegiatan) {
+          // waktu_kegiatan might be HH:mm:ss or HH:mm
+          const waktu = d.waktu_kegiatan || '00:00:00';
+          dateStr = `${d.tanggal_kegiatan}T${waktu}`;
+        }
+        return {
+          id: d.id,
+          nama: d.nama_murid,
+          kelas: d.kelas,
+          habit_label: d.jenis_kebiasaan,
+          tanggal: dateStr,
+          keterangan: d.keterangan,
+          status: d.validasi_walikelas || 'Belum',
+          perasaan: d.perasaan
+        };
+      });
 
       res.json({ success: true, data: formatted });
     } catch (e: any) {
@@ -1367,8 +1910,6 @@ app.get('/api/admin/stats', async (req, res) => {
   });
 
   // --- API SETTINGS ---
-  import fs from 'fs';
-  import path from 'path';
   const API_KEYS_FILE = path.join(process.cwd(), 'api_keys.json');
 
   app.get('/api/api-settings', (req, res) => {
@@ -1745,12 +2286,16 @@ app.get('/api/admin/stats', async (req, res) => {
       });
       app.use(vite.middlewares);
     })();
-  }
-
-  if (process.env.NODE_ENV !== 'production') {
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on http://localhost:${PORT}`);
+  } else {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
     });
   }
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
 
 export default app;

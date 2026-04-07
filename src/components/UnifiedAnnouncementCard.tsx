@@ -20,7 +20,7 @@ export default function UnifiedAnnouncementCard({ type = 'public', guruName }: U
       setLoading(true);
       try {
         // Fetch Announcements
-        const annRes = await fetch('/api/pengumuman');
+        const annRes = await fetch(`/api/pengumuman?role=${type}`);
         const annData = await annRes.json();
         
         if (annData.success && annData.data) {
@@ -225,7 +225,7 @@ export default function UnifiedAnnouncementCard({ type = 'public', guruName }: U
                           {item.isi}
                         </p>
                         <div className="flex items-center gap-2 text-xs opacity-70">
-                          <span className={style.text}>Diposting: {new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                          <span className={style.text}>Diposting: {new Date(item.tanggal_terbit || item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
                         </div>
                       </div>
                     );

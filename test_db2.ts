@@ -6,14 +6,7 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function run() {
-  const { data: student } = await supabase.from('murid').select('*').eq('"Nama Lengkap"', 'ABDUL AZIS').single();
-
-  if (student) {
-    const { data: journals } = await supabase.from('jurnal').select('id, timestamp, ketidakhadiran').eq('kelas', student['Kelas']);
-    console.log('Journals:');
-    journals?.forEach(j => {
-      console.log(j.timestamp, j.ketidakhadiran);
-    });
-  }
+  const { data: guru } = await supabase.from('guru').select('*').limit(1);
+  console.log('Guru:', guru);
 }
 run();

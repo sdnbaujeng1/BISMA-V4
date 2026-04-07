@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import TabunganSampahAdmin from './TabunganSampahAdmin';
 import KalenderAkademik from './KalenderAkademik';
+import GeofencingAdmin from './GeofencingAdmin';
 import { 
   Palette,
   Recycle,
@@ -30,7 +31,8 @@ import {
   UserPlus,
   Download,
   Key,
-  ArrowRightLeft
+  ArrowRightLeft,
+  MapPin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -51,6 +53,35 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
     totalJP: number;
   } | null>(null);
   const [latestAnnouncement, setLatestAnnouncement] = useState<any>(null);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
+    const handleActivity = () => {
+      setIsSidebarVisible(true);
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        if (window.innerWidth < 1024) { // Only hide on mobile/tablet
+          setIsSidebarVisible(false);
+        }
+      }, 20000);
+    };
+
+    // Initial setup
+    handleActivity();
+
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('touchstart', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('touchstart', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+    };
+  }, []);
 
   const fetchStats = async () => {
     try {
@@ -87,6 +118,7 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
     { id: 'input_guru', icon: UserPlus, label: 'Input Guru Baru' },
     { id: 'tabungan_sampah', icon: Trash2, label: 'Tabungan Sampah' },
     { id: 'kalender_akademik', icon: Calendar, label: 'Kalender Akademik' },
+    { id: 'geofencing', icon: MapPin, label: 'Geofencing' },
     { id: 'color_config', icon: Palette, label: 'Konfigurasi Warna' },
     { id: 'api_config', icon: Key, label: 'Konfigurasi API' },
   ];
@@ -109,6 +141,15 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
       color: 'bg-indigo-600', 
       shadow: 'shadow-indigo-200 dark:shadow-indigo-900/20',
       action: () => setActiveView('kalender_akademik')
+    },
+    { 
+      id: 'geofencing_card', 
+      title: 'Geofencing', 
+      subtitle: 'LOKASI', 
+      icon: MapPin, 
+      color: 'bg-blue-600', 
+      shadow: 'shadow-blue-200 dark:shadow-blue-900/20',
+      action: () => setActiveView('geofencing')
     },
     { 
       id: 'import_master', 
@@ -291,6 +332,8 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
         return <TabunganSampahAdmin showToast={showToast} />;
       case 'kalender_akademik':
         return <KalenderAkademik onBack={() => setActiveView('dashboard')} />;
+      case 'geofencing':
+        return <GeofencingAdmin showToast={showToast} />;
       case 'color_config':
         return <ColorConfigView showToast={showToast} />;
       case 'api_config':
@@ -342,15 +385,34 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
         )}
       </AnimatePresence>
 
+      {/* Sidebar Toggle Button for Mobile */}
+      <AnimatePresence>
+        {!isSidebarVisible && (
+          <motion.button
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            onClick={() => setIsSidebarVisible(true)}
+            className="fixed top-1/2 left-0 -translate-y-1/2 z-50 bg-blue-600 text-white p-2 rounded-r-xl shadow-lg lg:hidden"
+          >
+            <ArrowRightLeft className="w-5 h-5" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
-      <aside className="w-20 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col items-center py-6 z-20 shadow-sm">
+      <aside 
+        className={`w-20 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col items-center py-6 z-40 shadow-sm transition-transform duration-300 fixed lg:relative h-full ${
+          isSidebarVisible ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+      >
         <div className="mb-8">
           <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200 dark:shadow-none">
             <LayoutDashboard className="w-6 h-6" />
           </div>
         </div>
 
-        <nav className="flex-1 flex flex-col gap-4 w-full px-2">
+        <nav className="flex-1 overflow-y-auto w-full px-2 scrollbar-hide flex flex-col gap-4">
           {menuItems.map((item) => (
             <button
               key={item.id}
@@ -467,11 +529,34 @@ function MonitoringKBMView() {
             {time.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
-        <div className="bg-white dark:bg-slate-800 px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-          <span className="font-mono font-bold text-xl text-slate-700 dark:text-slate-300 tracking-widest">
-            {time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':')}
-          </span>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={async () => {
+              if (confirm('Kirim notifikasi WhatsApp ke guru yang belum mengisi jurnal?')) {
+                try {
+                  const res = await fetch('/api/admin/send-wa-reminder', { method: 'POST' });
+                  const data = await res.json();
+                  if (data.success) {
+                    alert(data.message || 'Proses pengiriman notifikasi WA sedang berjalan di latar belakang.');
+                  } else {
+                    alert(`Gagal: ${data.message}`);
+                  }
+                } catch (e) {
+                  alert('Terjadi kesalahan saat mengirim pesan.');
+                }
+              }
+            }}
+            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+            Kirim Notifikasi WA
+          </button>
+          <div className="bg-white dark:bg-slate-800 px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-3">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="font-mono font-bold text-xl text-slate-700 dark:text-slate-300 tracking-widest">
+              {time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':')}
+            </span>
+          </div>
         </div>
       </header>
 
@@ -516,12 +601,15 @@ function MonitoringKBMView() {
                       return (
                         <td key={jam} className="px-2 py-3 text-center align-middle">
                           {schedule ? (
-                            <div className="flex flex-col items-center justify-center gap-1 p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 group-hover:bg-white dark:group-hover:bg-slate-800 group-hover:shadow-sm transition-all">
-                              <span className="font-black text-blue-600 dark:text-blue-400 text-sm">
+                            <div className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg border group-hover:shadow-sm transition-all ${schedule.isFilled ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/30 group-hover:bg-green-100 dark:group-hover:bg-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/30 group-hover:bg-red-100 dark:group-hover:bg-red-800'}`}>
+                              <span className={`font-black text-sm ${schedule.isFilled ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {schedule.kelas}
                               </span>
                               <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-tight line-clamp-1 max-w-[100px]" title={schedule.mapel}>
                                 {schedule.mapel}
+                              </span>
+                              <span className="text-[10px]">
+                                {schedule.isFilled ? '✅' : '❌'}
                               </span>
                             </div>
                           ) : (
@@ -2287,10 +2375,14 @@ function ApiConfigView({ showToast }: { showToast: (msg: string, type?: 'success
 function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToast: (msg: string, type?: 'success' | 'error') => void }) {
   const [appName, setAppName] = useState("BISMA");
   const [landingDesc, setLandingDesc] = useState("");
+  
+  const [showForm, setShowForm] = useState(false);
   const [announcementTitle, setAnnouncementTitle] = useState("");
-  const [announcementDate, setAnnouncementDate] = useState("");
   const [announcementContent, setAnnouncementContent] = useState("");
-  const [announcementType, setAnnouncementType] = useState("info"); // 'info', 'important'
+  const [targetRoles, setTargetRoles] = useState<string[]>(['Publik']);
+  const [tanggalTerbit, setTanggalTerbit] = useState(new Date().toISOString().split('T')[0]);
+  const [tanggalKedaluwarsa, setTanggalKedaluwarsa] = useState("");
+  
   const [announcements, setAnnouncements] = useState<any[]>([]);
 
   const fetchAnnouncements = async () => {
@@ -2299,14 +2391,6 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
       const result = await res.json();
       if (result.success && result.data) {
         setAnnouncements(result.data);
-        // If we have data, populate form with the latest one (first one)
-        if (result.data.length > 0) {
-          const latest = result.data[0];
-          setAnnouncementTitle(latest.judul || "");
-          setAnnouncementDate(latest.tanggal || "");
-          setAnnouncementContent(latest.isi || "");
-          setAnnouncementType(latest.type || "info");
-        }
       }
     } catch (e) {
       console.error("Failed to fetch announcements", e);
@@ -2326,14 +2410,20 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
 
   const handleNewAnnouncement = () => {
     setAnnouncementTitle("");
-    setAnnouncementDate(new Date().toISOString().split('T')[0]);
     setAnnouncementContent("");
-    setAnnouncementType("info");
-    showToast("Form dikosongkan untuk pengumuman baru", "success");
+    setTargetRoles(['Publik']);
+    setTanggalTerbit(new Date().toISOString().split('T')[0]);
+    setTanggalKedaluwarsa("");
+    setShowForm(true);
   };
 
-  const handleSave = async () => {
-    // Save App Settings locally
+  const handleRoleToggle = (role: string) => {
+    setTargetRoles(prev => 
+      prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]
+    );
+  };
+
+  const handleSaveApp = () => {
     const stored = localStorage.getItem('public_dashboard_data');
     let data = stored ? JSON.parse(stored) : { kelas1: 0, kelas2: 0, kelas3: 0, kelas4: 0, kelas5: 0, kelas6: 0 };
     
@@ -2341,24 +2431,33 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
     data.landingDesc = landingDesc;
 
     localStorage.setItem('public_dashboard_data', JSON.stringify(data));
+    showToast("Pengaturan aplikasi disimpan", "success");
+    window.dispatchEvent(new Event('public-data-update'));
+  };
 
-    // Save Announcement to Server
+  const handleSaveAnnouncement = async () => {
+    if (!announcementTitle || !announcementContent) {
+      showToast("Judul dan konten harus diisi", "error");
+      return;
+    }
+
     try {
       const res = await fetch('/api/pengumuman', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           judul: announcementTitle,
-          tanggal: announcementDate,
           isi: announcementContent,
-          type: announcementType
+          target_roles: targetRoles,
+          tanggal_terbit: tanggalTerbit || null,
+          tanggal_kedaluwarsa: tanggalKedaluwarsa || null
         })
       });
       
       const result = await res.json();
       if (result.success) {
         showToast("Pengumuman berhasil dipublikasikan!", "success");
-        window.dispatchEvent(new Event('public-data-update')); // Dispatch here
+        setShowForm(false);
         fetchAnnouncements(); // Refresh list
       } else {
         showToast("Gagal mempublikasikan pengumuman: " + result.message, "error");
@@ -2368,141 +2467,186 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
     }
   };
 
+  const handleDelete = async (id: number) => {
+    if (!confirm('Hapus pengumuman ini?')) return;
+    try {
+      const res = await fetch(`/api/pengumuman/${id}`, { method: 'DELETE' });
+      const result = await res.json();
+      if (result.success) {
+        showToast("Pengumuman dihapus", "success");
+        fetchAnnouncements();
+      }
+    } catch (error) {
+      showToast("Terjadi kesalahan", "error");
+    }
+  };
+
   return (
     <>
       <ModalHeader title="Landing Page & Pengumuman" onClose={onClose} />
-      <div className="p-8 overflow-y-auto bg-white dark:bg-slate-900">
-        <div className="max-w-3xl mx-auto space-y-8">
+      <div className="p-8 overflow-y-auto bg-slate-50 dark:bg-slate-900/50">
+        <div className="max-w-4xl mx-auto space-y-8">
           
-          <div className="space-y-6">
-            <div>
-              <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-2">Nama Aplikasi</label>
-              <input 
-                type="text" 
-                value={appName}
-                onChange={(e) => setAppName(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 font-bold text-slate-700 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
-                placeholder="BISMA"
-              />
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-6">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Pengaturan Aplikasi</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Nama Aplikasi</label>
+                <input 
+                  type="text" 
+                  value={appName}
+                  onChange={(e) => setAppName(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="BISMA"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Deskripsi Landing Page</label>
+                <textarea 
+                  value={landingDesc}
+                  onChange={(e) => setLandingDesc(e.target.value)}
+                  className="w-full h-24 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                  placeholder="Deskripsi singkat aplikasi..."
+                ></textarea>
+              </div>
             </div>
-            
-            <div>
-              <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-2">Deskripsi Landing Page</label>
-              <textarea 
-                value={landingDesc}
-                onChange={(e) => setLandingDesc(e.target.value)}
-                className="w-full h-24 bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-slate-700 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none resize-none"
-                placeholder="Deskripsi singkat aplikasi..."
-              ></textarea>
+            <div className="flex justify-end">
+              <button onClick={handleSaveApp} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold transition-colors">
+                Simpan Pengaturan
+              </button>
             </div>
           </div>
 
           {/* Announcement Widget Section */}
-          <div className="bg-purple-50/50 dark:bg-purple-900/10 p-6 rounded-2xl border border-purple-100 dark:border-purple-800/30">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                <h3 className="text-sm font-bold text-purple-600 dark:text-purple-400 uppercase">Widget Pengumuman</h3>
-              </div>
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white">Daftar Pengumuman</h3>
+              <button 
+                onClick={handleNewAnnouncement}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors"
+              >
+                <Plus className="w-4 h-4" /> Tambah Pengumuman
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <input 
-                  type="text" 
-                  value={announcementTitle}
-                  onChange={(e) => setAnnouncementTitle(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-slate-700 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none shadow-sm"
-                  placeholder="Judul"
-                />
-              </div>
-              <div>
-                <input 
-                  type="date" 
-                  value={announcementDate}
-                  onChange={(e) => setAnnouncementDate(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-slate-700 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none shadow-sm"
-                />
-              </div>
-            </div>
-
-            <div className="mb-4">
-               <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-2">Tipe Pengumuman</label>
-               <div className="flex gap-4">
-                 <label className="flex items-center gap-2 cursor-pointer">
-                   <input 
-                     type="radio" 
-                     name="announcementType" 
-                     value="info" 
-                     checked={announcementType === 'info'} 
-                     onChange={(e) => setAnnouncementType(e.target.value)}
-                     className="w-4 h-4 text-blue-500"
-                   />
-                   <span className="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">Info (Biru)</span>
-                 </label>
-                 <label className="flex items-center gap-2 cursor-pointer">
-                   <input 
-                     type="radio" 
-                     name="announcementType" 
-                     value="important" 
-                     checked={announcementType === 'important'} 
-                     onChange={(e) => setAnnouncementType(e.target.value)}
-                     className="w-4 h-4 text-orange-500"
-                   />
-                   <span className="text-sm font-medium text-orange-600 bg-orange-50 px-2 py-1 rounded">Penting (Oranye)</span>
-                 </label>
-               </div>
-            </div>
-
-            <div>
-              <textarea 
-                value={announcementContent}
-                onChange={(e) => setAnnouncementContent(e.target.value)}
-                className="w-full h-24 bg-white dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-slate-700 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none resize-none shadow-sm"
-                placeholder="Isi pengumuman..."
-              ></textarea>
-            </div>
-          </div>
-
-          <div className="pt-4 flex flex-col gap-3">
-            <button 
-              onClick={handleNewAnnouncement}
-              className="w-full flex justify-center items-center gap-2 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 py-4 rounded-xl font-bold text-sm uppercase hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
-            >
-              <Plus className="w-4 h-4" /> Tambah Baru
-            </button>
-            <button 
-              onClick={handleSave} 
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-bold text-sm uppercase transition-colors flex justify-center items-center gap-2"
-            >
-              <Save className="w-4 h-4" /> Simpan & Publikasikan
-            </button>
-          </div>
-
-          {/* List of Previous Announcements */}
-          {announcements.length > 0 && (
-            <div className="mt-8">
-              <h4 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-4">Riwayat Pengumuman</h4>
-              <div className="space-y-3">
-                {announcements.map((ann, idx) => (
-                  <div key={idx} className={`p-4 rounded-xl border flex justify-between items-center ${
-                    ann.type === 'important' 
-                      ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800/30' 
-                      : 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800/30'
-                  }`}>
-                    <div>
-                      <h5 className={`font-bold ${ann.type === 'important' ? 'text-orange-700 dark:text-orange-300' : 'text-blue-700 dark:text-blue-300'}`}>{ann.judul}</h5>
-                      <p className="text-xs text-slate-500">{new Date(ann.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                    </div>
-                    <div className="text-xs text-slate-400 max-w-[200px] truncate hidden md:block">
-                      {ann.isi}
+            {showForm && (
+              <div className="mb-8 bg-slate-50 dark:bg-slate-700/50 p-6 rounded-xl border border-slate-200 dark:border-slate-600">
+                <h4 className="font-bold text-slate-800 dark:text-white mb-4">Form Detail Pengumuman</h4>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Judul Pengumuman</label>
+                    <input 
+                      type="text" 
+                      value={announcementTitle}
+                      onChange={(e) => setAnnouncementTitle(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 text-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Konten Pengumuman</label>
+                    <textarea 
+                      value={announcementContent}
+                      onChange={(e) => setAnnouncementContent(e.target.value)}
+                      className="w-full h-32 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 text-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                    ></textarea>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Peran Target</label>
+                    <div className="flex flex-wrap gap-4">
+                      {['Publik', 'Siswa', 'Guru', 'Staff'].map(role => (
+                        <label key={role} className="flex items-center gap-2 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={targetRoles.includes(role)}
+                            onChange={() => handleRoleToggle(role)}
+                            className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-slate-700 dark:text-slate-300">{role}</span>
+                        </label>
+                      ))}
                     </div>
                   </div>
-                ))}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Tanggal Terbit</label>
+                      <input 
+                        type="date" 
+                        value={tanggalTerbit}
+                        onChange={(e) => setTanggalTerbit(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 text-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Tanggal Kedaluwarsa</label>
+                      <input 
+                        type="date" 
+                        value={tanggalKedaluwarsa}
+                        onChange={(e) => setTanggalKedaluwarsa(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 text-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button 
+                      onClick={() => setShowForm(false)}
+                      className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-bold hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                    >
+                      Batal
+                    </button>
+                    <button 
+                      onClick={handleSaveAnnouncement}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors"
+                    >
+                      Simpan
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-700">
+                    <th className="p-3 text-sm font-bold text-slate-600 dark:text-slate-400">Judul</th>
+                    <th className="p-3 text-sm font-bold text-slate-600 dark:text-slate-400">Terbit</th>
+                    <th className="p-3 text-sm font-bold text-slate-600 dark:text-slate-400">Target Peran</th>
+                    <th className="p-3 text-sm font-bold text-slate-600 dark:text-slate-400 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {announcements.map((ann, idx) => (
+                    <tr key={idx} className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                      <td className="p-3 text-sm font-medium text-slate-800 dark:text-slate-200">{ann.judul}</td>
+                      <td className="p-3 text-sm text-slate-600 dark:text-slate-400">
+                        {ann.tanggal_terbit ? new Date(ann.tanggal_terbit).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                      </td>
+                      <td className="p-3 text-sm text-slate-600 dark:text-slate-400">
+                        {Array.isArray(ann.target_roles) ? ann.target_roles.join(', ') : 'Publik'}
+                      </td>
+                      <td className="p-3 text-right">
+                        <button 
+                          onClick={() => handleDelete(ann.id)}
+                          className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          title="Hapus"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {announcements.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="p-6 text-center text-slate-500 dark:text-slate-400">
+                        Belum ada pengumuman
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
         </div>
       </div>
     </>

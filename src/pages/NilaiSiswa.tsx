@@ -5,6 +5,7 @@ export default function NilaiSiswa({ user, onBack }: { user: any, onBack: () => 
   const [nilaiData, setNilaiData] = useState<any>({});
   const [jumlahUlangan, setJumlahUlangan] = useState(3);
   const [loading, setLoading] = useState(true);
+  const [semester, setSemester] = useState('1');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -42,17 +43,51 @@ export default function NilaiSiswa({ user, onBack }: { user: any, onBack: () => 
     fetchData();
   }, [user]);
 
-  const mapelList = Object.keys(nilaiData).length > 0 ? Object.keys(nilaiData) : ['Matematika', 'Bahasa Indonesia', 'IPAS', 'Pendidikan Pancasila', 'Seni Budaya', 'PJOK', 'Pendidikan Agama'];
+  const defaultOrder = [
+    'Pendidikan Agama dan Budi Pekerti',
+    'Pendidikan Pancasila',
+    'Bahasa Indonesia',
+    'Matematika',
+    'IPAS',
+    'Seni dan budaya',
+    'PJOK',
+    'Bahasa Jawa',
+    'Bahasa Inggris',
+    'BTQ'
+  ];
+
+  const mapelList = Object.keys(nilaiData).length > 0 
+    ? Object.keys(nilaiData).sort((a, b) => {
+        const indexA = defaultOrder.indexOf(a);
+        const indexB = defaultOrder.indexOf(b);
+        if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
+      })
+    : defaultOrder;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <div className="flex items-center gap-4 mb-6">
-        <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-600 dark:text-slate-300">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-4">
+          <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-600 dark:text-slate-300">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Nilai Akademik</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Rekapitulasi nilai ulangan dan ujian</p>
+          </div>
+        </div>
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Nilai Akademik</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Rekapitulasi nilai ulangan dan ujian</p>
+          <select
+            value={semester}
+            onChange={(e) => setSemester(e.target.value)}
+            className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="1">Semester 1</option>
+            <option value="2">Semester 2</option>
+          </select>
         </div>
       </div>
 
@@ -63,33 +98,31 @@ export default function NilaiSiswa({ user, onBack }: { user: any, onBack: () => 
               <tr>
                 <th rowSpan={2} className="px-4 py-3 border-r border-slate-200 dark:border-slate-700 text-center w-12">No</th>
                 <th rowSpan={2} className="px-4 py-3 border-r border-slate-200 dark:border-slate-700 min-w-[200px]">Mata Pelajaran</th>
-                <th colSpan={jumlahUlangan} className="px-4 py-2 border-r border-slate-200 dark:border-slate-700 text-center border-b">Nilai Harian (Smt 1)</th>
+                <th colSpan={jumlahUlangan} className="px-4 py-2 border-r border-slate-200 dark:border-slate-700 text-center border-b">Nilai Harian</th>
                 <th rowSpan={2} className="px-4 py-3 border-r border-slate-200 dark:border-slate-700 text-center bg-fuchsia-50 dark:bg-fuchsia-900/20 w-20">STS</th>
-                <th colSpan={jumlahUlangan} className="px-4 py-2 border-r border-slate-200 dark:border-slate-700 text-center border-b">Nilai Harian (Smt 2)</th>
                 <th rowSpan={2} className="px-4 py-3 border-r border-slate-200 dark:border-slate-700 text-center bg-fuchsia-50 dark:bg-fuchsia-900/20 w-20">ASAS</th>
                 <th rowSpan={2} className="px-4 py-3 text-center bg-slate-100 dark:bg-slate-800 w-24 font-bold">Nilai Akhir</th>
               </tr>
               <tr>
                 {Array.from({ length: jumlahUlangan }).map((_, i) => (
-                  <th key={`h1-${i}`} className="px-2 py-2 border-r border-slate-200 dark:border-slate-700 text-center w-16">{i + 1}</th>
-                ))}
-                {Array.from({ length: jumlahUlangan }).map((_, i) => (
-                  <th key={`h2-${i}`} className="px-2 py-2 border-r border-slate-200 dark:border-slate-700 text-center w-16">{i + 1 + jumlahUlangan}</th>
+                  <th key={`h-${i}`} className="px-2 py-2 border-r border-slate-200 dark:border-slate-700 text-center w-16">{i + 1}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5 + (jumlahUlangan * 2)} className="px-4 py-8 text-center text-slate-500">Memuat data nilai...</td>
+                  <td colSpan={5 + jumlahUlangan} className="px-4 py-8 text-center text-slate-500">Memuat data nilai...</td>
                 </tr>
               ) : mapelList.length === 0 ? (
                 <tr>
-                  <td colSpan={5 + (jumlahUlangan * 2)} className="px-4 py-8 text-center text-slate-500">Belum ada data nilai.</td>
+                  <td colSpan={5 + jumlahUlangan} className="px-4 py-8 text-center text-slate-500">Belum ada data nilai.</td>
                 </tr>
               ) : (
                 mapelList.map((mapel, idx) => {
                   const data = nilaiData[mapel] || {};
+                  const harian = semester === '1' ? (data.harian1 || []) : (data.harian2 || []);
+                  
                   return (
                     <tr key={mapel} className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                       <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-700/50 text-center">{idx + 1}</td>
@@ -99,20 +132,14 @@ export default function NilaiSiswa({ user, onBack }: { user: any, onBack: () => 
                       </td>
                       
                       {Array.from({ length: jumlahUlangan }).map((_, i) => (
-                        <td key={`val-h1-${i}`} className="px-2 py-3 border-r border-slate-100 dark:border-slate-700/50 text-center text-slate-600 dark:text-slate-300">
-                          {data.harian1?.[i] !== undefined && data.harian1?.[i] !== '' ? data.harian1[i] : '-'}
+                        <td key={`val-h-${i}`} className="px-2 py-3 border-r border-slate-100 dark:border-slate-700/50 text-center text-slate-600 dark:text-slate-300">
+                          {harian[i] !== undefined && harian[i] !== '' ? harian[i] : '-'}
                         </td>
                       ))}
                       
                       <td className="px-2 py-3 border-r border-slate-100 dark:border-slate-700/50 text-center bg-fuchsia-50/50 dark:bg-fuchsia-900/10 font-medium text-fuchsia-700 dark:text-fuchsia-300">
                         {data.sts !== undefined && data.sts !== '' ? data.sts : '-'}
                       </td>
-
-                      {Array.from({ length: jumlahUlangan }).map((_, i) => (
-                        <td key={`val-h2-${i}`} className="px-2 py-3 border-r border-slate-100 dark:border-slate-700/50 text-center text-slate-600 dark:text-slate-300">
-                          {data.harian2?.[i] !== undefined && data.harian2?.[i] !== '' ? data.harian2[i] : '-'}
-                        </td>
-                      ))}
 
                       <td className="px-2 py-3 border-r border-slate-100 dark:border-slate-700/50 text-center bg-fuchsia-50/50 dark:bg-fuchsia-900/10 font-medium text-fuchsia-700 dark:text-fuchsia-300">
                         {data.asas !== undefined && data.asas !== '' ? data.asas : '-'}

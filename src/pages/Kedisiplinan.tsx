@@ -111,8 +111,8 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
         // Fetch students for the selected class
         const { data: studentsData, error: studentsError } = await supabase
           .from('murid')
-          .select('NISN, "Nama Lengkap"')
-          .eq('Kelas', kelas);
+          .select('"NISN", "Nama Lengkap", "Kelas"')
+          .eq('"Kelas"', kelas);
 
         if (studentsError) throw studentsError;
 
@@ -137,12 +137,12 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
         if (journalError) throw journalError;
 
         const processedData = studentsData.map(student => {
-          let s = 0, i = 0, a = 0, d = 0;
+          let h = 0, s = 0, i = 0, a = 0, d = 0;
           const catatan: any[] = [];
           const studentName = student['Nama Lengkap'];
           
-          // Group attendance by date to calculate 60% rule
-          const attendanceByDate: Record<string, { totalJp: number, absentJp: number, status: string }> = {};
+          // Group attendance by date
+          const attendanceByDate: Record<string, { totalJp: number, absentJp: number, statuses: Set<string> }> = {};
 
           journalData?.forEach(journal => {
             const dateStr = new Date(journal.timestamp).toLocaleDateString();
@@ -150,14 +150,12 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
             // Parse jam_pembelajaran (e.g., "1, 2, 3" -> 3 JP)
             let jpCount = 1;
             if (journal.jam_pembelajaran) {
-               // It's a string like "1, 2" or "1-2" depending on how it's saved.
-               // Jurnal.tsx saves it as "1, 2".
-               const parts = journal.jam_pembelajaran.split(',');
+               const parts = String(journal.jam_pembelajaran).split(',');
                jpCount = parts.length;
             }
 
             if (!attendanceByDate[dateStr]) {
-              attendanceByDate[dateStr] = { totalJp: 0, absentJp: 0, status: '' };
+              attendanceByDate[dateStr] = { totalJp: 0, absentJp: 0, statuses: new Set() };
             }
             attendanceByDate[dateStr].totalJp += jpCount;
 
@@ -171,7 +169,10 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
                     for (const record of absensi) {
                         if (record.students && record.students.includes(studentName)) {
                             attendanceByDate[dateStr].absentJp += jpCount;
-                            attendanceByDate[dateStr].status = record.type;
+                            if (record.type === 'Sakit') attendanceByDate[dateStr].statuses.add('S');
+                            else if (record.type === 'Izin') attendanceByDate[dateStr].statuses.add('I');
+                            else if (record.type === 'Dispensasi') attendanceByDate[dateStr].statuses.add('D');
+                            else attendanceByDate[dateStr].statuses.add('A');
                             break; // Found the student in this journal entry
                         }
                     }
@@ -206,16 +207,24 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
             }
           });
 
-          // Apply 60% rule for daily attendance
+          // Apply priority rule for daily attendance
           Object.values(attendanceByDate).forEach(day => {
              if (day.totalJp > 0) {
-                const absentPercentage = day.absentJp / day.totalJp;
-                // If absent for >= 60% of the day's JP, count as full day absence
-                if (absentPercentage >= 0.6) {
-                   if (day.status === 'Sakit') s++;
-                   else if (day.status === 'Izin') i++;
-                   else if (day.status === 'Alpa') a++;
-                   else if (day.status === 'Dispensasi') d++;
+                // If absent for fewer JPs than total JPs, implicit Hadir
+                if (day.absentJp < day.totalJp) {
+                   day.statuses.add('H');
+                }
+                
+                if (day.statuses.has('S')) {
+                  s++;
+                } else if (day.statuses.has('I')) {
+                  i++;
+                } else if (day.statuses.has('D')) {
+                  d++;
+                } else if (day.statuses.has('A') && !day.statuses.has('H')) {
+                  a++;
+                } else {
+                  h++;
                 }
              }
           });
@@ -223,8 +232,8 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
           return {
             nisn: student.NISN,
             nama: studentName,
-            s, i, a, d,
-            total: s + i + a + d,
+            h, s, i, a, d,
+            total: s + i + a + d, // Total ketidakhadiran
             catatan
           };
         });

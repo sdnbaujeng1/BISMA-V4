@@ -6,7 +6,7 @@ export default function AnnouncementList() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/pengumuman')
+    fetch('/api/pengumuman?role=public')
       .then(res => res.json())
       .then(res => {
         if (res.success) setAnnouncements(res.data);
@@ -73,7 +73,7 @@ export default function AnnouncementList() {
                 {item.isi}
               </p>
               <div className="flex items-center gap-2 text-xs opacity-70">
-                <span className={style.text}>Diposting: {new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                <span className={style.text}>Diposting: {new Date(item.tanggal_terbit || item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
               </div>
             </div>
           );

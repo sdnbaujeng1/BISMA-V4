@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Heart, CheckCircle, XCircle, Calendar, User, Clock } from 'lucide-react';
+import { ArrowLeft, Heart, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function KasihIbuGuru({ user, onNavigate }: { user: any, onNavigate: (page: string) => void }) {
@@ -85,80 +85,88 @@ export default function KasihIbuGuru({ user, onNavigate }: { user: any, onNaviga
           <p className="text-slate-500">Memuat laporan siswa...</p>
         </div>
       ) : reports.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4">
-          <AnimatePresence>
-            {reports.map((report) => (
-              <motion.div 
-                key={report.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, height: 0 }}
-                className={`bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border ${
-                  report.status === 'Valid' ? 'border-green-200 dark:border-green-900/50 bg-green-50/30 dark:bg-green-900/10' : 
-                  report.status === 'Ditolak' ? 'border-red-200 dark:border-red-900/50 bg-red-50/30 dark:bg-red-900/10' :
-                  'border-slate-200 dark:border-slate-700'
-                } flex flex-col md:flex-row justify-between items-start md:items-center gap-6 transition-colors`}
-              >
-                <div className="flex items-start gap-4 w-full">
-                  <div className={`w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold text-lg ${
-                    report.status === 'Valid' ? 'bg-green-500' : 
-                    report.status === 'Ditolak' ? 'bg-red-500' :
-                    'bg-slate-300 dark:bg-slate-600'
-                  }`}>
-                    {report.nama.charAt(0)}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex flex-col md:flex-row md:items-center gap-2 mb-1">
-                      <h3 className="font-bold text-slate-800 dark:text-white text-lg flex items-center gap-2">
-                        {report.nama}
-                        <span className="text-xs font-normal px-2 py-0.5 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-500">
-                          {report.kelas}
-                        </span>
-                      </h3>
-                      <span className="text-xs text-slate-400 flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> {new Date(report.tanggal).toLocaleString('id-ID')}
-                      </span>
-                    </div>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead className="bg-slate-50 dark:bg-slate-900/50">
+                <tr>
+                  <th className="border-b border-slate-200 dark:border-slate-700 p-4 text-center w-12 text-slate-600 dark:text-slate-300">No</th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 p-4 text-left text-slate-600 dark:text-slate-300">Nama Siswa</th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 p-4 text-left text-slate-600 dark:text-slate-300">Hari/Tanggal</th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 p-4 text-left text-slate-600 dark:text-slate-300">Aktivitas</th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 p-4 text-center text-slate-600 dark:text-slate-300">Perasaan</th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 p-4 text-left text-slate-600 dark:text-slate-300">Keterangan</th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 p-4 text-center text-slate-600 dark:text-slate-300">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <AnimatePresence>
+                  {reports.map((report, idx) => {
+                    const dateObj = new Date(report.tanggal);
+                    let hariTanggal = report.tanggal;
+                    if (!isNaN(dateObj.getTime())) {
+                      hariTanggal = dateObj.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                    } else if (report.tanggal && report.tanggal.includes('T')) {
+                      const fallbackDate = new Date(report.tanggal.split('T')[0]);
+                      if (!isNaN(fallbackDate.getTime())) {
+                        hariTanggal = fallbackDate.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                      }
+                    }
                     
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-bold text-pink-600 dark:text-pink-400">{report.habit_label}</span>
-                    </div>
-                    
-                    <p className="text-slate-600 dark:text-slate-300 text-sm bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl italic">
-                      "{report.keterangan}"
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 w-full md:w-auto flex-shrink-0">
-                  {report.status === 'Valid' ? (
-                    <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-bold bg-green-100 dark:bg-green-900/30 px-4 py-2 rounded-xl w-full md:w-auto justify-center">
-                      <CheckCircle className="w-5 h-5" /> Terverifikasi
-                    </div>
-                  ) : report.status === 'Ditolak' ? (
-                    <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold bg-red-100 dark:bg-red-900/30 px-4 py-2 rounded-xl w-full md:w-auto justify-center">
-                      <XCircle className="w-5 h-5" /> Ditolak
-                    </div>
-                  ) : (
-                    <>
-                      <button 
-                        onClick={() => handleValidate(report.id, 'Ditolak')}
-                        className="flex-1 md:flex-none bg-red-100 hover:bg-red-200 text-red-600 px-4 py-2 rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
+                    return (
+                      <motion.tr 
+                        key={report.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className={`border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors ${
+                          report.status === 'Valid' ? 'bg-green-50/30 dark:bg-green-900/10' : 
+                          report.status === 'Ditolak' ? 'bg-red-50/30 dark:bg-red-900/10' : ''
+                        }`}
                       >
-                        <XCircle className="w-5 h-5" /> Tolak
-                      </button>
-                      <button 
-                        onClick={() => handleValidate(report.id, 'Valid')}
-                        className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-green-200 dark:shadow-none"
-                      >
-                        <CheckCircle className="w-5 h-5" /> Validasi
-                      </button>
-                    </>
-                  )}
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+                        <td className="p-4 text-center text-slate-500 dark:text-slate-400">{idx + 1}</td>
+                        <td className="p-4 font-bold text-slate-800 dark:text-white">{report.nama}</td>
+                        <td className="p-4 text-slate-600 dark:text-slate-300">{hariTanggal}</td>
+                        <td className="p-4 font-medium text-pink-600 dark:text-pink-400">{report.habit_label || report.jenis_kebiasaan}</td>
+                        <td className="p-4 text-center text-2xl">{report.perasaan || '😊'}</td>
+                        <td className="p-4 text-slate-600 dark:text-slate-300 italic">"{report.keterangan}"</td>
+                        <td className="p-4">
+                          <div className="flex items-center justify-center gap-2">
+                            {report.status === 'Valid' ? (
+                              <span className="flex items-center gap-1 text-green-600 dark:text-green-400 font-bold bg-green-100 dark:bg-green-900/30 px-3 py-1 rounded-lg text-xs">
+                                <CheckCircle className="w-4 h-4" /> Valid
+                              </span>
+                            ) : report.status === 'Ditolak' ? (
+                              <span className="flex items-center gap-1 text-red-600 dark:text-red-400 font-bold bg-red-100 dark:bg-red-900/30 px-3 py-1 rounded-lg text-xs">
+                                <XCircle className="w-4 h-4" /> Ditolak
+                              </span>
+                            ) : (
+                              <>
+                                <button 
+                                  onClick={() => handleValidate(report.id, 'Ditolak')}
+                                  className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                                  title="Tolak"
+                                >
+                                  <XCircle className="w-5 h-5" />
+                                </button>
+                                <button 
+                                  onClick={() => handleValidate(report.id, 'Valid')}
+                                  className="p-2 text-green-500 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+                                  title="Validasi"
+                                >
+                                  <CheckCircle className="w-5 h-5" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
+                </AnimatePresence>
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700">

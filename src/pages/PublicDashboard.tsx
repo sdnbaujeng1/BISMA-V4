@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { LogIn, Moon, Sun, BookOpen, AlertCircle, X, User, Backpack, Calculator, GraduationCap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import UnifiedAnnouncementCard from '../components/UnifiedAnnouncementCard';
 
 export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }: { onNavigate: (page: string) => void, darkMode: boolean, toggleDarkMode: () => void }) {
   const [data, setData] = useState<any>(null);
@@ -185,9 +184,29 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
           </div>
         ) : (
           <>
-            {/* Unified Announcement Card */}
+            {/* Informasi Terkini Card */}
             <div className="mb-6">
-              <UnifiedAnnouncementCard type="public" />
+              <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 rounded-3xl shadow-lg shadow-blue-200 dark:shadow-none text-white relative overflow-hidden group hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="relative z-10">
+                  <h3 className="text-lg font-bold mb-1 drop-shadow-md">Informasi Terkini</h3>
+                  <p className="text-blue-100 text-sm mb-4 font-medium">{new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  <div className="flex items-center gap-2 text-xs font-bold bg-white/20 w-fit px-3 py-1 rounded-full backdrop-blur-sm shadow-inner border border-white/10">
+                    <div className={`w-2 h-2 rounded-full animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.8)] bg-green-400`}></div>
+                    {data.announcementTitle || 'Sistem Online'}
+                  </div>
+                  {data.pengumuman && data.pengumuman !== 'Tidak ada pengumuman' && (
+                    <p className="mt-3 text-xs md:text-sm text-blue-50 line-clamp-3 opacity-90">
+                      {data.pengumuman}
+                    </p>
+                  )}
+                </div>
+                <div className="absolute -bottom-4 -right-4 transform rotate-12 transition-transform duration-500 group-hover:rotate-6 group-hover:scale-110">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-blue-500 blur-2xl opacity-50 rounded-full"></div>
+                    <BookOpen className="w-32 h-32 text-white/20 drop-shadow-[0_10px_10px_rgba(0,0,0,0.3)]" />
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Stats Grid */}

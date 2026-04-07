@@ -28,8 +28,8 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
       // 1. Get student details
       const { data: studentData, error: studentError } = await supabase
         .from('murid')
-        .select('"Nama Lengkap", Kelas')
-        .eq('NISN', studentNisn)
+        .select('"Nama Lengkap", "Kelas"')
+        .eq('"NISN"', studentNisn)
         .single();
 
       if (studentError || !studentData) {

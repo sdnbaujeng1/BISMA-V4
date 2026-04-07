@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Save, Search, Filter } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export default function NilaiGuru({ user, onNavigate }: { user: any, onNavigate: (page: string) => void }) {
   const [mapel, setMapel] = useState('');
@@ -9,10 +10,12 @@ export default function NilaiGuru({ user, onNavigate }: { user: any, onNavigate:
   const [jumlahUlangan, setJumlahUlangan] = useState(3);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [semester, setSemester] = useState('1');
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
   const [mapelList, setMapelList] = useState<string[]>([]);
   const [kelasList, setKelasList] = useState<string[]>([]);
+  const [fullMapping, setFullMapping] = useState<any[]>([]);
 
   useEffect(() => {
     // Fetch settings for jumlahUlangan
@@ -38,30 +41,78 @@ export default function NilaiGuru({ user, onNavigate }: { user: any, onNavigate:
     // Fetch mapping from jadwal_real
     const fetchMapping = async () => {
       try {
-        const res = await fetch(`/api/jadwal?guru=${encodeURIComponent(user?.nama_guru || user?.name || '')}`);
+        const guruName = user?.['Nama Guru'] || user?.nama_guru || user?.name || '';
+        const url = user?.role === 'admin' ? '/api/jadwal' : `/api/jadwal?guru=${encodeURIComponent(guruName)}`;
+        const res = await fetch(url);
         const result = await res.json();
-        if (result.success && result.data) {
-          const uniqueMapel = Array.from(new Set(result.data.map((item: any) => item.mapel))).filter(Boolean) as string[];
-          const uniqueKelas = Array.from(new Set(result.data.map((item: any) => item.kelas))).filter(Boolean) as string[];
-          
-          // Sort them
-          uniqueMapel.sort();
-          uniqueKelas.sort();
-          
-          setMapelList(uniqueMapel.length > 0 ? uniqueMapel : (user?.mengajar ? user.mengajar.split(',').map((m: string) => m.trim()) : ['Matematika', 'Bahasa Indonesia', 'IPAS', 'Pendidikan Pancasila']));
-          setKelasList(uniqueKelas.length > 0 ? uniqueKelas : ['1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B', '5A', '5B', '6A', '6B']);
+        
+        let uniqueKelas: string[] = [];
+        let uniqueMapel: string[] = [];
+
+        if (result.success && result.data && result.data.length > 0) {
+          setFullMapping(result.data);
+          uniqueMapel = Array.from(new Set(result.data.map((item: any) => item.mapel))).filter(Boolean) as string[];
+          uniqueKelas = Array.from(new Set(result.data.map((item: any) => item.kelas))).filter(Boolean) as string[];
         }
+
+        // If no classes found in jadwal, fetch from murid table
+        if (uniqueKelas.length === 0) {
+          const { data: muridData } = await supabase.from('murid').select('"Kelas"');
+          if (muridData) {
+            uniqueKelas = Array.from(new Set(muridData.map(m => m.Kelas))).filter(Boolean) as string[];
+          }
+        }
+        
+        // Sort them
+        uniqueMapel.sort();
+        uniqueKelas.sort();
+        
+        const userMengajar = user?.Mengajar || user?.mengajar;
+        setMapelList(uniqueMapel.length > 0 ? uniqueMapel : (userMengajar ? userMengajar.split(',').map((m: string) => m.trim()) : ['Matematika', 'Bahasa Indonesia', 'IPAS', 'Pendidikan Pancasila']));
+        setKelasList(uniqueKelas);
       } catch (e) {
         console.error("Error fetching mapping:", e);
-        setMapelList(user?.mengajar ? user.mengajar.split(',').map((m: string) => m.trim()) : ['Matematika', 'Bahasa Indonesia', 'IPAS', 'Pendidikan Pancasila']);
-        setKelasList(['1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B', '5A', '5B', '6A', '6B']);
+        const userMengajar = user?.Mengajar || user?.mengajar;
+        setMapelList(userMengajar ? userMengajar.split(',').map((m: string) => m.trim()) : ['Matematika', 'Bahasa Indonesia', 'IPAS', 'Pendidikan Pancasila']);
+        
+        // Final fallback
+        const { data: muridData } = await supabase.from('murid').select('"Kelas"');
+        if (muridData) {
+          const uniqueKelas = Array.from(new Set(muridData.map(m => m.Kelas))).filter(Boolean) as string[];
+          uniqueKelas.sort();
+          setKelasList(uniqueKelas);
+        } else {
+          setKelasList([]);
+        }
       }
     };
     
-    if (user?.nama_guru || user?.name) {
+    if (user?.role === 'admin' || user?.['Nama Guru'] || user?.nama_guru || user?.name) {
       fetchMapping();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (kelas && fullMapping.length > 0) {
+      const filteredMapel = Array.from(new Set(fullMapping.filter(item => item.kelas === kelas).map(item => item.mapel))).filter(Boolean) as string[];
+      if (filteredMapel.length > 0) {
+        filteredMapel.sort();
+        setMapelList(filteredMapel);
+        if (!filteredMapel.includes(mapel)) {
+          setMapel('');
+        }
+      } else {
+        // Fallback if no specific mapping for this class
+        const uniqueMapel = Array.from(new Set(fullMapping.map((item: any) => item.mapel))).filter(Boolean) as string[];
+        uniqueMapel.sort();
+        setMapelList(uniqueMapel);
+      }
+    } else if (!kelas && fullMapping.length > 0) {
+      const uniqueMapel = Array.from(new Set(fullMapping.map((item: any) => item.mapel))).filter(Boolean) as string[];
+      uniqueMapel.sort();
+      setMapelList(uniqueMapel);
+    }
+  }, [kelas, fullMapping]);
 
   useEffect(() => {
     if (kelas && mapel) {
@@ -223,7 +274,7 @@ export default function NilaiGuru({ user, onNavigate }: { user: any, onNavigate:
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Mata Pelajaran</label>
               <select 
@@ -250,6 +301,17 @@ export default function NilaiGuru({ user, onNavigate }: { user: any, onNavigate:
                 ))}
               </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Semester</label>
+              <select 
+                value={semester}
+                onChange={(e) => setSemester(e.target.value)}
+                className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-2.5 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-fuchsia-500 outline-none"
+              >
+                <option value="1">Semester 1</option>
+                <option value="2">Semester 2</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -261,43 +323,41 @@ export default function NilaiGuru({ user, onNavigate }: { user: any, onNavigate:
                   <tr>
                     <th rowSpan={2} className="px-4 py-3 border-r border-slate-200 dark:border-slate-700 text-center w-12">No</th>
                     <th rowSpan={2} className="px-4 py-3 border-r border-slate-200 dark:border-slate-700 min-w-[200px]">Nama Siswa</th>
-                    <th colSpan={jumlahUlangan} className="px-4 py-2 border-r border-slate-200 dark:border-slate-700 text-center border-b">Nilai Harian (Smt 1)</th>
+                    <th colSpan={jumlahUlangan} className="px-4 py-2 border-r border-slate-200 dark:border-slate-700 text-center border-b">Nilai Harian</th>
                     <th rowSpan={2} className="px-4 py-3 border-r border-slate-200 dark:border-slate-700 text-center bg-fuchsia-50 dark:bg-fuchsia-900/20 w-20">STS</th>
-                    <th colSpan={jumlahUlangan} className="px-4 py-2 border-r border-slate-200 dark:border-slate-700 text-center border-b">Nilai Harian (Smt 2)</th>
                     <th rowSpan={2} className="px-4 py-3 border-r border-slate-200 dark:border-slate-700 text-center bg-fuchsia-50 dark:bg-fuchsia-900/20 w-20">ASAS</th>
                     <th rowSpan={2} className="px-4 py-3 text-center bg-slate-100 dark:bg-slate-800 w-24 font-bold">Nilai Akhir</th>
                   </tr>
                   <tr>
                     {Array.from({ length: jumlahUlangan }).map((_, i) => (
-                      <th key={`h1-${i}`} className="px-2 py-2 border-r border-slate-200 dark:border-slate-700 text-center w-16">{i + 1}</th>
-                    ))}
-                    {Array.from({ length: jumlahUlangan }).map((_, i) => (
-                      <th key={`h2-${i}`} className="px-2 py-2 border-r border-slate-200 dark:border-slate-700 text-center w-16">{i + 1 + jumlahUlangan}</th>
+                      <th key={`h-${i}`} className="px-2 py-2 border-r border-slate-200 dark:border-slate-700 text-center w-16">{i + 1}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={5 + (jumlahUlangan * 2)} className="px-4 py-8 text-center text-slate-500">Memuat data siswa...</td>
+                      <td colSpan={5 + jumlahUlangan} className="px-4 py-8 text-center text-slate-500">Memuat data siswa...</td>
                     </tr>
                   ) : students.length === 0 ? (
                     <tr>
-                      <td colSpan={5 + (jumlahUlangan * 2)} className="px-4 py-8 text-center text-slate-500">Tidak ada data siswa untuk kelas ini.</td>
+                      <td colSpan={5 + jumlahUlangan} className="px-4 py-8 text-center text-slate-500">Tidak ada data siswa untuk kelas ini.</td>
                     </tr>
                   ) : (
-                    students.map((student, idx) => (
+                    students.map((student, idx) => {
+                      const harianType = semester === '1' ? 'harian1' : 'harian2';
+                      return (
                       <tr key={student.NISN} className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                         <td className="px-4 py-2 border-r border-slate-100 dark:border-slate-700/50 text-center">{idx + 1}</td>
                         <td className="px-4 py-2 border-r border-slate-100 dark:border-slate-700/50 font-medium text-slate-800 dark:text-slate-200">{student['Nama Lengkap']}</td>
                         
                         {Array.from({ length: jumlahUlangan }).map((_, i) => (
-                          <td key={`val-h1-${i}`} className="px-1 py-1 border-r border-slate-100 dark:border-slate-700/50">
+                          <td key={`val-h-${i}`} className="px-1 py-1 border-r border-slate-100 dark:border-slate-700/50">
                             <input 
                               type="number" 
                               min="0" max="100"
-                              value={nilaiData[student.NISN]?.harian1?.[i] ?? ''}
-                              onChange={(e) => handleNilaiChange(student.NISN, 'harian1', i, e.target.value)}
+                              value={nilaiData[student.NISN]?.[harianType]?.[i] ?? ''}
+                              onChange={(e) => handleNilaiChange(student.NISN, harianType, i, e.target.value)}
                               className="w-full px-2 py-1.5 text-center bg-transparent border-none focus:ring-2 focus:ring-fuchsia-500 rounded outline-none dark:text-white"
                             />
                           </td>
@@ -313,18 +373,6 @@ export default function NilaiGuru({ user, onNavigate }: { user: any, onNavigate:
                           />
                         </td>
 
-                        {Array.from({ length: jumlahUlangan }).map((_, i) => (
-                          <td key={`val-h2-${i}`} className="px-1 py-1 border-r border-slate-100 dark:border-slate-700/50">
-                            <input 
-                              type="number" 
-                              min="0" max="100"
-                              value={nilaiData[student.NISN]?.harian2?.[i] ?? ''}
-                              onChange={(e) => handleNilaiChange(student.NISN, 'harian2', i, e.target.value)}
-                              className="w-full px-2 py-1.5 text-center bg-transparent border-none focus:ring-2 focus:ring-fuchsia-500 rounded outline-none dark:text-white"
-                            />
-                          </td>
-                        ))}
-
                         <td className="px-1 py-1 border-r border-slate-100 dark:border-slate-700/50 bg-fuchsia-50/50 dark:bg-fuchsia-900/10">
                           <input 
                             type="number" 
@@ -339,7 +387,7 @@ export default function NilaiGuru({ user, onNavigate }: { user: any, onNavigate:
                           {calculateNA(student.NISN)}
                         </td>
                       </tr>
-                    ))
+                    )})
                   )}
                 </tbody>
               </table>

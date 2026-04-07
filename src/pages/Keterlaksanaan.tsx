@@ -114,17 +114,14 @@ export default function Keterlaksanaan({ onNavigate }: { onNavigate: (page: stri
 
                             sortedData.forEach((row: any) => {
                               const last = grouped[grouped.length - 1];
-                              // Group if same teacher and subject
-                              if (last && last.guru === row.guru && last.mapel === row.mapel) {
+                              // Group if same teacher, subject, and completion status
+                              if (last && last.guru === row.guru && last.mapel === row.mapel && last.isCompleted === !!row.isCompleted) {
                                 last.jam = `${last.jam}, ${row.jam}`;
-                                if (row.mapel !== 'X') {
-                                  last.isCompleted = true;
-                                }
                               } else {
                                 grouped.push({ 
                                   ...row, 
                                   jam: String(row.jam),
-                                  isCompleted: row.mapel !== 'X'
+                                  isCompleted: !!row.isCompleted
                                 });
                               }
                             });
@@ -144,16 +141,16 @@ export default function Keterlaksanaan({ onNavigate }: { onNavigate: (page: stri
                                       {row.guru}
                                     </div>
                                     <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 bg-slate-100 dark:bg-slate-700/50 inline-block px-2 py-1 rounded-md border border-slate-200 dark:border-slate-600">
-                                      {row.isCompleted ? row.mapel : 'Belum Terisi'}
+                                      {row.mapel}
                                     </div>
                                   </td>
                                   <td className="py-3 px-3 text-center align-middle">
                                     {row.isCompleted ? (
-                                      <div className="bg-emerald-100 dark:bg-emerald-900/30 p-1.5 rounded-full inline-flex">
+                                      <div className="bg-emerald-100 dark:bg-emerald-900/30 p-1.5 rounded-full inline-flex" title="Sudah Terisi">
                                         <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                                       </div>
                                     ) : (
-                                      <div className="bg-red-100 dark:bg-red-900/30 p-1.5 rounded-full inline-flex">
+                                      <div className="bg-red-100 dark:bg-red-900/30 p-1.5 rounded-full inline-flex" title="Belum Terisi">
                                         <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
                                       </div>
                                     )}

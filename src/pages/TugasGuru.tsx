@@ -16,8 +16,13 @@ export default function TugasGuru({ user, onNavigate }: { user: any, onNavigate:
     deskripsi: '',
     mapel: '',
     kelas: '',
-    deadline: ''
+    deadline: '',
+    target_students: [] as string[]
   });
+
+  const [mapelOptions, setMapelOptions] = useState<string[]>([]);
+  const [kelasOptions, setKelasOptions] = useState<string[]>([]);
+  const [studentOptions, setStudentOptions] = useState<any[]>([]);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -27,11 +32,9 @@ export default function TugasGuru({ user, onNavigate }: { user: any, onNavigate:
   const fetchTugas = async () => {
     setLoading(true);
     try {
-      // In a real app, we would filter by teacher ID
-      const res = await fetch('/api/tugas');
+      const res = await fetch(`/api/tugas?teacherId=${user.id || user.NIP || 'GURU001'}`);
       const result = await res.json();
       if (result.success) {
-        // Filter locally for now if needed, or assume API returns all for demo
         setTugasList(result.data);
       }
     } catch (error) {
@@ -42,9 +45,56 @@ export default function TugasGuru({ user, onNavigate }: { user: any, onNavigate:
     }
   };
 
+  const fetchJadwal = async () => {
+    try {
+      const res = await fetch(`/api/jadwal-mengajar?namaGuru=${encodeURIComponent(user['Nama Guru'] || user.nama || '')}`);
+      const result = await res.json();
+      if (result.success) {
+        const uniqueMapel = Array.from(new Set(result.data.map((d: any) => d.mapel))).filter(Boolean) as string[];
+        const uniqueKelas = Array.from(new Set(result.data.map((d: any) => d.kelas))).filter(Boolean) as string[];
+        
+        // If the teacher has a 'Mengajar' field (comma separated), add those too
+        if (user.Mengajar) {
+          const mapels = user.Mengajar.split(',').map((m: string) => m.trim());
+          mapels.forEach((m: string) => {
+            if (!uniqueMapel.includes(m)) uniqueMapel.push(m);
+          });
+        }
+
+        setMapelOptions(uniqueMapel);
+        setKelasOptions(uniqueKelas);
+      }
+    } catch (error) {
+      console.error("Failed to fetch jadwal", error);
+    }
+  };
+
+  const fetchStudents = async (kelas: string) => {
+    try {
+      const res = await fetch('/api/murid');
+      const result = await res.json();
+      if (result.success) {
+        const filtered = result.data.filter((m: any) => m.Kelas === kelas || m.Kelas === kelas.replace('Kelas ', ''));
+        setStudentOptions(filtered);
+      }
+    } catch (error) {
+      console.error("Failed to fetch students", error);
+    }
+  };
+
   useEffect(() => {
     fetchTugas();
+    fetchJadwal();
   }, []);
+
+  useEffect(() => {
+    if (formData.kelas) {
+      fetchStudents(formData.kelas);
+      setFormData(prev => ({ ...prev, target_students: [] })); // Reset selected students when class changes
+    } else {
+      setStudentOptions([]);
+    }
+  }, [formData.kelas]);
 
   const handleCreateTugas = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +114,7 @@ export default function TugasGuru({ user, onNavigate }: { user: any, onNavigate:
         showToast("Tugas berhasil dibuat!", "success");
         setViewState('list');
         fetchTugas();
-        setFormData({ judul: '', deskripsi: '', mapel: '', kelas: '', deadline: '' });
+        setFormData({ judul: '', deskripsi: '', mapel: '', kelas: '', deadline: '', target_students: [] });
       } else {
         showToast(result.message || "Gagal membuat tugas", "error");
       }
@@ -122,13 +172,11 @@ export default function TugasGuru({ user, onNavigate }: { user: any, onNavigate:
           const result = await res.json();
           if (result.success) {
               setSubmissions(result.data);
+          } else {
+              setSubmissions([]);
           }
       } else {
-          // Fallback mock if endpoint doesn't exist yet
-          setSubmissions([
-              { id: 1, siswa_nama: 'Ahmad', status: 'Menunggu Validasi', file_url: '#', tanggal_kumpul: '2024-08-20' },
-              { id: 2, siswa_nama: 'Budi', status: 'Selesai', file_url: '#', tanggal_kumpul: '2024-08-19' }
-          ]);
+          setSubmissions([]);
       }
     } catch (error) {
       console.error(error);
@@ -138,12 +186,19 @@ export default function TugasGuru({ user, onNavigate }: { user: any, onNavigate:
     }
   };
 
-  const handleValidate = async (submissionId: number, status: 'Selesai' | 'Revisi') => {
+  const [selectedSubmissions, setSelectedSubmissions] = useState<any[]>([]);
+
+  const handleValidate = async (sub: any, status: 'Selesai' | 'Revisi') => {
     try {
       const res = await fetch('/api/tugas/validate', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ submission_id: submissionId, status })
+        body: JSON.stringify({ 
+          submission_id: sub.id, 
+          status,
+          tugas_id: sub.tugas_id,
+          student_id: sub.student_id
+        })
       });
       const result = await res.json();
       if (result.success) {
@@ -151,10 +206,48 @@ export default function TugasGuru({ user, onNavigate }: { user: any, onNavigate:
         // Refresh submissions
         handleViewSubmissions(selectedTugas);
       } else {
-        showToast("Gagal memvalidasi tugas", "error");
+        showToast(result.message || "Gagal memvalidasi tugas", "error");
       }
-    } catch (error) {
-      showToast("Terjadi kesalahan jaringan", "error");
+    } catch (error: any) {
+      showToast(error.message || "Terjadi kesalahan jaringan", "error");
+    }
+  };
+
+  const handleMassValidate = async (status: 'Selesai' | 'Revisi') => {
+    if (selectedSubmissions.length === 0) {
+      showToast("Pilih minimal satu siswa untuk divalidasi", "error");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const promises = selectedSubmissions.map(async id => {
+        const sub = submissions.find(s => s.id === id);
+        const res = await fetch('/api/tugas/validate', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            submission_id: id, 
+            status,
+            tugas_id: sub?.tugas_id,
+            student_id: sub?.student_id
+          })
+        });
+        const result = await res.json();
+        if (!result.success) {
+          throw new Error(result.message || "Gagal memvalidasi tugas");
+        }
+        return result;
+      });
+      
+      await Promise.all(promises);
+      showToast(`${selectedSubmissions.length} tugas berhasil divalidasi: ${status}`, "success");
+      setSelectedSubmissions([]);
+      handleViewSubmissions(selectedTugas);
+    } catch (error: any) {
+      showToast(error.message || "Terjadi kesalahan saat validasi massal", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -283,16 +376,9 @@ export default function TugasGuru({ user, onNavigate }: { user: any, onNavigate:
                     className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   >
                     <option value="">Pilih Mapel...</option>
-                    <option value="Matematika">Matematika</option>
-                    <option value="Bahasa Indonesia">Bahasa Indonesia</option>
-                    <option value="IPA">IPA</option>
-                    <option value="IPS">IPS</option>
-                    <option value="PPKn">PPKn</option>
-                    <option value="PAI">PAI</option>
-                    <option value="PJOK">PJOK</option>
-                    <option value="Seni Budaya">Seni Budaya</option>
-                    <option value="Bahasa Inggris">Bahasa Inggris</option>
-                    <option value="Bahasa Jawa">Bahasa Jawa</option>
+                    {mapelOptions.map((m, i) => (
+                      <option key={i} value={m}>{m}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -304,15 +390,38 @@ export default function TugasGuru({ user, onNavigate }: { user: any, onNavigate:
                     className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   >
                     <option value="">Pilih Kelas...</option>
-                    <option value="Kelas 1">Kelas 1</option>
-                    <option value="Kelas 2">Kelas 2</option>
-                    <option value="Kelas 3">Kelas 3</option>
-                    <option value="Kelas 4">Kelas 4</option>
-                    <option value="Kelas 5">Kelas 5</option>
-                    <option value="Kelas 6">Kelas 6</option>
+                    {kelasOptions.map((k, i) => (
+                      <option key={i} value={k}>{k}</option>
+                    ))}
                   </select>
                 </div>
               </div>
+
+              {formData.kelas && studentOptions.length > 0 && (
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Siswa Target (Opsional)</label>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Jika tidak ada yang dipilih, tugas akan dikirim ke semua siswa di kelas ini.</p>
+                  <div className="max-h-48 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {studentOptions.map((student, idx) => (
+                      <label key={idx} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="rounded text-blue-600 focus:ring-blue-500"
+                          checked={formData.target_students.includes(student.NISN)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData(prev => ({ ...prev, target_students: [...prev.target_students, student.NISN] }));
+                            } else {
+                              setFormData(prev => ({ ...prev, target_students: prev.target_students.filter(id => id !== student.NISN) }));
+                            }
+                          }}
+                        />
+                        <span className="text-sm">{student['Nama Lengkap']}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Tenggat Waktu (Deadline)</label>
@@ -361,23 +470,68 @@ export default function TugasGuru({ user, onNavigate }: { user: any, onNavigate:
             <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
               <h2 className="text-xl font-bold mb-2">{selectedTugas.judul}</h2>
               <p className="text-slate-500 dark:text-slate-400 mb-4">{selectedTugas.deskripsi}</p>
-              <div className="flex gap-4 text-sm font-medium text-slate-600 dark:text-slate-300">
+              <div className="flex flex-wrap gap-4 text-sm font-medium text-slate-600 dark:text-slate-300">
                 <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-lg">Kelas: {selectedTugas.kelas}</span>
                 <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-lg">Mapel: {selectedTugas.mapel}</span>
                 <span className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-lg">Deadline: {selectedTugas.deadline}</span>
+                {selectedTugas.target_students && (
+                  <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-lg">
+                    Target: {(() => {
+                      try {
+                        const targets = typeof selectedTugas.target_students === 'string' ? JSON.parse(selectedTugas.target_students) : selectedTugas.target_students;
+                        return Array.isArray(targets) && targets.length > 0 ? `${targets.length} Siswa` : 'Semua Siswa';
+                      } catch (e) {
+                        return 'Semua Siswa';
+                      }
+                    })()}
+                  </span>
+                )}
               </div>
             </div>
 
             <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
-              <h3 className="font-bold text-lg mb-4">Pengumpulan Siswa</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-lg">Pengumpulan Siswa</h3>
+                {selectedSubmissions.length > 0 && (
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleMassValidate('Selesai')}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
+                    >
+                      <CheckCircle className="w-4 h-4" /> Validasi Massal
+                    </button>
+                    <button 
+                      onClick={() => handleMassValidate('Revisi')}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
+                    >
+                      <XCircle className="w-4 h-4" /> Revisi Massal
+                    </button>
+                  </div>
+                )}
+              </div>
               
               {submissions.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left">
                     <thead className="bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-200 uppercase font-bold text-xs">
                       <tr>
-                        <th className="px-6 py-4 rounded-l-xl">Nama Siswa</th>
+                        <th className="px-6 py-4 rounded-l-xl w-12">
+                          <input 
+                            type="checkbox" 
+                            className="rounded text-blue-600 focus:ring-blue-500"
+                            checked={selectedSubmissions.length === submissions.filter(s => s.status !== 'Selesai').length && submissions.filter(s => s.status !== 'Selesai').length > 0}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedSubmissions(submissions.filter(s => s.status !== 'Selesai').map(s => s.id));
+                              } else {
+                                setSelectedSubmissions([]);
+                              }
+                            }}
+                          />
+                        </th>
+                        <th className="px-6 py-4">Nama Siswa</th>
                         <th className="px-6 py-4">Tanggal Kumpul</th>
+                        <th className="px-6 py-4">Jawaban</th>
                         <th className="px-6 py-4">Status</th>
                         <th className="px-6 py-4 rounded-r-xl text-right">Aksi</th>
                       </tr>
@@ -385,8 +539,33 @@ export default function TugasGuru({ user, onNavigate }: { user: any, onNavigate:
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                       {submissions.map((sub) => (
                         <tr key={sub.id}>
+                          <td className="px-6 py-4">
+                            {sub.status !== 'Selesai' && (
+                              <input 
+                                type="checkbox" 
+                                className="rounded text-blue-600 focus:ring-blue-500"
+                                checked={selectedSubmissions.includes(sub.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedSubmissions([...selectedSubmissions, sub.id]);
+                                  } else {
+                                    setSelectedSubmissions(selectedSubmissions.filter(id => id !== sub.id));
+                                  }
+                                }}
+                              />
+                            )}
+                          </td>
                           <td className="px-6 py-4 font-bold">{sub.siswa_nama}</td>
                           <td className="px-6 py-4">{sub.tanggal_kumpul}</td>
+                          <td className="px-6 py-4">
+                            {sub.content && sub.content !== 'Dinilai oleh guru' ? (
+                              <a href={sub.content.startsWith('http') ? sub.content : `https://${sub.content}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs flex items-center gap-1">
+                                <FileText className="w-3 h-3" /> Buka Link
+                              </a>
+                            ) : (
+                              <span className="text-slate-400 text-xs">-</span>
+                            )}
+                          </td>
                           <td className="px-6 py-4">
                             <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                               sub.status === 'Selesai' ? 'bg-green-100 text-green-700' :
@@ -401,14 +580,14 @@ export default function TugasGuru({ user, onNavigate }: { user: any, onNavigate:
                               {sub.status !== 'Selesai' && (
                                 <>
                                   <button 
-                                    onClick={() => handleValidate(sub.id, 'Selesai')}
+                                    onClick={() => handleValidate(sub, 'Selesai')}
                                     className="p-2 bg-green-100 text-green-600 hover:bg-green-200 rounded-lg transition-colors"
                                     title="Validasi Selesai"
                                   >
                                     <CheckCircle className="w-4 h-4" />
                                   </button>
                                   <button 
-                                    onClick={() => handleValidate(sub.id, 'Revisi')}
+                                    onClick={() => handleValidate(sub, 'Revisi')}
                                     className="p-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors"
                                     title="Minta Revisi"
                                   >
