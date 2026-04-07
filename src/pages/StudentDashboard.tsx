@@ -418,15 +418,84 @@ function Profil({ user, onLogout, darkMode, toggleDarkMode }: { user: any, onLog
 }
 
 function ChatbotView() {
+  const [messages, setMessages] = useState<{ text: string, sender: 'user' | 'bot' }[]>([
+    { text: 'Halo! Saya adalah asisten virtual BISMA. Ada yang bisa saya bantu?', sender: 'bot' }
+  ]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+    
+    const userMessage = input;
+    setMessages(prev => [...prev, { text: userMessage, sender: 'user' }]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      const res = await fetch('/api/chatbot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setMessages(prev => [...prev, { text: data.reply, sender: 'bot' }]);
+      } else {
+        setMessages(prev => [...prev, { text: `Maaf, terjadi kesalahan: ${data.message}`, sender: 'bot' }]);
+      }
+    } catch (error) {
+      setMessages(prev => [...prev, { text: 'Maaf, gagal terhubung ke server.', sender: 'bot' }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center h-[60vh] text-center p-6">
-      <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-6 animate-bounce">
-        <MessageSquare className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+    <div className="flex flex-col h-[calc(100vh-160px)]">
+      <div className="flex-grow overflow-y-auto p-4 space-y-4">
+        {messages.map((msg, idx) => (
+          <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[85%] p-3 rounded-2xl ${
+              msg.sender === 'user' 
+                ? 'bg-blue-600 text-white rounded-tr-none' 
+                : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-tl-none shadow-sm'
+            }`}>
+              <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+            </div>
+          </div>
+        ))}
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-2xl rounded-tl-none shadow-sm flex gap-1">
+              <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></span>
+              <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
+              <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></span>
+            </div>
+          </div>
+        )}
       </div>
-      <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Asisten Virtual</h3>
-      <p className="text-slate-500 dark:text-slate-400 max-w-md">
-        Fitur Chatbot sedang dalam pengembangan. Segera hadir untuk membantumu!
-      </p>
+      
+      <div className="p-4 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
+        <div className="flex gap-2">
+          <input 
+            type="text" 
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+            placeholder="Ketik pesan..."
+            className="flex-grow bg-slate-100 dark:bg-slate-900 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white"
+          />
+          <button 
+            onClick={handleSend}
+            disabled={!input.trim() || isLoading}
+            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white p-3 rounded-xl transition-colors flex items-center justify-center"
+          >
+            <Send className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

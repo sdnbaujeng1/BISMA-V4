@@ -7,19 +7,34 @@ export default function ChatbotPage({ onNavigate }: { onNavigate: (page: string)
   ]);
   const [input, setInput] = useState('');
 
-  const handleSend = () => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSend = async () => {
     if (!input.trim()) return;
     
-    setMessages([...messages, { text: input, sender: 'user' }]);
+    const userMessage = input;
+    setMessages(prev => [...prev, { text: userMessage, sender: 'user' }]);
     setInput('');
+    setIsLoading(true);
 
-    // Simulate response
-    setTimeout(() => {
-      setMessages(prev => [...prev, { 
-        text: 'Maaf, fitur chatbot saat ini masih dalam tahap pengembangan. Silakan hubungi admin untuk bantuan lebih lanjut.', 
-        sender: 'bot' 
-      }]);
-    }, 1000);
+    try {
+      const res = await fetch('/api/chatbot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setMessages(prev => [...prev, { text: data.reply, sender: 'bot' }]);
+      } else {
+        setMessages(prev => [...prev, { text: `Maaf, terjadi kesalahan: ${data.message}`, sender: 'bot' }]);
+      }
+    } catch (error) {
+      setMessages(prev => [...prev, { text: 'Maaf, gagal terhubung ke server.', sender: 'bot' }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

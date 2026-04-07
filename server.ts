@@ -1910,26 +1910,35 @@ app.get('/api/admin/stats', async (req, res) => {
   });
 
   // --- API SETTINGS ---
-  const API_KEYS_FILE = path.join(process.cwd(), 'api_keys.json');
-
-  app.get('/api/api-settings', (req, res) => {
+  app.get('/api/api-settings', async (req, res) => {
     try {
-      if (fs.existsSync(API_KEYS_FILE)) {
-        const data = fs.readFileSync(API_KEYS_FILE, 'utf-8');
-        res.json({ success: true, data: JSON.parse(data) });
-      } else {
-        res.json({ success: true, data: {} });
+      const { data, error } = await supabase.from('pengaturan').select('*');
+      if (error) throw error;
+      
+      const settings: Record<string, string> = {};
+      if (data) {
+        data.forEach((item: any) => {
+          settings[item.key] = item.value;
+        });
       }
+      res.json({ success: true, data: settings });
     } catch (e: any) {
       res.status(500).json({ success: false, message: e.message });
     }
   });
 
-  app.post('/api/api-settings', (req, res) => {
+  app.post('/api/api-settings', async (req, res) => {
     try {
       const keys = req.body;
-      fs.writeFileSync(API_KEYS_FILE, JSON.stringify(keys, null, 2));
-      res.json({ success: true, message: 'API Keys saved' });
+      const updates = Object.entries(keys).map(([key, value]) => ({
+        key,
+        value: String(value)
+      }));
+
+      const { error } = await supabase.from('pengaturan').upsert(updates);
+      if (error) throw error;
+
+      res.json({ success: true, message: 'API Keys saved to database' });
     } catch (e: any) {
       res.status(500).json({ success: false, message: e.message });
     }
@@ -1945,11 +1954,9 @@ app.get('/api/admin/stats', async (req, res) => {
       let apiKey = process.env.GEMINI_API_KEY;
       
       // Try to load from settings if env not set or if we want to override
-      if (fs.existsSync(API_KEYS_FILE)) {
-        const settings = JSON.parse(fs.readFileSync(API_KEYS_FILE, 'utf-8'));
-        if (settings.gemini_api_key) {
-          apiKey = settings.gemini_api_key;
-        }
+      const { data: settings } = await supabase.from('pengaturan').select('value').eq('key', 'gemini_api_key').single();
+      if (settings?.value) {
+        apiKey = settings.value;
       }
 
       if (!apiKey) {
@@ -1965,7 +1972,7 @@ app.get('/api/admin/stats', async (req, res) => {
       res.json({ success: true, reply: response.text });
     } catch (e: any) {
       console.error("Chatbot error:", e);
-      res.status(500).json({ success: false, message: 'Failed to generate response' });
+      res.status(500).json({ success: false, message: e.message || 'Failed to generate response' });
     }
   });
 
