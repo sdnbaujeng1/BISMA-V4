@@ -105,7 +105,7 @@ export default function UnifiedAnnouncementCard({ type = 'public', guruName }: U
             <div className={`w-2 h-2 rounded-full animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.8)] ${latestAnnouncement?.type === 'important' ? 'bg-orange-400' : 'bg-green-400'}`}></div>
             {latestAnnouncement.judul}
           </div>
-          <p className="text-xs text-blue-50 line-clamp-2 opacity-90">
+          <p className="text-xs text-blue-50 line-clamp-2 opacity-90 whitespace-pre-wrap">
             {latestAnnouncement.isi}
           </p>
         </>
@@ -170,7 +170,7 @@ export default function UnifiedAnnouncementCard({ type = 'public', guruName }: U
                       <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.8)] ${latestAnnouncement?.type === 'important' ? 'bg-orange-400' : 'bg-green-400'}`}></div>
                       <span className="truncate max-w-[120px] sm:max-w-none">{latestAnnouncement.judul}</span>
                     </div>
-                    <p className="text-xs text-blue-50 line-clamp-2 opacity-90">
+                    <p className="text-xs text-blue-50 line-clamp-2 opacity-90 whitespace-pre-wrap">
                       {latestAnnouncement.isi}
                     </p>
                   </>
@@ -221,7 +221,7 @@ export default function UnifiedAnnouncementCard({ type = 'public', guruName }: U
                         <h4 className={`font-bold ${style.title} mb-1 flex items-center gap-2`}>
                           {item.judul}
                         </h4>
-                        <p className={`text-sm ${style.text} mb-2 leading-relaxed`}>
+                        <p className={`text-sm ${style.text} mb-2 leading-relaxed whitespace-pre-wrap`}>
                           {item.isi}
                         </p>
                         <div className="flex items-center gap-2 text-xs opacity-70">

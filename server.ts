@@ -361,27 +361,31 @@ app.get('/api/admin/stats', async (req, res) => {
     const { role } = req.query;
     let query = supabase.from('pengumuman').select('*').order('tanggal', { ascending: false }).order('id', { ascending: false });
     
-    if (role) {
-      // Role mapping
+    const { data, error } = await query;
+    if (error) return res.status(500).json({ success: false, message: error.message });
+
+    let filteredData = data;
+    if (role && role !== 'admin') {
       let targetRole = 'Publik';
       if (role === 'student') targetRole = 'Siswa';
       else if (role === 'guru') targetRole = 'Guru';
       else if (role === 'tendik') targetRole = 'Staff';
-      else if (role === 'admin') targetRole = 'Admin'; // Or maybe admin sees all?
-      
-      if (role !== 'admin') {
-        query = query.contains('target_roles', [targetRole]);
-        
-        // Also filter by date
-        const today = new Date().toISOString().split('T')[0];
-        query = query.or(`tanggal_terbit.lte.${today},tanggal_terbit.is.null`)
-                     .or(`tanggal_kedaluwarsa.gte.${today},tanggal_kedaluwarsa.is.null`);
-      }
-    }
 
-    const { data, error } = await query;
-    if (error) return res.status(500).json({ success: false, message: error.message });
-    res.json({ success: true, data });
+      const today = new Date().toISOString().split('T')[0];
+      
+      filteredData = data.filter(item => {
+        // Date check
+        const isPublished = !item.tanggal_terbit || item.tanggal_terbit <= today;
+        const isNotExpired = !item.tanggal_kedaluwarsa || item.tanggal_kedaluwarsa >= today;
+        if (!isPublished || !isNotExpired) return false;
+
+        // Role check
+        if (!item.target_roles || item.target_roles.length === 0) return true; // Default to all
+        if (item.target_roles.includes('Publik')) return true; // Publik means all
+        return item.target_roles.includes(targetRole);
+      });
+    }
+    res.json({ success: true, data: filteredData });
   });
 
   app.post('/api/pengumuman', async (req, res) => {
@@ -399,6 +403,22 @@ app.get('/api/admin/stats', async (req, res) => {
 
     if (error) return res.status(500).json({ success: false, message: error.message });
     res.json({ success: true, message: 'Pengumuman berhasil disimpan' });
+  });
+
+  app.put('/api/pengumuman/:id', async (req, res) => {
+    const { id } = req.params;
+    const { judul, isi, target_roles, tanggal_terbit, tanggal_kedaluwarsa } = req.body;
+    
+    const { error } = await supabase.from('pengumuman').update({
+      judul,
+      isi,
+      target_roles,
+      tanggal_terbit,
+      tanggal_kedaluwarsa
+    }).eq('id', id);
+
+    if (error) return res.status(500).json({ success: false, message: error.message });
+    res.json({ success: true, message: 'Pengumuman diperbarui' });
   });
 
   app.post('/api/login', async (req, res) => {

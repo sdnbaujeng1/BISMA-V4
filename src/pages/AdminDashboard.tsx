@@ -54,7 +54,20 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
     totalJP: number;
   } | null>(null);
   const [latestAnnouncement, setLatestAnnouncement] = useState<any>(null);
-  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(window.innerWidth >= 1024);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setIsSidebarVisible(true);
+      } else {
+        setIsSidebarVisible(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -2452,6 +2465,7 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
   const [landingDesc, setLandingDesc] = useState("");
   
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [announcementTitle, setAnnouncementTitle] = useState("");
   const [announcementContent, setAnnouncementContent] = useState("");
   const [targetRoles, setTargetRoles] = useState<string[]>(['Publik']);
@@ -2484,11 +2498,22 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
   }, []);
 
   const handleNewAnnouncement = () => {
+    setEditingId(null);
     setAnnouncementTitle("");
     setAnnouncementContent("");
     setTargetRoles(['Publik']);
     setTanggalTerbit(new Date().toISOString().split('T')[0]);
     setTanggalKedaluwarsa("");
+    setShowForm(true);
+  };
+
+  const handleEditAnnouncement = (ann: any) => {
+    setEditingId(ann.id);
+    setAnnouncementTitle(ann.judul);
+    setAnnouncementContent(ann.isi);
+    setTargetRoles(ann.target_roles || ['Publik']);
+    setTanggalTerbit(ann.tanggal_terbit || "");
+    setTanggalKedaluwarsa(ann.tanggal_kedaluwarsa || "");
     setShowForm(true);
   };
 
@@ -2517,8 +2542,11 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
     }
 
     try {
-      const res = await fetch('/api/pengumuman', {
-        method: 'POST',
+      const url = editingId ? `/api/pengumuman/${editingId}` : '/api/pengumuman';
+      const method = editingId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           judul: announcementTitle,
@@ -2531,11 +2559,12 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
       
       const result = await res.json();
       if (result.success) {
-        showToast("Pengumuman berhasil dipublikasikan!", "success");
+        showToast(editingId ? "Pengumuman berhasil diperbarui!" : "Pengumuman berhasil dipublikasikan!", "success");
         setShowForm(false);
+        setEditingId(null);
         fetchAnnouncements(); // Refresh list
       } else {
-        showToast("Gagal mempublikasikan pengumuman: " + result.message, "error");
+        showToast("Gagal menyimpan pengumuman: " + result.message, "error");
       }
     } catch (error) {
       showToast("Terjadi kesalahan jaringan", "error");
@@ -2700,13 +2729,22 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
                         {Array.isArray(ann.target_roles) ? ann.target_roles.join(', ') : 'Publik'}
                       </td>
                       <td className="p-3 text-right">
-                        <button 
-                          onClick={() => handleDelete(ann.id)}
-                          className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                          title="Hapus"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={() => handleEditAnnouncement(ann)}
+                            className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                            title="Edit"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(ann.id)}
+                            className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                            title="Hapus"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
