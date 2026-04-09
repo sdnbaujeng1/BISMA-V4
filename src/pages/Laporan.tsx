@@ -53,7 +53,7 @@ export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (
   }, []);
 
   useEffect(() => {
-    fetch(`/api/laporan?nip=${user?.NIP || ''}`)
+    fetch(`/api/laporan?nip=${user?.NIP || ''}&namaGuru=${encodeURIComponent(user?.['Nama Guru'] || '')}`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -151,16 +151,16 @@ export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (
               <div className="text-center py-12 text-slate-500 dark:text-slate-400">Memuat data laporan...</div>
             ) : (
               <div className="overflow-x-auto print:overflow-visible">
-                <table className="w-full text-sm print:text-xs border-collapse border border-slate-300 dark:border-slate-600 print:border-slate-300 table-fixed">
+                <table className="w-full text-sm print:text-xs border-collapse border border-slate-300 dark:border-slate-600 print:border-slate-300 min-w-[800px]">
                   <thead className="bg-slate-100 dark:bg-slate-700 print:bg-slate-100">
                     <tr>
                       <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-center w-10 print:w-8">No</th>
                       <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-left w-32 print:w-24">Hari, Tanggal</th>
                       <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-center w-16 print:w-12">Kelas</th>
-                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-left w-24 print:w-20">Mata Pelajaran</th>
+                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-left w-32 print:w-24">Mata Pelajaran</th>
                       <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-center w-16 print:w-12">Jam Ke</th>
-                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-left">Materi/Kegiatan</th>
-                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-left w-32 print:w-24">Ketidakhadiran</th>
+                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-left min-w-[200px]">Materi/Kegiatan</th>
+                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-left min-w-[150px]">Ketidakhadiran</th>
                     </tr>
                   </thead>
                   <tbody>

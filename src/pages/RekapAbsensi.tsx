@@ -311,34 +311,36 @@ export default function RekapAbsensi({ user, onNavigate }: { user: any, onNaviga
               {loading ? (
                 <div className="text-center py-12 text-slate-500 dark:text-slate-400">Memuat rekap absensi...</div>
               ) : (
-                <table className="w-full text-sm border-collapse border border-slate-300 dark:border-slate-600 print:border-slate-300">
-                  <thead className="bg-slate-100 dark:bg-slate-700 print:bg-slate-100">
-                    <tr>
-                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-12">No</th>
-                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-32">NISN</th>
-                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-left">Nama</th>
-                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-12 bg-green-50 dark:bg-green-900/20 print:bg-green-50">S</th>
-                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-12 bg-yellow-50 dark:bg-yellow-900/20 print:bg-yellow-50">I</th>
-                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-12 bg-red-50 dark:bg-red-900/20 print:bg-red-50">A</th>
-                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-12 bg-purple-50 dark:bg-purple-900/20 print:bg-purple-50">D</th>
-                      <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-24 font-bold">Ket</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rekapData.map((m, i) => (
-                      <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 print:hover:bg-transparent">
-                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center text-slate-500 dark:text-slate-400 print:text-slate-500">{i + 1}</td>
-                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-mono">{m.nisn}</td>
-                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 font-medium">{m.nama}</td>
-                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold text-green-600">{m.s_display}</td>
-                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold text-yellow-600">{m.i_display}</td>
-                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold text-red-600">{m.a_display}</td>
-                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold text-purple-600">{m.d_display}</td>
-                        <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold text-blue-700 dark:text-blue-400 print:text-blue-700">{m.ket}</td>
+                <div className="overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-600 print:border-none print:overflow-visible max-h-[600px] overflow-y-auto">
+                  <table className="w-full text-sm border-collapse print:border-slate-300 relative">
+                    <thead className="bg-slate-100 dark:bg-slate-700 print:bg-slate-100 sticky top-0 z-10 shadow-sm">
+                      <tr>
+                        <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-12 bg-slate-100 dark:bg-slate-700">No</th>
+                        <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-32 bg-slate-100 dark:bg-slate-700">NISN</th>
+                        <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-left bg-slate-100 dark:bg-slate-700 sticky left-0 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Nama</th>
+                        <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-12 bg-green-50 dark:bg-green-900/80 print:bg-green-50">S</th>
+                        <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-12 bg-yellow-50 dark:bg-yellow-900/80 print:bg-yellow-50">I</th>
+                        <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-12 bg-red-50 dark:bg-red-900/80 print:bg-red-50">A</th>
+                        <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-12 bg-purple-50 dark:bg-purple-900/80 print:bg-purple-50">D</th>
+                        <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center w-24 font-bold bg-slate-100 dark:bg-slate-700">Ket</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {rekapData.map((m, i) => (
+                        <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 print:hover:bg-transparent">
+                          <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center text-slate-500 dark:text-slate-400 print:text-slate-500">{i + 1}</td>
+                          <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-mono">{m.nisn}</td>
+                          <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 font-medium sticky left-0 bg-white dark:bg-slate-800 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] group-hover:bg-slate-50 dark:group-hover:bg-slate-700/50">{m.nama}</td>
+                          <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold text-green-600">{m.s_display}</td>
+                          <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold text-yellow-600">{m.i_display}</td>
+                          <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold text-red-600">{m.a_display}</td>
+                          <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold text-purple-600">{m.d_display}</td>
+                          <td className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-3 text-center font-bold text-blue-700 dark:text-blue-400 print:text-blue-700">{m.ket}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
 
               {/* Tanda Tangan untuk Print */}

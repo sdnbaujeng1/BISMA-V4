@@ -5,9 +5,10 @@ import { motion, AnimatePresence } from 'motion/react';
 interface UnifiedAnnouncementCardProps {
   type?: 'public' | 'student' | 'guru' | 'tendik' | 'admin';
   guruName?: string; // For Guru dashboard to fetch specific journal
+  nip?: string;
 }
 
-export default function UnifiedAnnouncementCard({ type = 'public', guruName }: UnifiedAnnouncementCardProps) {
+export default function UnifiedAnnouncementCard({ type = 'public', guruName, nip }: UnifiedAnnouncementCardProps) {
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [latestAnnouncement, setLatestAnnouncement] = useState<any>(null);
   const [latestJournal, setLatestJournal] = useState<any>(null);
@@ -31,8 +32,8 @@ export default function UnifiedAnnouncementCard({ type = 'public', guruName }: U
         }
 
         // If Guru, fetch latest journal
-        if (type === 'guru' && guruName) {
-          const journalRes = await fetch(`/api/guru/latest-jurnal?namaGuru=${encodeURIComponent(guruName)}`);
+        if (type === 'guru' && (guruName || nip)) {
+          const journalRes = await fetch(`/api/guru/latest-jurnal?namaGuru=${encodeURIComponent(guruName || '')}&nip=${encodeURIComponent(nip || '')}`);
           const journalData = await journalRes.json();
           if (journalData.success && journalData.data) {
             setLatestJournal(journalData.data);
@@ -120,12 +121,12 @@ export default function UnifiedAnnouncementCard({ type = 'public', guruName }: U
   return (
     <div className="space-y-4">
       {/* Hero Card */}
-      <div className={`bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl shadow-lg shadow-blue-200 dark:shadow-none text-white relative overflow-hidden group transition-all duration-300 ${isMinimized ? 'p-3 sm:p-4' : 'p-4 sm:p-6'} h-full flex flex-col`}>
+      <div className={`bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl shadow-lg shadow-blue-200 dark:shadow-none text-white relative overflow-hidden group transition-all duration-300 ${isMinimized ? 'p-3 sm:p-4' : 'p-4 sm:p-6'} flex flex-col`}>
         <div className="relative z-10 flex-1 flex flex-col">
           <div className="flex justify-between items-start mb-2">
             <div>
               <h3 className={`font-bold drop-shadow-md ${isMinimized ? 'text-xs sm:text-base' : 'text-sm sm:text-lg mb-1'}`}>{displayTitle}</h3>
-              {!isMinimized && isGuruMode && <p className="text-blue-100 text-[10px] sm:text-sm mb-2 sm:mb-4 font-medium">{displayDate}</p>}
+              {!isMinimized && <p className="text-blue-100 text-[10px] sm:text-sm mb-2 sm:mb-4 font-medium">{displayDate}</p>}
             </div>
             <button 
               onClick={() => setIsMinimized(!isMinimized)}

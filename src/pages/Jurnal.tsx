@@ -575,20 +575,27 @@ export default function Jurnal({ user, onNavigate }: { user: any, onNavigate: (p
 
       {/* Success Popup */}
       {showSuccessPopup && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden text-center p-8">
-            <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Check className="w-10 h-10 text-green-600 dark:text-green-400" />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden text-center relative transform transition-all scale-100 animate-in zoom-in-95 duration-300">
+            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-green-400 to-emerald-600 opacity-20"></div>
+            <div className="p-8 relative z-10">
+              <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-200 dark:shadow-none ring-4 ring-white dark:ring-slate-800">
+                <Check className="w-12 h-12 text-white" />
+              </div>
+              <h3 className="text-3xl font-black text-slate-800 dark:text-white mb-2 tracking-tight">Berhasil!</h3>
+              <p className="text-slate-600 dark:text-slate-300 mb-6 font-medium">Data jurnal Anda telah berhasil disimpan ke sistem.</p>
+              
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-2xl p-4 mb-8 border border-green-100 dark:border-green-800/30">
+                <p className="text-green-700 dark:text-green-400 font-bold italic text-sm">"Selamat Berkhidmah Untuk Anak Bangsa"</p>
+              </div>
+              
+              <button 
+                onClick={handleCloseSuccess}
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 active:translate-y-0"
+              >
+                Kembali ke Dashboard
+              </button>
             </div>
-            <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Berhasil!</h3>
-            <p className="text-slate-600 dark:text-slate-300 mb-6">Data anda telah terkirim</p>
-            <p className="text-green-600 dark:text-green-400 font-bold italic mb-8">"Selamat Berkhidmah Untuk Anak Bangsa"</p>
-            <button 
-              onClick={handleCloseSuccess}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl transition-colors"
-            >
-              Kembali ke Dashboard
-            </button>
           </div>
         </div>
       )}

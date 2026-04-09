@@ -562,20 +562,27 @@ app.get('/api/admin/stats', async (req, res) => {
   });
 
   app.get('/api/guru/latest-jurnal', async (req, res) => {
-    const { namaGuru } = req.query;
+    const { namaGuru, nip } = req.query;
     
-    if (!namaGuru) {
-      return res.status(400).json({ success: false, message: 'Nama Guru is required' });
+    if (!namaGuru && !nip) {
+      return res.status(400).json({ success: false, message: 'Nama Guru or NIP is required' });
     }
 
     try {
-      const { data, error } = await supabase
-        .from('jurnal')
-        .select('*')
-        .eq('nama_guru', namaGuru)
+      let query = supabase.from('jurnal').select('*');
+      
+      if (namaGuru && nip) {
+        query = query.or(`nama_guru.eq."${namaGuru}",nip.eq."${nip}"`);
+      } else if (namaGuru) {
+        query = query.eq('nama_guru', namaGuru);
+      } else {
+        query = query.eq('nip', nip);
+      }
+
+      const { data, error } = await query
         .order('timestamp', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 is "The result contains 0 rows"
         throw error;
@@ -1365,11 +1372,18 @@ app.get('/api/admin/stats', async (req, res) => {
 
   app.get('/api/laporan', async (req, res) => {
     try {
-      const { nip } = req.query;
+      const { nip, namaGuru } = req.query;
       let query = supabase.from('jurnal').select('*').order('timestamp', { ascending: false });
       
-      if (nip) {
-        query = query.eq('nip', nip);
+      if (nip || namaGuru) {
+        // If user has multiple roles (like tendik and something else), they might have entries under nip or nama_guru
+        if (nip && namaGuru) {
+          query = query.or(`nip.eq."${nip}",nama_guru.eq."${namaGuru}"`);
+        } else if (nip) {
+          query = query.eq('nip', nip);
+        } else {
+          query = query.eq('nama_guru', namaGuru);
+        }
       }
       
       const { data, error } = await query;
@@ -1880,6 +1894,53 @@ app.get('/api/admin/stats', async (req, res) => {
 
   // --- KASIH IBU / HABITS ---
 
+  app.get('/api/monitoring/kasih-ibu-stats', async (req, res) => {
+    try {
+      const { data, error } = await supabase.from('kasih_ibu').select('jenis_kebiasaan');
+      if (error) throw error;
+
+      const counts: Record<string, number> = {
+        'Bangun Pagi': 0,
+        'Beribadah': 0,
+        'Berolahraga': 0,
+        'Makan Sehat': 0,
+        'Gemar Belajar': 0,
+        'Bermasyarakat': 0,
+        'Tidur Cepat': 0
+      };
+
+      let maxCount = 0;
+
+      if (data) {
+        data.forEach(item => {
+          const label = item.jenis_kebiasaan;
+          if (counts[label] !== undefined) {
+            counts[label]++;
+            if (counts[label] > maxCount) maxCount = counts[label];
+          }
+        });
+      }
+
+      // Normalize to 10 for the chart if maxCount > 10, otherwise keep actual count or scale it.
+      // The image shows scale 0-10. Let's scale it to 10 if maxCount > 0
+      const scaleFactor = maxCount > 0 ? 10 / maxCount : 1;
+
+      const chartData = [
+        { subject: 'Bangun Pagi', A: Math.round(counts['Bangun Pagi'] * scaleFactor), fullMark: 10 },
+        { subject: 'Beribadah', A: Math.round(counts['Beribadah'] * scaleFactor), fullMark: 10 },
+        { subject: 'Berolahraga', A: Math.round(counts['Berolahraga'] * scaleFactor), fullMark: 10 },
+        { subject: 'Makan Sehat & Bergizi', A: Math.round(counts['Makan Sehat'] * scaleFactor), fullMark: 10 },
+        { subject: 'Gemar Belajar', A: Math.round(counts['Gemar Belajar'] * scaleFactor), fullMark: 10 },
+        { subject: 'Bermasyarakat', A: Math.round(counts['Bermasyarakat'] * scaleFactor), fullMark: 10 },
+        { subject: 'Tidur Cepat', A: Math.round(counts['Tidur Cepat'] * scaleFactor), fullMark: 10 },
+      ];
+
+      res.json({ success: true, data: chartData });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
   app.get('/api/kasih-ibu', async (req, res) => {
     try {
       const { kelas, nis, nama } = req.query;
@@ -1888,7 +1949,7 @@ app.get('/api/admin/stats', async (req, res) => {
       if (kelas) query = query.eq('kelas', kelas);
       
       if (nis && nis !== '' && nama && nama !== '') {
-        query = query.or(`nisn.eq.${nis},nama_murid.eq.${nama}`);
+        query = query.or(`nisn.eq."${nis}",nama_murid.eq."${nama}"`);
       } else if (nis && nis !== '') {
         query = query.eq('nisn', nis);
       } else if (nama && nama !== '') {

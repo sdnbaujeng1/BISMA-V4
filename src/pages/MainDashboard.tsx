@@ -204,37 +204,39 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
               {/* TENDIK DASHBOARD */}
               {user?.role === 'tendik' && (
                 <>
-                  {tendikStats && (
-                    <div className={`bg-gradient-to-br ${currentTheme.gradient} rounded-2xl shadow-lg p-6 text-white relative overflow-hidden transition-all duration-500`}>
-                      <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-                      <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-24 h-24 bg-black/10 rounded-full blur-xl"></div>
-                      
-                      <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <div>
-                          <h3 className="text-white/90 font-medium mb-1 flex items-center gap-2">
-                            <UserCheck className="w-5 h-5" /> Kinerja Bulanan
-                          </h3>
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-4xl font-bold">{tendikStats.percentage}%</span>
-                            <span className="text-white/80 text-lg">Kehadiran</span>
-                          </div>
-                        </div>
+                  <div className="grid grid-cols-2 gap-3 md:gap-6 mb-6">
+                    {tendikStats && (
+                      <div className={`bg-gradient-to-br ${currentTheme.gradient} rounded-2xl shadow-lg p-6 text-white relative overflow-hidden transition-all duration-500 h-full flex flex-col justify-center`}>
+                        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                        <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-24 h-24 bg-black/10 rounded-full blur-xl"></div>
                         
-                        <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-xl px-4 py-3 flex items-center gap-3">
-                          <div className="flex flex-col">
-                            <span className="text-xs text-white/80 uppercase tracking-wider font-semibold">Status</span>
-                            <span className="font-bold text-lg">
-                              {tendikStats.category === 'Sesuai Ekspektasi' ? 'Sesuai Ekspektasi 🌟' : 'Perlu Ditingkatkan 📈'}
-                            </span>
+                        <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                          <div>
+                            <h3 className="text-white/90 font-medium mb-1 flex items-center gap-2">
+                              <UserCheck className="w-5 h-5" /> Kinerja Bulanan
+                            </h3>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-4xl font-bold">{tendikStats.percentage}%</span>
+                              <span className="text-white/80 text-lg">Kehadiran</span>
+                            </div>
+                          </div>
+                          
+                          <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-xl px-4 py-3 flex items-center gap-3">
+                            <div className="flex flex-col">
+                              <span className="text-xs text-white/80 uppercase tracking-wider font-semibold">Status</span>
+                              <span className="font-bold text-lg">
+                                {tendikStats.category === 'Sesuai Ekspektasi' ? 'Sesuai Ekspektasi 🌟' : 'Perlu Ditingkatkan 📈'}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Unified Announcement Card */}
-                  <div className="mb-6">
-                    <UnifiedAnnouncementCard type="tendik" />
+                    {/* Unified Announcement Card */}
+                    <div className="h-full">
+                      <UnifiedAnnouncementCard type="tendik" />
+                    </div>
                   </div>
 
                   <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-5 border border-slate-100 dark:border-slate-700">
@@ -270,7 +272,7 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
               {/* GURU DASHBOARD */}
               {user?.role !== 'tendik' && (
                 <>
-                  <div className="grid grid-cols-2 gap-3 mb-6">
+                  <div className="grid grid-cols-2 gap-3 md:gap-6 mb-6">
                     {stats && (
                       <div className={`bg-gradient-to-br ${currentTheme.gradient} rounded-2xl shadow-lg p-4 text-white relative overflow-hidden transition-all duration-500 h-full flex flex-col justify-between`}>
                         <div className="absolute top-0 right-0 -mt-4 -mr-4 w-20 h-20 bg-white/10 rounded-full blur-xl"></div>
@@ -304,7 +306,7 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
 
                     {/* Unified Announcement Card (Guru: Latest Journal) */}
                     <div className="h-full">
-                      <UnifiedAnnouncementCard type="guru" guruName={user['Nama Guru']} />
+                      <UnifiedAnnouncementCard type="guru" guruName={user['Nama Guru']} nip={user.NIP} />
                     </div>
                   </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Monitor, Calendar, RefreshCw, AlertTriangle, Users, Percent, Sparkles, Clock, CheckCircle2, XCircle, LogOut, X } from 'lucide-react';
+import { Monitor, Calendar, RefreshCw, AlertTriangle, Users, Percent, Sparkles, Clock, CheckCircle2, XCircle, LogOut, X, HeartHandshake } from 'lucide-react';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 export default function MonitoringDashboard({ onLogout }: { onLogout: () => void }) {
   const [data, setData] = useState<any>(null);
@@ -13,6 +14,30 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
   const [loadingKetidakhadiran, setLoadingKetidakhadiran] = useState(false);
   const [analisaData, setAnalisaData] = useState<{ absentees: any[], violators: any[] }>({ absentees: [], violators: [] });
   const [analisaMonth, setAnalisaMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [kasihIbuStats, setKasihIbuStats] = useState<any[]>([]);
+  const [showConclusion, setShowConclusion] = useState(false);
+
+  const renderCustomDot = (props: any) => {
+    const { cx, cy, payload } = props;
+    const value = payload.A;
+    let fill = "#ef4444"; // Merah (Belum terbiasa)
+    if (value >= 8) fill = "#22c55e"; // Hijau (Terbiasa)
+    else if (value >= 4) fill = "#eab308"; // Kuning (Mulai terbiasa)
+
+    return (
+      <circle cx={cx} cy={cy} r={6} fill={fill} stroke="#fff" strokeWidth={2} />
+    );
+  };
+
+  const getConclusionText = () => {
+    if (!kasihIbuStats || kasihIbuStats.length === 0) return "Belum ada data yang cukup untuk menarik kesimpulan.";
+    
+    const sorted = [...kasihIbuStats].sort((a, b) => b.A - a.A);
+    const best = sorted[0];
+    const worst = sorted[sorted.length - 1];
+    
+    return `Berdasarkan data input siswa, pembiasaan "${best.subject}" menunjukkan capaian tertinggi, menandakan mayoritas siswa sudah mulai terbiasa. Sebaliknya, pembiasaan "${worst.subject}" masih perlu ditingkatkan perhatiiannya karena memiliki capaian terendah.`;
+  };
 
   const fetchKetidakhadiran = async () => {
     setLoadingKetidakhadiran(true);
@@ -26,6 +51,18 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
       console.error("Failed to fetch ketidakhadiran data", error);
     } finally {
       setLoadingKetidakhadiran(false);
+    }
+  };
+
+  const fetchKasihIbuStats = async () => {
+    try {
+      const res = await fetch('/api/monitoring/kasih-ibu-stats');
+      const json = await res.json();
+      if (json.success) {
+        setKasihIbuStats(json.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch kasih ibu stats", error);
     }
   };
 
@@ -68,11 +105,14 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
 
   useEffect(() => {
     fetchData();
+    fetchKasihIbuStats();
     const interval = setInterval(fetchData, 3000); // Auto-refresh every 3 seconds
     const analisaInterval = setInterval(fetchAnalisa, 60000); // Refresh analisa every 60 seconds
+    const kasihIbuInterval = setInterval(fetchKasihIbuStats, 60000);
     return () => {
       clearInterval(interval);
       clearInterval(analisaInterval);
+      clearInterval(kasihIbuInterval);
     };
   }, []);
 
@@ -132,48 +172,48 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
         <div 
           onClick={() => setActiveModal('ketidakhadiran')}
-          className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4 cursor-pointer hover:shadow-md hover:border-red-300 dark:hover:border-red-700 transition-all"
+          className="bg-white dark:bg-slate-800 p-3 md:p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-2 md:gap-4 cursor-pointer hover:shadow-md hover:border-red-300 dark:hover:border-red-700 transition-all"
         >
-          <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-xl"><Users className="w-6 h-6" /></div>
-          <div>
-            <div className="text-xs font-bold text-slate-500 uppercase">Ketidakhadiran Murid</div>
-            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{data?.stats?.ketidakhadiran || 0}</div>
+          <div className="p-2 md:p-3 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-xl shrink-0"><Users className="w-5 h-5 md:w-6 md:h-6" /></div>
+          <div className="min-w-0">
+            <div className="text-[10px] md:text-xs font-bold text-slate-500 uppercase leading-tight truncate md:whitespace-normal">Ketidakhadiran</div>
+            <div className="text-lg md:text-2xl font-bold text-red-600 dark:text-red-400 truncate">{data?.stats?.ketidakhadiran || 0}</div>
           </div>
         </div>
         <div 
           onClick={() => setActiveModal('keterlaksanaan')}
-          className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4 cursor-pointer hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all"
+          className="bg-white dark:bg-slate-800 p-3 md:p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-2 md:gap-4 cursor-pointer hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all"
         >
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-500 rounded-xl"><Percent className="w-6 h-6" /></div>
-          <div>
-            <div className="text-xs font-bold text-slate-500 uppercase">Keterlaksanaan</div>
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data?.stats?.keterlaksanaan || 0}%</div>
+          <div className="p-2 md:p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-500 rounded-xl shrink-0"><Percent className="w-5 h-5 md:w-6 md:h-6" /></div>
+          <div className="min-w-0">
+            <div className="text-[10px] md:text-xs font-bold text-slate-500 uppercase leading-tight truncate md:whitespace-normal">Keterlaksanaan</div>
+            <div className="text-lg md:text-2xl font-bold text-blue-600 dark:text-blue-400 truncate">{data?.stats?.keterlaksanaan || 0}%</div>
           </div>
         </div>
         <div 
           onClick={() => setActiveModal('kebersihan')}
-          className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4 cursor-pointer hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 transition-all"
+          className="bg-white dark:bg-slate-800 p-3 md:p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-2 md:gap-4 cursor-pointer hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 transition-all"
         >
-          <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 rounded-xl"><Sparkles className="w-6 h-6" /></div>
-          <div>
-            <div className="text-xs font-bold text-slate-500 uppercase">Kelas Terbersih</div>
-            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{data?.stats?.kelasTerbersih || '-'}</div>
+          <div className="p-2 md:p-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 rounded-xl shrink-0"><Sparkles className="w-5 h-5 md:w-6 md:h-6" /></div>
+          <div className="min-w-0">
+            <div className="text-[10px] md:text-xs font-bold text-slate-500 uppercase leading-tight truncate md:whitespace-normal">Kelas Terbersih</div>
+            <div className="text-lg md:text-2xl font-bold text-emerald-600 dark:text-emerald-400 truncate">{data?.stats?.kelasTerbersih || '-'}</div>
           </div>
         </div>
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
-          <div className="p-3 bg-purple-50 dark:bg-purple-900/20 text-purple-500 rounded-xl"><Clock className="w-6 h-6" /></div>
-          <div>
-            <div className="text-xs font-bold text-slate-500 uppercase">Total JP Hari Ini</div>
-            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{data?.stats?.totalJP || 0} JP</div>
+        <div className="bg-white dark:bg-slate-800 p-3 md:p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-2 md:gap-4">
+          <div className="p-2 md:p-3 bg-purple-50 dark:bg-purple-900/20 text-purple-500 rounded-xl shrink-0"><Clock className="w-5 h-5 md:w-6 md:h-6" /></div>
+          <div className="min-w-0">
+            <div className="text-[10px] md:text-xs font-bold text-slate-500 uppercase leading-tight truncate md:whitespace-normal">Total JP</div>
+            <div className="text-lg md:text-2xl font-bold text-purple-600 dark:text-purple-400 truncate">{data?.stats?.totalJP || 0} JP</div>
           </div>
         </div>
       </div>
 
       {/* Classes Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4">
         {classes.map(kelas => {
           const studentCount = data?.studentCountByClass?.[kelas] || 0;
           const filteredJadwalKelas = filteredJadwal.filter((j: any) => j.kelas === kelas);
@@ -277,7 +317,7 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
 
       {/* Analisa Data Siswa */}
       <div className="mt-8">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
           <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Analisa Data Siswa</h2>
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Pilih Bulan:</span>
@@ -289,6 +329,65 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
             />
           </div>
         </div>
+        
+        {/* Kasih Ibu Spider Chart */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 rounded-lg">
+              <HeartHandshake className="w-5 h-5" />
+            </div>
+            <h2 className="text-lg font-bold">Pembiasaan 7KAIH Satuan Pendidikan</h2>
+          </div>
+          <div className="w-full h-[300px] md:h-[400px]">
+            {kasihIbuStats.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={kasihIbuStats}>
+                  <PolarGrid strokeDasharray="3 3" stroke="#cbd5e1" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 10 }} />
+                  <PolarRadiusAxis angle={90} domain={[0, 10]} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                  <Radar name="Capaian" dataKey="A" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} dot={renderCustomDot} />
+                </RadarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-slate-400 italic text-sm">
+                Belum ada data pembiasaan
+              </div>
+            )}
+          </div>
+          
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs font-medium">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+              <span>Belum Terbiasa (0-3)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+              <span>Mulai Terbiasa (4-7)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              <span>Terbiasa (8-10)</span>
+            </div>
+          </div>
+
+          <div className="mt-6 text-center">
+            <button 
+              onClick={() => setShowConclusion(!showConclusion)}
+              className="px-6 py-2.5 bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400 font-bold rounded-xl hover:bg-pink-100 dark:hover:bg-pink-900/40 transition-colors"
+            >
+              {showConclusion ? 'Sembunyikan Kesimpulan' : 'Lihat Kesimpulan'}
+            </button>
+            
+            {showConclusion && (
+              <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-700/30 rounded-xl text-sm text-slate-700 dark:text-slate-300 text-left animate-in fade-in slide-in-from-top-4 duration-300">
+                <p className="font-medium leading-relaxed">
+                  {getConclusionText()}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
           <div className="flex items-center gap-3 mb-6">
