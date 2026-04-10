@@ -28,21 +28,22 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
       // 1. Get student details
       const { data: studentData, error: studentError } = await supabase
         .from('murid')
-        .select('"Nama Lengkap", "Kelas"')
-        .eq('"NISN"', studentNisn)
+        .select('"Nama Lengkap", "Kelas", "NISN", "NIS"')
+        .or(`"NISN".eq."${studentNisn}","NIS".eq."${studentNisn}"`)
         .single();
 
       if (studentError || !studentData) {
-        setErrorMsg(`Siswa dengan NISN ${studentNisn} tidak ditemukan.`);
+        setErrorMsg(`Siswa dengan ID ${studentNisn} tidak ditemukan.`);
         setTimeout(() => setErrorMsg(''), 3000);
         return;
       }
 
       const namaSiswa = studentData['Nama Lengkap'];
+      const actualNisn = studentData['NISN'] || studentNisn;
 
       // 2. Save to database
       const { error: insertError } = await supabase.from('presensi_qr').insert([{
-        nisn: studentNisn,
+        nisn: actualNisn,
         nama: namaSiswa,
         kelas: studentData.Kelas,
         jenis: jenisPresensi,

@@ -69,34 +69,6 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-
-    const handleActivity = () => {
-      setIsSidebarVisible(true);
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        if (window.innerWidth < 1024) { // Only hide on mobile/tablet
-          setIsSidebarVisible(false);
-        }
-      }, 20000);
-    };
-
-    // Initial setup
-    handleActivity();
-
-    window.addEventListener('mousemove', handleActivity);
-    window.addEventListener('touchstart', handleActivity);
-    window.addEventListener('keydown', handleActivity);
-
-    return () => {
-      clearTimeout(timeoutId);
-      window.removeEventListener('mousemove', handleActivity);
-      window.removeEventListener('touchstart', handleActivity);
-      window.removeEventListener('keydown', handleActivity);
-    };
-  }, []);
-
   const fetchStats = async () => {
     try {
       const res = await fetch('/api/admin/stats');
@@ -665,28 +637,28 @@ function MonitoringKBMView() {
                     <td className="px-6 py-4 text-center font-medium text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300">
                       {index + 1}
                     </td>
-                    <td className="px-6 py-4 font-semibold text-slate-800 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    <td className="px-6 py-4 font-semibold text-slate-800 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors whitespace-nowrap">
                       {teacher.nama_guru}
                     </td>
                     {[1, 2, 3, 4, 5, 6, 7, 8].map(jam => {
                       const schedule = teacher.schedule[jam];
                       return (
-                        <td key={jam} className="px-2 py-3 text-center align-middle">
+                        <td key={jam} className="px-1 py-2 text-center align-middle">
                           {schedule ? (
-                            <div className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg border group-hover:shadow-sm transition-all ${schedule.isFilled ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/30 group-hover:bg-green-100 dark:group-hover:bg-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/30 group-hover:bg-red-100 dark:group-hover:bg-red-800'}`}>
-                              <span className={`font-black text-sm ${schedule.isFilled ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            <div className={`flex items-center justify-center gap-1 px-2 py-1 rounded border group-hover:shadow-sm transition-all whitespace-nowrap ${schedule.isFilled ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/30 group-hover:bg-green-100 dark:group-hover:bg-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/30 group-hover:bg-red-100 dark:group-hover:bg-red-800'}`}>
+                              <span className={`font-bold text-xs ${schedule.isFilled ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {schedule.kelas}
                               </span>
-                              <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-tight line-clamp-1 max-w-[100px]" title={schedule.mapel}>
+                              <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-tight max-w-[60px] truncate" title={schedule.mapel}>
                                 {schedule.mapel}
                               </span>
-                              <span className="text-[10px]">
+                              <span className="text-[10px] ml-1">
                                 {schedule.isFilled ? '✅' : '❌'}
                               </span>
                             </div>
                           ) : (
-                            <div className="w-full h-full min-h-[40px] flex items-center justify-center">
-                              <span className="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 group-hover:bg-slate-300 dark:group-hover:bg-slate-600 transition-colors"></span>
+                            <div className="w-full h-full min-h-[24px] flex items-center justify-center">
+                              <span className="w-1 h-1 rounded-full bg-slate-200 dark:bg-slate-700 group-hover:bg-slate-300 dark:group-hover:bg-slate-600 transition-colors"></span>
                             </div>
                           )}
                         </td>
@@ -2438,7 +2410,7 @@ function ApiConfigView({ showToast }: { showToast: (msg: string, type?: 'success
           <div className="mt-8 bg-slate-50 dark:bg-slate-700/50 p-6 rounded-xl border border-slate-100 dark:border-slate-700">
             <h3 className="font-bold text-slate-800 dark:text-white mb-2">Template Pesan WhatsApp</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-              Gunakan variabel berikut: <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{nama_guru}}"}</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{kelas}}"}</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{hari_tanggal}}"}</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{detail_jadwal}}"}</code>
+              Gunakan variabel berikut: <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{nama_guru}}"}</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{kelas}}"}</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{hari}}"}</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{tanggal}}"}</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{waktu}}"}</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{jadwal}}"}</code>
             </p>
             <textarea 
               rows={8}

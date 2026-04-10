@@ -31,6 +31,26 @@ import UnifiedAnnouncementCard from '../components/UnifiedAnnouncementCard';
 import PointRewardCard from '../components/PointRewardCard';
 import NilaiSiswa from './NilaiSiswa';
 
+function Edugame({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[100] bg-white dark:bg-slate-900 flex flex-col">
+      <header className="flex items-center gap-4 p-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+        <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+          <X className="w-6 h-6 text-slate-500" />
+        </button>
+        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Edugame</h2>
+      </header>
+      <div className="flex-grow overflow-hidden">
+        <iframe 
+          src="https://edugamev2.netlify.app/" 
+          className="w-full h-full border-0"
+          title="Edugame"
+        ></iframe>
+      </div>
+    </div>
+  );
+}
+
 export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkMode, onNavigate }: { user: any, onLogout: () => void, darkMode: boolean, toggleDarkMode: () => void, onNavigate: (page: string) => void }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showAbout, setShowAbout] = useState(false);
@@ -98,6 +118,8 @@ export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkM
         return <Tugas user={user} onBack={() => setActiveTab('kbm')} />;
       case 'tahfidz':
         return <Tahfidz onBack={() => setActiveTab('kbm')} />;
+      case 'edugame':
+        return <Edugame onBack={() => setActiveTab('kbm')} />;
       case 'nilai_siswa':
         return <NilaiSiswa user={user} onBack={() => setActiveTab('kbm')} />;
       default:
@@ -273,12 +295,16 @@ export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkM
   );
 }
 
+import BankSampahSummaryCard from '../components/BankSampahSummaryCard';
+
 function DashboardHome({ user, onNavigate, onExternalNavigate }: { user: any, onNavigate: (page: string) => void, onExternalNavigate: (page: string) => void }) {
   return (
     <div className="space-y-6">
-      {/* Unified Announcement Card & Point Reward Card */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-        <UnifiedAnnouncementCard type="student" />
+      {/* Bank Sampah Summary & Point Reward Card */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-start">
+        <div onDoubleClick={() => onNavigate('bank_sampah')} className="cursor-pointer">
+          <BankSampahSummaryCard user={user} />
+        </div>
         <PointRewardCard user={user} />
       </div>
 
@@ -296,8 +322,8 @@ function DashboardHome({ user, onNavigate, onExternalNavigate }: { user: any, on
           <button
             key={item.id}
             onClick={() => {
-              if (item.id === 'edugame' || item.id === 'rumah_pendidikan') {
-                onExternalNavigate(item.id);
+              if (item.id === 'rumah_pendidikan') {
+                window.open('https://rumah.pendidikan.go.id/ruang/murid', '_blank', 'noopener,noreferrer');
               } else {
                 onNavigate(item.id);
               }
@@ -341,8 +367,8 @@ function MenuKBM({ user, onNavigate, onExternalNavigate }: { user: any, onNaviga
         <button
           key={item.id}
           onClick={() => {
-            if (item.id === 'edugame' || item.id === 'rumah_pendidikan') {
-              onExternalNavigate(item.id);
+            if (item.id === 'rumah_pendidikan') {
+              window.open('https://rumah.pendidikan.go.id/ruang/murid', '_blank', 'noopener,noreferrer');
             } else {
               onNavigate(item.id);
             }
@@ -1161,14 +1187,14 @@ function Pelanggaran({ onBack }: { onBack: () => void }) {
 
 function Literasi({ onBack }: { onBack: () => void }) {
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col">
-      <header className="flex items-center gap-4 mb-4">
+    <div className="fixed inset-0 z-[100] bg-white dark:bg-slate-900 flex flex-col">
+      <header className="flex items-center gap-4 p-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
         <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
           <X className="w-6 h-6 text-slate-500" />
         </button>
         <h2 className="text-xl font-bold text-slate-800 dark:text-white">Literasi Digital</h2>
       </header>
-      <div className="flex-grow bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div className="flex-grow overflow-hidden">
         <iframe 
           src="https://perpusbaujeng1.netlify.app" 
           className="w-full h-full border-0"
@@ -1181,14 +1207,14 @@ function Literasi({ onBack }: { onBack: () => void }) {
 
 function Tahfidz({ onBack }: { onBack: () => void }) {
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col">
-      <header className="flex items-center gap-4 mb-4">
+    <div className="fixed inset-0 z-[100] bg-white dark:bg-slate-900 flex flex-col">
+      <header className="flex items-center gap-4 p-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
         <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
           <X className="w-6 h-6 text-slate-500" />
         </button>
         <h2 className="text-xl font-bold text-slate-800 dark:text-white">Tahfidz Quran</h2>
       </header>
-      <div className="flex-grow bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div className="flex-grow overflow-hidden">
         <iframe 
           src="https://litequran.net/" 
           className="w-full h-full border-0"

@@ -193,7 +193,7 @@ export default function UnifiedAnnouncementCard({ type = 'public', guruName, nip
       </div>
 
       {/* Announcement List (Collapsible) */}
-      {!isGuruMode && announcements.length > 0 && (
+      {!isGuruMode && type !== 'student' && announcements.length > 0 && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
           <button 
             onClick={() => setShowAll(!showAll)}

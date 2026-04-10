@@ -204,9 +204,9 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
               {/* TENDIK DASHBOARD */}
               {user?.role === 'tendik' && (
                 <>
-                  <div className="grid grid-cols-2 gap-3 md:gap-6 mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6">
                     {tendikStats && (
-                      <div className={`bg-gradient-to-br ${currentTheme.gradient} rounded-2xl shadow-lg p-6 text-white relative overflow-hidden transition-all duration-500 h-full flex flex-col justify-center`}>
+                      <div className={`bg-gradient-to-br ${currentTheme.gradient} rounded-2xl shadow-lg p-6 text-white relative overflow-hidden transition-all duration-500 flex flex-col justify-center`}>
                         <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
                         <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-24 h-24 bg-black/10 rounded-full blur-xl"></div>
                         
@@ -221,7 +221,7 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
                             </div>
                           </div>
                           
-                          <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-xl px-4 py-3 flex items-center gap-3">
+                          <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-xl px-4 py-3 flex items-center gap-3 w-full sm:w-auto">
                             <div className="flex flex-col">
                               <span className="text-xs text-white/80 uppercase tracking-wider font-semibold">Status</span>
                               <span className="font-bold text-lg">
@@ -234,7 +234,7 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
                     )}
 
                     {/* Unified Announcement Card */}
-                    <div className="h-full">
+                    <div>
                       <UnifiedAnnouncementCard type="tendik" />
                     </div>
                   </div>
@@ -272,31 +272,31 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
               {/* GURU DASHBOARD */}
               {user?.role !== 'tendik' && (
                 <>
-                  <div className="grid grid-cols-2 gap-3 md:gap-6 mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6">
                     {stats && (
-                      <div className={`bg-gradient-to-br ${currentTheme.gradient} rounded-2xl shadow-lg p-4 text-white relative overflow-hidden transition-all duration-500 h-full flex flex-col justify-between`}>
-                        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-20 h-20 bg-white/10 rounded-full blur-xl"></div>
-                        <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-16 h-16 bg-black/10 rounded-full blur-lg"></div>
+                      <div className={`bg-gradient-to-br ${currentTheme.gradient} rounded-2xl shadow-lg p-6 text-white relative overflow-hidden transition-all duration-500 flex flex-col justify-center`}>
+                        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                        <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-24 h-24 bg-black/10 rounded-full blur-xl"></div>
                         
-                        <div className="relative z-10 flex flex-col gap-2 h-full">
+                        <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                           <div>
-                            <h3 className="text-white/90 font-medium text-xs sm:text-sm mb-1 flex items-center gap-1">
-                              <BarChart2 className="w-4 h-4" /> Target Mingguan
+                            <h3 className="text-white/90 font-medium mb-1 flex items-center gap-2">
+                              <BarChart2 className="w-5 h-5" /> Target Mingguan
                             </h3>
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-2xl sm:text-4xl font-bold">{stats.weeklyProgress.current}</span>
-                              <span className="text-white/80 text-xs sm:text-lg">/ {stats.weeklyProgress.target} JP</span>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-4xl font-bold">{stats.weeklyProgress.current}</span>
+                              <span className="text-white/80 text-lg">/ {stats.weeklyProgress.target} JP</span>
                             </div>
                           </div>
                           
-                          <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-xl px-2 py-2 sm:px-4 sm:py-3 flex flex-col sm:flex-row items-center gap-2 sm:gap-3 mt-auto">
-                            <div className="flex flex-col flex-1 min-w-0">
-                              <span className="text-[10px] text-white/80 uppercase tracking-wider font-semibold truncate w-full">Status</span>
-                              <span className="font-bold text-xs sm:text-lg truncate w-full">
+                          <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-xl px-4 py-3 flex items-center gap-3 w-full sm:w-auto">
+                            <div className="flex flex-col">
+                              <span className="text-xs text-white/80 uppercase tracking-wider font-semibold">Status</span>
+                              <span className="font-bold text-lg">
                                 {Number(stats.weeklyProgress.percent) >= 80 ? 'Sesuai' : 'Tingkatkan'}
                               </span>
                             </div>
-                            <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full border-2 sm:border-4 border-white/30 flex items-center justify-center font-bold text-xs sm:text-base">
+                            <div className="w-12 h-12 rounded-full border-4 border-white/30 flex items-center justify-center font-bold text-base">
                               {Math.round(Number(stats.weeklyProgress.percent))}%
                             </div>
                           </div>
@@ -305,7 +305,7 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
                     )}
 
                     {/* Unified Announcement Card (Guru: Latest Journal) */}
-                    <div className="h-full">
+                    <div>
                       <UnifiedAnnouncementCard type="guru" guruName={user['Nama Guru']} nip={user.NIP} />
                     </div>
                   </div>
