@@ -30,6 +30,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import UnifiedAnnouncementCard from '../components/UnifiedAnnouncementCard';
 import PointRewardCard from '../components/PointRewardCard';
 import NilaiSiswa from './NilaiSiswa';
+import { supabase } from '../lib/supabase';
 
 function Edugame({ onBack }: { onBack: () => void }) {
   return (
@@ -105,7 +106,7 @@ export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkM
       case 'bank_sampah':
         return <BankSampah user={user} onBack={() => setActiveTab('kbm')} />;
       case 'kasih_ibu':
-        return <KasihIbu onBack={() => setActiveTab('kbm')} />;
+        return <KasihIbu user={user} onBack={() => setActiveTab('kbm')} />;
       case 'jurnal_kasih_ibu':
         return <JurnalKasihIbu user={user} onBack={() => setActiveTab('kbm')} />;
       case 'kehadiran':
@@ -301,11 +302,13 @@ function DashboardHome({ user, onNavigate, onExternalNavigate }: { user: any, on
   return (
     <div className="space-y-6">
       {/* Bank Sampah Summary & Point Reward Card */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-start">
-        <div onDoubleClick={() => onNavigate('bank_sampah')} className="cursor-pointer">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-stretch">
+        <div onDoubleClick={() => onNavigate('bank_sampah')} className="cursor-pointer h-full">
           <BankSampahSummaryCard user={user} />
         </div>
-        <PointRewardCard user={user} />
+        <div className="h-full">
+          <PointRewardCard user={user} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -634,6 +637,36 @@ function JadwalHariIni({ user, onBack }: { user: any, onBack: () => void }) {
 }
 
 function BankSampah({ user, onBack }: { user: any, onBack: () => void }) {
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      const nama = user?.Nama_Murid || user?.name || user?.['Nama Lengkap'];
+      if (!nama) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('tabungan_sampah')
+          .select('*')
+          .eq('siswa', nama)
+          .order('tanggal', { ascending: false });
+
+        if (error) throw error;
+        if (data) setTransactions(data);
+      } catch (err) {
+        console.error("Error fetching transactions:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, [user]);
+
+  const totalSaldo = transactions.reduce((acc, curr) => acc + Number(curr.nilai || 0), 0);
+  const totalBerat = transactions.reduce((acc, curr) => acc + Number(curr.berat || 0), 0);
+
   return (
     <div className="space-y-6">
       <header className="flex items-center gap-4 mb-6">
@@ -650,7 +683,7 @@ function BankSampah({ user, onBack }: { user: any, onBack: () => void }) {
         <div className="flex justify-between items-start">
           <div>
             <p className="text-green-100 mb-1">Total Saldo Tabungan</p>
-            <h3 className="text-4xl font-bold">Rp 0</h3>
+            <h3 className="text-4xl font-bold">Rp {totalSaldo.toLocaleString('id-ID')}</h3>
           </div>
           <div className="bg-white/20 p-3 rounded-xl">
             <Trash2 className="w-8 h-8 text-white" />
@@ -659,13 +692,36 @@ function BankSampah({ user, onBack }: { user: any, onBack: () => void }) {
         <div className="mt-8 flex gap-4">
           <div className="bg-white/10 px-4 py-2 rounded-lg backdrop-blur-sm">
             <span className="block text-xs text-green-100">Total Berat</span>
-            <span className="font-bold">0 kg</span>
+            <span className="font-bold">{totalBerat.toFixed(1)} kg</span>
           </div>
           <div className="bg-white/10 px-4 py-2 rounded-lg backdrop-blur-sm">
             <span className="block text-xs text-green-100">Transaksi</span>
-            <span className="font-bold">0 Kali</span>
+            <span className="font-bold">{transactions.length} Kali</span>
           </div>
         </div>
+      </div>
+
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+        <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-6">Riwayat Transaksi</h3>
+        {loading ? (
+          <div className="text-center py-8 text-slate-500">Memuat data...</div>
+        ) : transactions.length === 0 ? (
+          <div className="text-center py-8 text-slate-500">Belum ada transaksi.</div>
+        ) : (
+          <div className="space-y-4">
+            {transactions.map((t, idx) => (
+              <div key={idx} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
+                <div>
+                  <p className="font-semibold text-slate-800 dark:text-white">{t.jenis_sampah}</p>
+                  <p className="text-xs text-slate-500">{new Date(t.tanggal).toLocaleDateString('id-ID')} • {t.berat} kg</p>
+                </div>
+                <div className={`font-bold ${Number(t.nilai) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {Number(t.nilai) >= 0 ? '+' : '-'} Rp {Math.abs(Number(t.nilai)).toLocaleString('id-ID')}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -782,7 +838,7 @@ function JurnalKasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
   );
 }
 
-function KasihIbu({ onBack }: { onBack: () => void }) {
+function KasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
   const habits = [
     { id: 'bangun_pagi', label: 'Bangun Pagi', desc: 'Menanamkan disiplin', icon: '🌅' },
     { id: 'beribadah', label: 'Beribadah', desc: 'Memperkuat nilai spiritual', icon: '🕌' },
@@ -826,9 +882,6 @@ function KasihIbu({ onBack }: { onBack: () => void }) {
 
     setSubmitting(true);
     try {
-      const userStr = localStorage.getItem('bisma_user');
-      const user = userStr ? JSON.parse(userStr) : {};
-
       let finalKeterangan = keterangan;
       if (selectedHabit?.id === 'beribadah') {
         const sholatDetails = Object.entries(sholatChecklist)
@@ -843,9 +896,9 @@ function KasihIbu({ onBack }: { onBack: () => void }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          nis: user.NISN || user.NIS || user.id,
-          nama: user.Nama_Murid || user.name,
-          kelas: user.Kelas,
+          nis: user?.NISN || user?.NIS || user?.id,
+          nama: user?.Nama_Murid || user?.name || user?.['Nama Lengkap'],
+          kelas: user?.Kelas,
           habit_id: selectedHabit.id,
           habit_label: selectedHabit.label,
           tanggal: currentTime.toISOString().split('T')[0],

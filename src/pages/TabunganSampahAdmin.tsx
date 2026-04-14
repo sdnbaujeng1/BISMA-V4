@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Plus, Edit, Trash, Save, X, Trophy, Coins, Scale } from 'lucide-react';
+import { Trash2, Plus, Edit, Trash, Save, X, Trophy, Coins, Scale, ShoppingCart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function TabunganSampahAdmin({ showToast }: { showToast: (msg: string, type?: 'success' | 'error') => void }) {
@@ -7,12 +7,22 @@ export default function TabunganSampahAdmin({ showToast }: { showToast: (msg: st
   const [wasteTypes, setWasteTypes] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [students, setStudents] = useState<any[]>([]);
+  const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
   
   // Modal State
   const [showTypeModal, setShowTypeModal] = useState(false);
   const [editingType, setEditingType] = useState<any>(null);
   const [typeName, setTypeName] = useState('');
   const [typePrice, setTypePrice] = useState('');
+
+  const [showExchangeModal, setShowExchangeModal] = useState(false);
+  const [exchangeData, setExchangeData] = useState({
+    siswa: '',
+    kelas: 'Kelas 1',
+    namaAtk: '',
+    harga: ''
+  });
 
   const fetchData = async () => {
     setLoading(true);
@@ -32,6 +42,13 @@ export default function TabunganSampahAdmin({ showToast }: { showToast: (msg: st
       const transData = await transRes.json();
       if (transData.success) setTransactions(transData.data);
 
+      // Fetch Students
+      const studentsRes = await fetch('/api/murid');
+      const studentsData = await studentsRes.json();
+      if (studentsData.success) {
+        setStudents(studentsData.data);
+      }
+
     } catch (error) {
       console.error("Error fetching data", error);
       showToast("Gagal memuat data", "error");
@@ -43,6 +60,51 @@ export default function TabunganSampahAdmin({ showToast }: { showToast: (msg: st
   useEffect(() => {
     fetchData();
   }, []);
+
+  const filterStudentsByClass = (allStudents: any[], kelas: string) => {
+    const filtered = allStudents.filter(s => {
+        const sClass = String(s.Kelas).toLowerCase().replace(/\s/g, '');
+        const fClass = kelas.toLowerCase().replace(/\s/g, '');
+        return sClass.includes(fClass.replace('kelas', ''));
+    });
+    setFilteredStudents(filtered);
+  };
+
+  const handleExchangeClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newClass = e.target.value;
+    setExchangeData({ ...exchangeData, kelas: newClass, siswa: '' });
+    filterStudentsByClass(students, newClass);
+  };
+
+  const handleExchangeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/bank-sampah/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          siswa: exchangeData.siswa,
+          kelas: exchangeData.kelas,
+          jenis_sampah: `Tukar ATK: ${exchangeData.namaAtk}`,
+          berat: 0,
+          nilai: -Math.abs(Number(exchangeData.harga)),
+          tanggal: new Date().toISOString()
+        })
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        showToast("Transaksi Tukar ATK berhasil disimpan!", "success");
+        setShowExchangeModal(false);
+        setExchangeData({ siswa: '', kelas: 'Kelas 1', namaAtk: '', harga: '' });
+        fetchData(); // Refresh
+      } else {
+        showToast("Gagal menyimpan data: " + result.message, "error");
+      }
+    } catch (error) {
+      showToast("Terjadi kesalahan jaringan", "error");
+    }
+  };
 
   const handleSaveType = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,9 +169,21 @@ export default function TabunganSampahAdmin({ showToast }: { showToast: (msg: st
 
   return (
     <div className="max-w-7xl mx-auto">
-      <header className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Tabungan Sampah</h1>
-        <p className="text-slate-500 dark:text-slate-400">Konfigurasi Harga & Monitoring Tabungan</p>
+      <header className="mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Tabungan Sampah</h1>
+          <p className="text-slate-500 dark:text-slate-400">Konfigurasi Harga & Monitoring Tabungan</p>
+        </div>
+        <button 
+          onClick={() => {
+            setExchangeData({ ...exchangeData, kelas: 'Kelas 1', siswa: '' });
+            filterStudentsByClass(students, 'Kelas 1');
+            setShowExchangeModal(true);
+          }}
+          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg shadow-purple-200 dark:shadow-none transition-all"
+        >
+          <ShoppingCart className="w-4 h-4" /> Tukar ATK
+        </button>
       </header>
 
       {/* Stats Cards */}
@@ -291,6 +365,79 @@ export default function TabunganSampahAdmin({ showToast }: { showToast: (msg: st
                     <Save className="w-4 h-4" /> Simpan
                   </button>
                 </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {showExchangeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-slate-800 dark:text-white">Tukar Koin dengan ATK</h3>
+                <button onClick={() => setShowExchangeModal(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+
+              <form onSubmit={handleExchangeSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Kelas</label>
+                  <select 
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                    value={exchangeData.kelas}
+                    onChange={handleExchangeClassChange}
+                  >
+                    {[1, 2, 3, 4, 5, 6].map(num => (
+                      <option key={num} value={`Kelas ${num}`}>Kelas {num}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Nama Siswa</label>
+                  <select 
+                    required 
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                    value={exchangeData.siswa}
+                    onChange={(e) => setExchangeData({...exchangeData, siswa: e.target.value})}
+                  >
+                    <option value="">-- Pilih Siswa --</option>
+                    {filteredStudents.map((s, idx) => (
+                        <option key={idx} value={s['Nama Lengkap']}>{s['Nama Lengkap']}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Nama ATK</label>
+                  <input 
+                    type="text" 
+                    required 
+                    placeholder="Contoh: Buku Tulis, Pensil"
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                    value={exchangeData.namaAtk}
+                    onChange={(e) => setExchangeData({...exchangeData, namaAtk: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Harga ATK (Koin/Rp)</label>
+                  <input 
+                    type="number" 
+                    required 
+                    placeholder="Contoh: 5000"
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                    value={exchangeData.harga}
+                    onChange={(e) => setExchangeData({...exchangeData, harga: e.target.value})}
+                  />
+                </div>
+                
+                <button type="submit" disabled={loading} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-purple-200 dark:shadow-none transition-all mt-4 disabled:opacity-50">
+                  {loading ? 'Memproses...' : 'Tukar ATK'}
+                </button>
               </form>
             </motion.div>
           </div>

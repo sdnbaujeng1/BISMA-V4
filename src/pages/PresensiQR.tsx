@@ -130,12 +130,20 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
 
             {jenisPresensi && (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                <div className="mb-6 relative border-4 border-green-500 rounded-2xl overflow-hidden aspect-video bg-slate-900 flex items-center justify-center shadow-inner">
+                <div className="mb-6 relative border-4 border-green-500 rounded-2xl overflow-hidden aspect-square md:aspect-video bg-slate-900 flex items-center justify-center shadow-inner w-full max-w-md mx-auto md:max-w-none">
                   {scanning ? (
-                    <Scanner
-                      onScan={handleScanResult}
-                      onError={(error) => console.error(error)}
-                    />
+                    <div className="w-full h-full object-cover">
+                      <Scanner
+                        onScan={handleScanResult}
+                        onError={(error) => console.error(error)}
+                        components={{
+                          onOff: false,
+                          torch: true,
+                          zoom: false,
+                          finder: true,
+                        }}
+                      />
+                    </div>
                   ) : (
                     <div className="text-slate-500 flex flex-col items-center gap-3">
                       <Camera className="w-16 h-16 opacity-50" />

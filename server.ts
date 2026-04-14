@@ -95,9 +95,9 @@ async function sendWAReminders() {
           });
 
           if (!isFilled) hasMissingJournal = true;
-          scheduleDetails += `Jam ke-${i} : ${sch.kelas} / ${sch.mapel} ${isFilled ? '✅' : '❌'}\n`;
+          scheduleDetails += `Jam ke-${i} :  ${sch.kelas}/ ${sch.mapel} berikan simbol ${isFilled ? '✅' : '❌'} (jika ${isFilled ? 'mengisi' : 'belum mengisi'})\n`;
         } else {
-          scheduleDetails += `Jam ke-${i} : - / - -\n`;
+          scheduleDetails += `Jam ke-${i} :  - / - berikan simbol - (jika tidak ada jadwal jam pelajaran)\n`;
         }
       }
 
@@ -124,10 +124,23 @@ async function sendWAReminders() {
         message = waTemplate
           .replace(/\{\{nama_guru\}\}/g, teacher.nama_guru)
           .replace(/\{\{kelas\}\}/g, classListStr)
-          .replace(/\{\{hari_tanggal\}\}/g, `${hariIniIndo}, ${formattedDate}`)
-          .replace(/\{\{detail_jadwal\}\}/g, scheduleDetails);
+          .replace(/\{\{hari\}\}/g, hariIniIndo)
+          .replace(/\{\{tanggal\}\}/g, formattedDate)
+          .replace(/\{\{waktu\}\}/g, formattedTime)
+          .replace(/\{\{jadwal\}\}/g, scheduleDetails);
       } else {
-        message = `SDN BAUJENG I BEJI\nBISMA\n=============\nYth. ${teacher.nama_guru}\n\nBerikut ini kami sampaikan laporan keterlaksanaan KBM Bapak/Ibu di kelas ${classListStr} pada hari ${hariIniIndo}, ${formattedDate}, pukul ${formattedTime} WIB.\n===============\nBerikut ini kami laporkan jadwal dan keterlaksanaan KBM yang telah Ibu/Bapak isi pada aplikasi BISMA, Jadwal dan keterlaksanaan KBM hari ini:\n=================\n${scheduleDetails}=================\nSegera masuk kelas untuk melaksanakan KBM sesuai jadwal dan semoga menjadi amal ibadah. Amiin\n===============\nRaih Berkah dengan Khidmah\nKet: ✅ = Hadir  |  ❌ = Tidak Hadir |`;
+        message = `SDN BAUJENG I BEJI
+BISMA
+=============
+Yth. ${teacher.nama_guru}
+
+Berikut ini kami sampaikan laporan keterlaksanaan KBM Bapak/Ibu di kelas ${classListStr} pada hari ${hariIniIndo}, ${formattedDate}, pukul ${formattedTime} WIB.
+===============
+${scheduleDetails}=================
+Segera masuk kelas untuk melaksanakan KBM sesuai jadwal dan semoga menjadi amal ibadah. Amiin
+===============
+Raih Berkah dengan Khidmah
+Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`;
       }
 
       // Send via Fonnte

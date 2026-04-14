@@ -8,21 +8,20 @@ export default function BankSampahSummaryCard({ user }: { user: any }) {
 
   useEffect(() => {
     const fetchSaldo = async () => {
-      if (!user?.NISN && !user?.NIS) return;
+      const nama = user?.Nama_Murid || user?.name || user?.['Nama Lengkap'];
+      if (!nama) return;
       
       try {
-        const nisn = user.NISN || user.NIS;
         const { data, error } = await supabase
-          .from('bank_sampah')
-          .select('saldo')
-          .eq('nisn', nisn)
-          .order('timestamp', { ascending: false })
-          .limit(1);
+          .from('tabungan_sampah')
+          .select('nilai')
+          .eq('siswa', nama);
 
         if (error) throw error;
         
-        if (data && data.length > 0) {
-          setSaldo(data[0].saldo);
+        if (data) {
+          const total = data.reduce((acc, curr) => acc + Number(curr.nilai || 0), 0);
+          setSaldo(total);
         }
       } catch (err) {
         console.error("Error fetching saldo:", err);
@@ -43,7 +42,7 @@ export default function BankSampahSummaryCard({ user }: { user: any }) {
   }
 
   return (
-    <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl p-4 sm:p-6 shadow-lg text-white relative overflow-hidden transition-all duration-300 group hover:shadow-xl hover:shadow-emerald-200 dark:hover:shadow-none">
+    <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl p-4 sm:p-6 shadow-lg text-white relative overflow-hidden transition-all duration-300 group hover:shadow-xl hover:shadow-emerald-200 dark:hover:shadow-none h-full">
       {/* Decorative background elements */}
       <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl group-hover:scale-110 transition-transform duration-500"></div>
       <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl group-hover:scale-110 transition-transform duration-500"></div>

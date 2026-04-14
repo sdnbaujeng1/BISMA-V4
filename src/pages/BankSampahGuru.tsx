@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Trash2, Plus, Save, X } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, Save, X, ShoppingCart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function BankSampahGuru({ user, onNavigate }: { user: any, onNavigate: (page: string) => void }) {
   const [showModal, setShowModal] = useState(false);
+  const [showExchangeModal, setShowExchangeModal] = useState(false);
   const [formData, setFormData] = useState({
     siswa: '',
     kelas: 'Kelas 1', // Default
     jenisSampah: '',
     berat: '',
     nilai: ''
+  });
+  const [exchangeData, setExchangeData] = useState({
+    siswa: '',
+    kelas: 'Kelas 1',
+    namaAtk: '',
+    harga: ''
   });
   
   const [wasteTypes, setWasteTypes] = useState<any[]>([]);
@@ -59,8 +66,6 @@ export default function BankSampahGuru({ user, onNavigate }: { user: any, onNavi
   }, []);
 
   const filterStudentsByClass = (allStudents: any[], kelas: string) => {
-    // Normalize class string to match student data format if necessary
-    // Assuming student.Kelas is like "Kelas 1" or "1"
     const filtered = allStudents.filter(s => {
         const sClass = String(s.Kelas).toLowerCase().replace(/\s/g, '');
         const fClass = kelas.toLowerCase().replace(/\s/g, '');
@@ -72,6 +77,12 @@ export default function BankSampahGuru({ user, onNavigate }: { user: any, onNavi
   const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newClass = e.target.value;
     setFormData({ ...formData, kelas: newClass, siswa: '' });
+    filterStudentsByClass(students, newClass);
+  };
+
+  const handleExchangeClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newClass = e.target.value;
+    setExchangeData({ ...exchangeData, kelas: newClass, siswa: '' });
     filterStudentsByClass(students, newClass);
   };
 
@@ -126,6 +137,39 @@ export default function BankSampahGuru({ user, onNavigate }: { user: any, onNavi
     }
   };
 
+  const handleExchangeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await fetch('/api/bank-sampah/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          siswa: exchangeData.siswa,
+          kelas: exchangeData.kelas,
+          jenis_sampah: `Tukar ATK: ${exchangeData.namaAtk}`,
+          berat: 0,
+          nilai: -Math.abs(Number(exchangeData.harga)),
+          tanggal: new Date().toISOString()
+        })
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        showToast("Transaksi Tukar ATK berhasil disimpan!", "success");
+        setShowExchangeModal(false);
+        setExchangeData({ siswa: '', kelas: 'Kelas 1', namaAtk: '', harga: '' });
+        fetchData(); // Refresh
+      } else {
+        showToast("Gagal menyimpan data: " + result.message, "error");
+      }
+    } catch (error) {
+      showToast("Terjadi kesalahan jaringan", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors p-6">
       {/* Toast */}
@@ -144,7 +188,7 @@ export default function BankSampahGuru({ user, onNavigate }: { user: any, onNavi
         )}
       </AnimatePresence>
 
-      <header className="mb-8 flex items-center justify-between">
+      <header className="mb-8 flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <button onClick={() => onNavigate('main')} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
             <ArrowLeft className="w-6 h-6 text-slate-700 dark:text-slate-200" />
@@ -154,12 +198,28 @@ export default function BankSampahGuru({ user, onNavigate }: { user: any, onNavi
             <p className="text-slate-500 dark:text-slate-400">Input Data Tabungan Siswa</p>
           </div>
         </div>
-        <button 
-          onClick={() => setShowModal(true)}
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg shadow-green-200 dark:shadow-none transition-all"
-        >
-          <Plus className="w-4 h-4" /> Input Setoran
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => {
+              setExchangeData({ ...exchangeData, kelas: 'Kelas 1', siswa: '' });
+              filterStudentsByClass(students, 'Kelas 1');
+              setShowExchangeModal(true);
+            }}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg shadow-purple-200 dark:shadow-none transition-all"
+          >
+            <ShoppingCart className="w-4 h-4" /> Tukar ATK
+          </button>
+          <button 
+            onClick={() => {
+              setFormData({ ...formData, kelas: 'Kelas 1', siswa: '' });
+              filterStudentsByClass(students, 'Kelas 1');
+              setShowModal(true);
+            }}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg shadow-green-200 dark:shadow-none transition-all"
+          >
+            <Plus className="w-4 h-4" /> Input Setoran
+          </button>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -303,6 +363,79 @@ export default function BankSampahGuru({ user, onNavigate }: { user: any, onNavi
                 
                 <button type="submit" disabled={loading} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-green-200 dark:shadow-none transition-all mt-4 disabled:opacity-50">
                   {loading ? 'Menyimpan...' : 'Simpan Data'}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {showExchangeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-slate-800 dark:text-white">Tukar Koin dengan ATK</h3>
+                <button onClick={() => setShowExchangeModal(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+
+              <form onSubmit={handleExchangeSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Kelas</label>
+                  <select 
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                    value={exchangeData.kelas}
+                    onChange={handleExchangeClassChange}
+                  >
+                    {[1, 2, 3, 4, 5, 6].map(num => (
+                      <option key={num} value={`Kelas ${num}`}>Kelas {num}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Nama Siswa</label>
+                  <select 
+                    required 
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                    value={exchangeData.siswa}
+                    onChange={(e) => setExchangeData({...exchangeData, siswa: e.target.value})}
+                  >
+                    <option value="">-- Pilih Siswa --</option>
+                    {filteredStudents.map((s, idx) => (
+                        <option key={idx} value={s['Nama Lengkap']}>{s['Nama Lengkap']}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Nama ATK</label>
+                  <input 
+                    type="text" 
+                    required 
+                    placeholder="Contoh: Buku Tulis, Pensil"
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                    value={exchangeData.namaAtk}
+                    onChange={(e) => setExchangeData({...exchangeData, namaAtk: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Harga ATK (Koin/Rp)</label>
+                  <input 
+                    type="number" 
+                    required 
+                    placeholder="Contoh: 5000"
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                    value={exchangeData.harga}
+                    onChange={(e) => setExchangeData({...exchangeData, harga: e.target.value})}
+                  />
+                </div>
+                
+                <button type="submit" disabled={loading} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-purple-200 dark:shadow-none transition-all mt-4 disabled:opacity-50">
+                  {loading ? 'Memproses...' : 'Tukar ATK'}
                 </button>
               </form>
             </motion.div>

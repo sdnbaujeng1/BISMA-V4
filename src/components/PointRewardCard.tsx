@@ -22,7 +22,7 @@ export default function PointRewardCard({ user }: { user: any }) {
 
   useEffect(() => {
     const fetchPoints = async () => {
-      if (!user?.Kelas || !user?.NIS) return;
+      if (!user?.Kelas || (!user?.NIS && !user?.NISN && !user?.id)) return;
       
       try {
         // Fetch all habits for the class
@@ -40,28 +40,49 @@ export default function PointRewardCard({ user }: { user: any }) {
         Object.keys(HABIT_POINTS).forEach(habit => {
           currentStudentBreakdown[habit] = 0;
         });
+        currentStudentBreakdown['Tukar Poin'] = 0;
 
         data?.forEach(entry => {
+          let points = 0;
           const habitInfo = HABIT_POINTS[entry.jenis_kebiasaan];
+          const isCurrentUser = 
+            (entry.nisn && user.NISN && String(entry.nisn) === String(user.NISN)) || 
+            (entry.nisn && user.NIS && String(entry.nisn) === String(user.NIS)) || 
+            (entry.nisn && user.id && String(entry.nisn) === String(user.id));
+          
           if (habitInfo) {
-            // Add to total points per user
-            pointsByUser[entry.nisn] = (pointsByUser[entry.nisn] || 0) + habitInfo.points;
-
-            // Add to breakdown if it's the current user
-            if (entry.nisn === user.NIS) {
-              currentStudentBreakdown[entry.jenis_kebiasaan] += habitInfo.points;
+            points = habitInfo.points;
+            if (isCurrentUser) {
+              currentStudentBreakdown[entry.jenis_kebiasaan] += points;
             }
+          } else if (entry.jenis_kebiasaan.startsWith('Tukar Poin')) {
+            // Extract points from string like "Tukar Poin: Buku Tulis (-50)"
+            const match = entry.jenis_kebiasaan.match(/\(-(\d+)\)/);
+            if (match) {
+              points = -parseInt(match[1], 10);
+              if (isCurrentUser) {
+                currentStudentBreakdown['Tukar Poin'] += points;
+              }
+            }
+          }
+
+          if (points !== 0) {
+            pointsByUser[String(entry.nisn)] = (pointsByUser[String(entry.nisn)] || 0) + points;
           }
         });
 
         // Calculate rank
+        const currentUserId = String(user.NISN || user.NIS || user.id);
         const sortedScores = Object.entries(pointsByUser)
           .map(([nis, score]) => ({ nis, score }))
           .sort((a, b) => b.score - a.score);
 
-        const rankIndex = sortedScores.findIndex(s => s.nis === user.NIS);
+        const rankIndex = sortedScores.findIndex(s => s.nis === currentUserId);
         
-        setStudentPoints(pointsByUser[user.NIS] || 0);
+        // Calculate total points from breakdown to ensure accuracy even if NIS/NISN mismatch
+        const totalMyPoints = Object.values(currentStudentBreakdown).reduce((sum, pts) => sum + pts, 0);
+        
+        setStudentPoints(totalMyPoints);
         setStudentRank(rankIndex !== -1 ? rankIndex + 1 : sortedScores.length + 1);
         setTotalStudents(Math.max(sortedScores.length, 1)); // At least 1 (themselves) if no data
         setBreakdown(currentStudentBreakdown);
@@ -77,19 +98,19 @@ export default function PointRewardCard({ user }: { user: any }) {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 h-full flex items-center justify-center min-h-[100px]">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 h-full flex items-center justify-center min-h-[160px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="bg-gradient-to-br from-pink-500 to-rose-600 rounded-2xl p-4 sm:p-6 shadow-lg text-white flex flex-col relative overflow-hidden transition-all duration-300">
+    <div className="bg-gradient-to-br from-pink-500 to-rose-600 rounded-3xl p-4 sm:p-6 shadow-lg text-white flex flex-col relative overflow-hidden transition-all duration-300 h-full">
       {/* Decorative background elements */}
       <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl"></div>
       <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
       
-      <div className="flex justify-between items-start relative z-10">
+      <div className={`flex justify-between items-center relative z-10 ${isMinimized ? 'h-full' : ''}`}>
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2">
@@ -123,6 +144,13 @@ export default function PointRewardCard({ user }: { user: any }) {
               </div>
             );
           })}
+          {breakdown['Tukar Poin'] !== 0 && (
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-2 sm:p-3 border border-white/20 flex flex-col items-center justify-center text-center transition-transform hover:scale-105 hover:bg-white/20">
+              <span className="text-xl sm:text-2xl mb-1 drop-shadow-sm">🎁</span>
+              <span className="text-[9px] sm:text-[10px] font-medium text-pink-50 leading-tight mb-1">Tukar Poin</span>
+              <span className="text-xs sm:text-sm font-bold bg-white/20 px-2 py-0.5 rounded-full text-red-200">{breakdown['Tukar Poin']} pt</span>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -204,7 +204,7 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
               {/* TENDIK DASHBOARD */}
               {user?.role === 'tendik' && (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6">
+                  <div className="mb-6">
                     {tendikStats && (
                       <div className={`bg-gradient-to-br ${currentTheme.gradient} rounded-2xl shadow-lg p-6 text-white relative overflow-hidden transition-all duration-500 flex flex-col justify-center`}>
                         <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
@@ -232,11 +232,6 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
                         </div>
                       </div>
                     )}
-
-                    {/* Unified Announcement Card */}
-                    <div>
-                      <UnifiedAnnouncementCard type="tendik" />
-                    </div>
                   </div>
 
                   <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-5 border border-slate-100 dark:border-slate-700">
@@ -272,7 +267,7 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
               {/* GURU DASHBOARD */}
               {user?.role !== 'tendik' && (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6">
+                  <div className="flex flex-col gap-4 md:gap-6 mb-6">
                     {stats && (
                       <div className={`bg-gradient-to-br ${currentTheme.gradient} rounded-2xl shadow-lg p-6 text-white relative overflow-hidden transition-all duration-500 flex flex-col justify-center`}>
                         <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
