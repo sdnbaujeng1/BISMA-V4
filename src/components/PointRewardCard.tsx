@@ -18,6 +18,7 @@ export default function PointRewardCard({ user }: { user: any }) {
   const [studentRank, setStudentRank] = useState(0);
   const [totalStudents, setTotalStudents] = useState(0);
   const [breakdown, setBreakdown] = useState<Record<string, number>>({});
+  const [lastTransaction, setLastTransaction] = useState<{ activity: string, date: string } | null>(null);
   const [isMinimized, setIsMinimized] = useState(true);
 
   useEffect(() => {
@@ -28,13 +29,15 @@ export default function PointRewardCard({ user }: { user: any }) {
         // Fetch all habits for the class
         const { data, error } = await supabase
           .from('kasih_ibu')
-          .select('nisn, jenis_kebiasaan')
-          .eq('kelas', user.Kelas);
+          .select('nisn, jenis_kebiasaan, timestamp')
+          .eq('kelas', user.Kelas)
+          .order('timestamp', { ascending: false });
 
         if (error) throw error;
 
         const pointsByUser: Record<string, number> = {};
         const currentStudentBreakdown: Record<string, number> = {};
+        let latestActivity: { activity: string, date: string } | null = null;
 
         // Initialize breakdown for current student
         Object.keys(HABIT_POINTS).forEach(habit => {
@@ -50,6 +53,13 @@ export default function PointRewardCard({ user }: { user: any }) {
             (entry.nisn && user.NIS && String(entry.nisn) === String(user.NIS)) || 
             (entry.nisn && user.id && String(entry.nisn) === String(user.id));
           
+          if (isCurrentUser && !latestActivity) {
+            latestActivity = {
+              activity: entry.jenis_kebiasaan,
+              date: new Date(entry.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+            };
+          }
+
           if (habitInfo) {
             points = habitInfo.points;
             if (isCurrentUser) {
@@ -86,6 +96,7 @@ export default function PointRewardCard({ user }: { user: any }) {
         setStudentRank(rankIndex !== -1 ? rankIndex + 1 : sortedScores.length + 1);
         setTotalStudents(Math.max(sortedScores.length, 1)); // At least 1 (themselves) if no data
         setBreakdown(currentStudentBreakdown);
+        setLastTransaction(latestActivity);
       } catch (err) {
         console.error("Error fetching points:", err);
       } finally {
@@ -125,6 +136,11 @@ export default function PointRewardCard({ user }: { user: any }) {
             </button>
           </div>
           <p className="text-pink-100 text-xs sm:text-sm mt-1">Peringkat {studentRank} dari {totalStudents} di Kelas {user.Kelas}</p>
+          {lastTransaction && (
+            <p className="text-pink-200 text-[10px] sm:text-xs mt-0.5 italic">
+              Terakhir: {lastTransaction.activity} ({lastTransaction.date})
+            </p>
+          )}
         </div>
         <div className="bg-white/20 backdrop-blur-sm px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-center border border-white/30 shadow-inner ml-2">
           <p className="text-[10px] sm:text-xs text-pink-100 font-medium uppercase tracking-wider mb-0.5">Total Poin</p>

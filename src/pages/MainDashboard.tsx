@@ -133,6 +133,7 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
     { id: 'tugas_guru', icon: ClipboardCheck, label: 'Tugas', gradient: 'from-blue-400 to-blue-600', shadow: 'shadow-blue-500/40', roles: ['guru'] },
     { id: 'nilai_guru', icon: FileSpreadsheet, label: 'Nilai', gradient: 'from-fuchsia-400 to-fuchsia-600', shadow: 'shadow-fuchsia-500/40', roles: ['guru'] },
     { id: 'jadwal_mengajar', icon: CalendarCheck, label: 'Jadwal', gradient: 'from-cyan-400 to-cyan-600', shadow: 'shadow-cyan-500/40', roles: ['guru'] },
+    { id: 'kasih_ibu_guru', icon: HeartHandshake, label: 'Kasih Ibu', gradient: 'from-pink-400 to-pink-600', shadow: 'shadow-pink-500/40', roles: ['walikelas', 'guru', 'tendik'] },
     { id: 'rekap_absensi', icon: UserCheck, label: 'Kehadiran', gradient: 'from-orange-400 to-orange-600', shadow: 'shadow-orange-500/40', roles: ['guru', 'tendik'] },
     { id: 'kedisiplinan', icon: ShieldAlert, label: 'Kedisiplinan', gradient: 'from-red-400 to-red-600', shadow: 'shadow-red-500/40', roles: ['guru', 'tendik'] },
     { id: 'bank_sampah_guru', icon: Trash2, label: 'Bank Sampah', gradient: 'from-emerald-400 to-emerald-600', shadow: 'shadow-emerald-500/40', roles: ['guru', 'tendik'] },
@@ -142,7 +143,6 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
     { id: 'keterlaksanaan_kbm', icon: ClipboardCheck, label: 'Keterlaksanaan', gradient: 'from-blue-400 to-blue-600', shadow: 'shadow-blue-500/40', roles: ['guru'] },
     { id: 'presensi_qr', icon: QrCode, label: 'Scan QR', gradient: 'from-purple-400 to-purple-600', shadow: 'shadow-purple-500/40', roles: ['guru', 'tendik'] },
     { id: 'rpp_generator', icon: NotebookPen, label: 'RPP', gradient: 'from-indigo-400 to-indigo-600', shadow: 'shadow-indigo-500/40', roles: ['guru'] },
-    { id: 'kasih_ibu_guru', icon: HeartHandshake, label: 'Kasih Ibu', gradient: 'from-pink-400 to-pink-600', shadow: 'shadow-pink-500/40', roles: ['walikelas'] },
     { id: 'galeri_kegiatan', icon: GalleryThumbnails, label: 'Galeri', gradient: 'from-violet-400 to-violet-600', shadow: 'shadow-violet-500/40', roles: ['guru', 'tendik'] },
     { id: 'kemendikdasmen', url: 'https://guru.kemendikdasmen.go.id/', img: 'https://lh3.googleusercontent.com/d/1s5VpgdLJFBL5tGDqKCZ3Wem1YnYbH9zt', label: 'PMM', gradient: 'from-slate-100 to-slate-200', shadow: 'shadow-slate-300/40', roles: ['guru', 'tendik'] },
     { id: 'bangkomar', url: 'https://bangkomar.pasuruankab.go.id/', icon: Globe, label: 'Bangkomar', gradient: 'from-blue-500 to-cyan-500', shadow: 'shadow-blue-500/40', roles: ['guru', 'tendik'] },
@@ -151,10 +151,16 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
 
   const filteredMenuItems = menuItems.filter(item => {
     if (user?.role === 'admin') return true;
-    if (item.roles.includes('walikelas') && !user?.waliKelas) return false;
-    if (item.roles.includes(user?.role)) return true;
+    
     // Special check for bank_sampah_guru: Tendik or Walikelas
     if (item.id === 'bank_sampah_guru' && (user?.role === 'tendik' || user?.waliKelas)) return true;
+    
+    // If user is walikelas and the item is for walikelas, allow it
+    if (item.roles.includes('walikelas') && user?.waliKelas) return true;
+    
+    // If the item is for the user's role, allow it
+    if (item.roles.includes(user?.role)) return true;
+    
     return false;
   });
 

@@ -70,6 +70,12 @@ export default function TabunganSampahAdmin({ showToast }: { showToast: (msg: st
     setFilteredStudents(filtered);
   };
 
+  const getStudentBalance = (studentName: string) => {
+    if (!studentName) return 0;
+    const studentTransactions = transactions.filter(t => t.siswa === studentName);
+    return studentTransactions.reduce((sum, t) => sum + Number(t.nilai), 0);
+  };
+
   const handleExchangeClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newClass = e.target.value;
     setExchangeData({ ...exchangeData, kelas: newClass, siswa: '' });
@@ -411,6 +417,14 @@ export default function TabunganSampahAdmin({ showToast }: { showToast: (msg: st
                         <option key={idx} value={s['Nama Lengkap']}>{s['Nama Lengkap']}</option>
                     ))}
                   </select>
+                  {exchangeData.siswa && (
+                    <div className="mt-2 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-100 dark:border-purple-800 flex items-center justify-between">
+                      <span className="text-sm text-purple-700 dark:text-purple-300 font-medium">Saldo Tabungan:</span>
+                      <span className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                        Rp {getStudentBalance(exchangeData.siswa).toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Nama ATK</label>

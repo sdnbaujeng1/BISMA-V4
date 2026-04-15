@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Monitor, Calendar, RefreshCw, AlertTriangle, Users, Percent, Sparkles, Clock, CheckCircle2, XCircle, LogOut, X, HeartHandshake } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
+import { motion, AnimatePresence } from 'motion/react';
 
 export default function MonitoringDashboard({ onLogout }: { onLogout: () => void }) {
   const [data, setData] = useState<any>(null);
@@ -56,7 +57,7 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
 
   const fetchKasihIbuStats = async () => {
     try {
-      const res = await fetch('/api/monitoring/kasih-ibu-stats');
+      const res = await fetch(`/api/monitoring/kasih-ibu-stats?month=${analisaMonth}`);
       const json = await res.json();
       if (json.success) {
         setKasihIbuStats(json.data);
@@ -64,6 +65,23 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
     } catch (error) {
       console.error("Failed to fetch kasih ibu stats", error);
     }
+  };
+
+  useEffect(() => {
+    fetchKasihIbuStats();
+  }, [analisaMonth]);
+
+  const [selectedHabit, setSelectedHabit] = useState<any>(null);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+
+  const handleSpiderClick = (data: any) => {
+    if (data && data.activePayload && data.activePayload.length > 0) {
+      setSelectedHabit(data.activePayload[0].payload);
+    }
+  };
+
+  const handleStudentClick = (student: any, type: 'absen' | 'disiplin') => {
+    setSelectedStudent({ ...student, type });
   };
 
   useEffect(() => {
@@ -341,7 +359,7 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
           <div className="w-full h-[300px] md:h-[400px]">
             {kasihIbuStats.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={kasihIbuStats}>
+                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={kasihIbuStats} onClick={handleSpiderClick} className="cursor-pointer">
                   <PolarGrid strokeDasharray="3 3" stroke="#cbd5e1" />
                   <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 10 }} />
                   <PolarRadiusAxis angle={90} domain={[0, 10]} tick={{ fill: '#94a3b8', fontSize: 10 }} />
@@ -354,6 +372,44 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
               </div>
             )}
           </div>
+
+          <AnimatePresence>
+            {selectedHabit && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
+                onClick={() => setSelectedHabit(null)}
+              >
+                <motion.div 
+                  className="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-700"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                      <HeartHandshake className="w-6 h-6 text-pink-500" />
+                      {selectedHabit.subject}
+                    </h3>
+                    <button onClick={() => setSelectedHabit(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors">
+                      <X className="w-5 h-5 text-slate-500" />
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-2xl">
+                      <span className="text-slate-600 dark:text-slate-300 font-medium">Skor Capaian</span>
+                      <span className="text-2xl font-black text-pink-600 dark:text-pink-400">{selectedHabit.A}/10</span>
+                    </div>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                      {selectedHabit.A >= 8 ? `Luar biasa! Mayoritas siswa sudah terbiasa dengan ${selectedHabit.subject}. Terus pertahankan!` : 
+                       selectedHabit.A >= 4 ? `Cukup baik. Siswa mulai terbiasa dengan ${selectedHabit.subject}, namun masih perlu dorongan lebih lanjut.` : 
+                       `Perhatian khusus diperlukan. Capaian ${selectedHabit.subject} masih rendah dan butuh intervensi segera.`}
+                    </p>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           
           <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs font-medium">
             <div className="flex items-center gap-1.5">
@@ -411,7 +467,7 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                 {analisaData.absentees.length > 0 ? (
                   analisaData.absentees.map((s, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                    <tr key={idx} onClick={() => handleStudentClick(s, 'absen')} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer">
                       <td className="py-3 px-4 font-medium">{s.nama}</td>
                       <td className="py-3 px-4 text-center">{s.kelas}</td>
                       <td className="py-3 px-4 text-center">{s.s}</td>
@@ -450,7 +506,7 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                 {analisaData.violators.length > 0 ? (
                   analisaData.violators.map((s, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                    <tr key={idx} onClick={() => handleStudentClick(s, 'disiplin')} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer">
                       <td className="py-3 px-4 font-medium">{s.nama}</td>
                       <td className="py-3 px-4 text-center">{s.kelas}</td>
                       <td className="py-3 px-4 text-center font-bold text-orange-600">{s.violations}</td>
@@ -478,6 +534,75 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
         </div>
       </div>
       </div>
+
+      <AnimatePresence>
+        {selectedStudent && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
+            onClick={() => setSelectedStudent(null)}
+          >
+            <motion.div 
+              className="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-700"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  {selectedStudent.type === 'absen' ? <Users className="w-6 h-6 text-red-500" /> : <AlertTriangle className="w-6 h-6 text-orange-500" />}
+                  Detail Siswa
+                </h3>
+                <button onClick={() => setSelectedStudent(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-2xl">
+                  <p className="text-lg font-bold text-slate-800 dark:text-white mb-1">{selectedStudent.nama}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{selectedStudent.kelas}</p>
+                </div>
+                
+                {selectedStudent.type === 'absen' ? (
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl border border-blue-100 dark:border-blue-800">
+                      <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">Sakit</p>
+                      <p className="text-xl font-black text-blue-700 dark:text-blue-300">{selectedStudent.s}</p>
+                    </div>
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-xl border border-yellow-100 dark:border-yellow-800">
+                      <p className="text-xs text-yellow-600 dark:text-yellow-400 font-medium mb-1">Izin</p>
+                      <p className="text-xl font-black text-yellow-700 dark:text-yellow-300">{selectedStudent.i}</p>
+                    </div>
+                    <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-xl border border-red-100 dark:border-red-800">
+                      <p className="text-xs text-red-600 dark:text-red-400 font-medium mb-1">Alpa</p>
+                      <p className="text-xl font-black text-red-700 dark:text-red-300">{selectedStudent.a}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl border border-orange-100 dark:border-orange-800">
+                      <span className="text-sm text-orange-700 dark:text-orange-300 font-medium">Total Pelanggaran</span>
+                      <span className="text-xl font-black text-orange-600 dark:text-orange-400">{selectedStudent.violations}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600">
+                      <span className="text-sm text-slate-600 dark:text-slate-300 font-medium">Status Tindak Lanjut</span>
+                      {selectedStudent.unhandled === 0 ? (
+                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">Sudah Ditangani</span>
+                      ) : (
+                        <span className="text-sm font-bold text-red-600 dark:text-red-400">{selectedStudent.unhandled} Belum</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                <p className="text-xs text-slate-500 dark:text-slate-400 italic text-center mt-4">
+                  * Data ini memerlukan perhatian khusus dari Wali Kelas dan Guru BK.
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modals */}
       {activeModal && (
