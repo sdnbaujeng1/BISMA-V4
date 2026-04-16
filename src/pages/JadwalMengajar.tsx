@@ -4,11 +4,14 @@ import { motion } from 'motion/react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
+import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
+
 export default function JadwalMengajar({ user, onNavigate }: { user: any, onNavigate: (page: string) => void }) {
   const [schedule, setSchedule] = useState<any[]>([]);
   const [groupedSchedule, setGroupedSchedule] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>({});
   const [loading, setLoading] = useState(true);
+  const schoolIdentity = useSchoolIdentity();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -76,7 +79,7 @@ export default function JadwalMengajar({ user, onNavigate }: { user: any, onNavi
     // Header
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text(settings.schoolName || 'SDN BAUJENG 1 BEJI', doc.internal.pageSize.getWidth() / 2, 40, { align: 'center' });
+    doc.text(schoolIdentity.schoolName, doc.internal.pageSize.getWidth() / 2, 40, { align: 'center' });
     
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
@@ -112,9 +115,9 @@ export default function JadwalMengajar({ user, onNavigate }: { user: any, onNavi
     doc.text('Kepala Sekolah', doc.internal.pageSize.getWidth() - 150, finalY + 55);
     
     doc.setFont('helvetica', 'bold');
-    doc.text(settings.headmasterName || 'AKHMAD NASOR, S.Pd', doc.internal.pageSize.getWidth() - 150, finalY + 110);
+    doc.text(schoolIdentity.headmasterName, doc.internal.pageSize.getWidth() - 150, finalY + 110);
     doc.setFont('helvetica', 'normal');
-    doc.text(`NIP. ${settings.headmasterNIP || '198704082019031001'}`, doc.internal.pageSize.getWidth() - 150, finalY + 125);
+    doc.text(`NIP. ${schoolIdentity.headmasterNIP}`, doc.internal.pageSize.getWidth() - 150, finalY + 125);
 
     doc.save(`Jadwal_Mengajar_${user?.['Nama Guru'] || 'Guru'}.pdf`);
   };

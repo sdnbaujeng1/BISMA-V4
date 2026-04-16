@@ -2771,7 +2771,7 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
 }
 
 function PengaturanModal({ onClose, showToast }: { onClose: () => void, showToast: (msg: string, type?: 'success' | 'error') => void }) {
-  const [schoolName, setSchoolName] = useState("UPT Satuan Pendidikan SDN Baujeng 1");
+  const [schoolName, setSchoolName] = useState("Sekolah");
   const [headmasterName, setHeadmasterName] = useState("Drs. H. Ahmad");
   const [headmasterNIP, setHeadmasterNIP] = useState("196001011980031001");
   const [logo1x1, setLogo1x1] = useState("");
@@ -2801,7 +2801,7 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
         const result = await res.json();
         if (result.success && result.data) {
           const data = result.data;
-          setSchoolName(data.schoolName || "UPT Satuan Pendidikan SDN Baujeng 1");
+          setSchoolName(data.schoolName || "Sekolah");
           setHeadmasterName(data.headmasterName || "Drs. H. Ahmad");
           setHeadmasterNIP(data.headmasterNIP || "196001011980031001");
           setLogo1x1(data.logo1x1 || "");
@@ -2822,7 +2822,7 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
           const stored = localStorage.getItem('school_identity_data');
           if (stored) {
             const data = JSON.parse(stored);
-            setSchoolName(data.schoolName || "UPT Satuan Pendidikan SDN Baujeng 1");
+            setSchoolName(data.schoolName || "Sekolah");
             setHeadmasterName(data.headmasterName || "Drs. H. Ahmad");
             setHeadmasterNIP(data.headmasterNIP || "196001011980031001");
             setLogo1x1(data.logo1x1 || "");
@@ -2843,7 +2843,7 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
         const stored = localStorage.getItem('school_identity_data');
         if (stored) {
           const data = JSON.parse(stored);
-          setSchoolName(data.schoolName || "UPT Satuan Pendidikan SDN Baujeng 1");
+          setSchoolName(data.schoolName || "Sekolah");
           setHeadmasterName(data.headmasterName || "Drs. H. Ahmad");
           setHeadmasterNIP(data.headmasterNIP || "196001011980031001");
           setLogo1x1(data.logo1x1 || "");

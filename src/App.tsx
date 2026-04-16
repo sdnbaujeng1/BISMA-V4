@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useSchoolIdentity } from './hooks/useSchoolIdentity';
 import PublicDashboard from './pages/PublicDashboard';
 import Login from './pages/Login';
 import MainDashboard from './pages/MainDashboard';
@@ -23,6 +24,7 @@ import NilaiGuru from './pages/NilaiGuru';
 import MonitoringDashboard from './pages/MonitoringDashboard';
 
 export default function App() {
+  useSchoolIdentity(); // Initialize global school identity
   const [currentPage, setCurrentPage] = useState('public');
   const [user, setUser] = useState<any>(null);
   const [darkMode, setDarkMode] = useState(() => {

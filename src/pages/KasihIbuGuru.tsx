@@ -10,6 +10,13 @@ const HABIT_POINTS: Record<string, { points: number, icon: string }> = {
   'Gemar Belajar': { points: 2, icon: '📚' },
   'Bermasyarakat': { points: 2, icon: '🤝' },
   'Tidur Cepat': { points: 2, icon: '😴' },
+  'bangun_pagi': { points: 2, icon: '🌅' },
+  'beribadah': { points: 5, icon: '🕌' },
+  'berolahraga': { points: 2, icon: '🏃' },
+  'makan_sehat': { points: 2, icon: '🥗' },
+  'gemar_belajar': { points: 2, icon: '📚' },
+  'bermasyarakat': { points: 2, icon: '🤝' },
+  'tidur_cepat': { points: 2, icon: '😴' },
 };
 
 export default function KasihIbuGuru({ user, onNavigate }: { user: any, onNavigate: (page: string) => void }) {
@@ -30,7 +37,8 @@ export default function KasihIbuGuru({ user, onNavigate }: { user: any, onNaviga
 
   const getStudentPoints = (studentName: string) => {
     if (!studentName) return 0;
-    const studentReports = reports.filter(r => r.nama === studentName);
+    const studentNameLower = studentName.toLowerCase().trim();
+    const studentReports = reports.filter(r => r.nama && r.nama.toLowerCase().trim() === studentNameLower);
     let total = 0;
     studentReports.forEach(r => {
       if (r.habit_label && r.habit_label.startsWith('Tukar Poin')) {
@@ -40,7 +48,12 @@ export default function KasihIbuGuru({ user, onNavigate }: { user: any, onNaviga
           total -= parseInt(match[1]);
         }
       } else if (r.status === 'Valid') {
-        const points = HABIT_POINTS[r.habit_label]?.points || 0;
+        const searchKey = r.habit_id || r.habit_label;
+        let points = 0;
+        if (searchKey) {
+            const matchedKey = Object.keys(HABIT_POINTS).find(k => k.toLowerCase() === searchKey.toLowerCase());
+            if (matchedKey) points = HABIT_POINTS[matchedKey].points;
+        }
         total += points;
       }
     });
@@ -199,8 +212,8 @@ export default function KasihIbuGuru({ user, onNavigate }: { user: any, onNaviga
           kelas: selectedClass,
           habit_id: 'tukar_poin',
           habit_label: `Tukar Poin: ${exchangeData.namaAtk} (-${pointsToDeduct})`,
-          tanggal: new Date().toISOString().split('T')[0],
-          waktu: new Date().toTimeString().split(' ')[0],
+          tanggal: new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0],
+          waktu: new Date().toLocaleTimeString('id-ID', { hour12: false }),
           perasaan: 'Senang',
           keterangan: `Penukaran poin dengan ATK: ${exchangeData.namaAtk} seharga Rp ${exchangeData.hargaAtk}`,
           status: 'Valid' // Auto valid for exchange

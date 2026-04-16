@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User, Shield, GraduationCap, Briefcase, Monitor } from 'lucide-react';
+import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
 
 export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) => void, onNavigate: (page: string) => void }) {
   const [nip, setNip] = useState('');
@@ -7,39 +8,7 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
   const [role, setRole] = useState('guru');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [schoolName, setSchoolName] = useState("SDN BAUJENG I BEJI");
-  const [logoUrl, setLogoUrl] = useState("https://i.imghippo.com/files/xbYy2711Wk.png");
-
-  React.useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await fetch('/api/pengaturan');
-        const result = await res.json();
-        if (result.success && result.data) {
-          if (result.data.schoolName) setSchoolName(result.data.schoolName);
-          if (result.data.logo1x1) setLogoUrl(result.data.logo1x1);
-        } else {
-          const stored = localStorage.getItem('school_identity_data');
-          if (stored) {
-            const data = JSON.parse(stored);
-            if (data.schoolName) setSchoolName(data.schoolName);
-            if (data.logo1x1) setLogoUrl(data.logo1x1);
-          }
-        }
-      } catch (e) {
-        const stored = localStorage.getItem('school_identity_data');
-        if (stored) {
-          const data = JSON.parse(stored);
-          if (data.schoolName) setSchoolName(data.schoolName);
-          if (data.logo1x1) setLogoUrl(data.logo1x1);
-        }
-      }
-    };
-    fetchSettings();
-
-    window.addEventListener('school-identity-update', fetchSettings);
-    return () => window.removeEventListener('school-identity-update', fetchSettings);
-  }, []);
+  const schoolIdentity = useSchoolIdentity();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,9 +45,9 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-green-50 dark:bg-slate-900 transition-colors">
       <main className="w-full max-w-xl z-10">
         <div className="text-center mb-6">
-          <img src={logoUrl} alt="Logo" className="mx-auto h-28 w-auto mb-4 drop-shadow-xl hover:scale-105 transition-transform duration-300" />
+          <img src={schoolIdentity.schoolLogo} alt="Logo" className="mx-auto h-28 w-auto mb-4 drop-shadow-xl hover:scale-105 transition-transform duration-300" />
           <h1 className="text-2xl font-bold text-slate-800 dark:text-white">LOGIN BISMA</h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">{schoolName}</p>
+          <p className="text-slate-600 dark:text-slate-400 mt-1">{schoolIdentity.schoolName}</p>
         </div>
         
         <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur rounded-2xl p-8 shadow-xl border border-green-100 dark:border-slate-700">
@@ -144,7 +113,7 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
           </button>
         </div>
       </main>
-      <footer className="mt-8 text-center text-xs text-slate-500 dark:text-slate-400 z-10">© Tim IT {schoolName}</footer>
+      <footer className="mt-8 text-center text-xs text-slate-500 dark:text-slate-400 z-10">© Tim IT {schoolIdentity.schoolName}</footer>
     </div>
   );
 }

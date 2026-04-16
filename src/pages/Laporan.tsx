@@ -1,56 +1,14 @@
 import React, { useState, useEffect, Fragment } from 'react';
 import { ArrowLeft, Printer } from 'lucide-react';
+import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
 
 export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (page: string) => void }) {
   const [jurnalData, setJurnalData] = useState<any[]>([]);
   const [filterBulan, setFilterBulan] = useState('semua');
   const [filterTahun, setFilterTahun] = useState('semua');
   const [loading, setLoading] = useState(true);
-
-  const [headmasterName, setHeadmasterName] = useState("Drs. H. Ahmad");
-  const [headmasterNIP, setHeadmasterNIP] = useState("196001011980031001");
-  const [schoolName, setSchoolName] = useState("UPT Satuan Pendidikan SDN Baujeng 1");
-  const [logoUrl, setLogoUrl] = useState("https://i.imghippo.com/files/xbYy2711Wk.png");
-
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await fetch('/api/pengaturan');
-        const result = await res.json();
-        if (result.success && result.data) {
-          const data = result.data;
-          if (data.schoolName) setSchoolName(data.schoolName);
-          if (data.headmasterName) setHeadmasterName(data.headmasterName);
-          if (data.headmasterNIP) setHeadmasterNIP(data.headmasterNIP);
-          if (data.logo1x1) setLogoUrl(data.logo1x1);
-        } else {
-          // Fallback
-          const stored = localStorage.getItem('school_identity_data');
-          if (stored) {
-            const data = JSON.parse(stored);
-            if (data.schoolName) setSchoolName(data.schoolName);
-            if (data.headmasterName) setHeadmasterName(data.headmasterName);
-            if (data.headmasterNIP) setHeadmasterNIP(data.headmasterNIP);
-            if (data.logo1x1) setLogoUrl(data.logo1x1);
-          }
-        }
-      } catch (e) {
-        // Fallback
-        const stored = localStorage.getItem('school_identity_data');
-        if (stored) {
-          const data = JSON.parse(stored);
-          if (data.schoolName) setSchoolName(data.schoolName);
-          if (data.headmasterName) setHeadmasterName(data.headmasterName);
-          if (data.headmasterNIP) setHeadmasterNIP(data.headmasterNIP);
-          if (data.logo1x1) setLogoUrl(data.logo1x1);
-        }
-      }
-    };
-    fetchSettings();
-
-    window.addEventListener('school-identity-update', fetchSettings);
-    return () => window.removeEventListener('school-identity-update', fetchSettings);
-  }, []);
+  
+  const schoolIdentity = useSchoolIdentity();
 
   useEffect(() => {
     fetch(`/api/laporan?nip=${user?.NIP || ''}&namaGuru=${encodeURIComponent(user?.['Nama Guru'] || '')}`)
@@ -138,22 +96,25 @@ export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (
           </div>
 
           <div className="bg-white dark:bg-slate-800 text-black dark:text-white rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700 print:shadow-none print:border-none print:p-0 print:bg-white print:text-black print:w-full print:max-w-[210mm] print:mx-auto">
-            <div className="flex items-center gap-6 mb-8 border-b-2 border-black dark:border-white print:border-black pb-6">
-              <img src={logoUrl} className="h-24 w-24 object-contain" alt="Logo" />
-              <div className="text-left">
-                <h3 className="text-2xl font-bold uppercase tracking-wide">{schoolName}</h3>
-                <h4 className="text-xl font-semibold mt-1">Jurnal Guru: {user?.['Nama Guru']}</h4>
-                <p className="text-sm text-slate-600 dark:text-slate-400 print:text-slate-600 mt-1">Periode: {filterBulan === 'semua' ? 'Semua Waktu' : filterBulan}</p>
-              </div>
-            </div>
-
             {loading ? (
               <div className="text-center py-12 text-slate-500 dark:text-slate-400">Memuat data laporan...</div>
             ) : (
               <div className="overflow-x-auto print:overflow-visible">
-                <table className="w-full text-sm print:text-xs border-collapse border border-slate-300 dark:border-slate-600 print:border-slate-300 min-w-[800px]">
-                  <thead className="bg-slate-100 dark:bg-slate-700 print:bg-slate-100">
-                    <tr>
+                <table className="w-full text-sm print:text-xs border-collapse border border-slate-300 dark:border-slate-600 print:border-slate-300 min-w-[800px] print:min-w-0">
+                  <thead className="bg-slate-100 dark:bg-slate-700 print:bg-white">
+                    <tr className="print:table-row hidden bg-white dark:bg-slate-800">
+                      <td colSpan={7} className="border-none p-0">
+                        <div className="flex items-center gap-6 mb-4 border-b-2 border-black dark:border-white print:border-black pb-4 text-black dark:text-white pt-4">
+                          {schoolIdentity.schoolLogo && <img src={schoolIdentity.schoolLogo} className="h-24 w-24 object-contain" alt="Logo" />}
+                          <div className="text-left">
+                            <h3 className="text-2xl font-bold uppercase tracking-wide">{schoolIdentity.schoolName}</h3>
+                            <h4 className="text-xl font-semibold mt-1">Jurnal Guru: {user?.['Nama Guru']}</h4>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 print:text-slate-600 mt-1">Periode: {filterBulan === 'semua' ? 'Semua Waktu' : filterBulan}</p>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr className="bg-slate-100 dark:bg-slate-700 print:bg-slate-100">
                       <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-center w-10 print:w-8">No</th>
                       <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-left w-32 print:w-24">Hari, Tanggal</th>
                       <th className="border border-slate-300 dark:border-slate-600 print:border-slate-300 p-2 print:p-1 text-center w-16 print:w-12">Kelas</th>
@@ -247,8 +208,8 @@ export default function Laporan({ user, onNavigate }: { user: any, onNavigate: (
               <div className="text-center">
                 <p>Mengetahui Kepala Sekolah,</p>
                 <br /><br /><br />
-                <p className="font-bold underline">{headmasterName}</p>
-                <p>NIP. {headmasterNIP}</p>
+                <p className="font-bold underline">{schoolIdentity.headmasterName}</p>
+                <p>NIP. {schoolIdentity.headmasterNIP}</p>
               </div>
               <div className="text-center">
                 <p>Beji, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>

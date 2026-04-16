@@ -1982,10 +1982,11 @@ app.get('/api/admin/stats', async (req, res) => {
 
   app.get('/api/kasih-ibu', async (req, res) => {
     try {
-      const { kelas, nis, nama } = req.query;
+      const { kelas, nis, nama, tanggal } = req.query;
       let query = supabase.from('kasih_ibu').select('*').order('timestamp', { ascending: false });
       
       if (kelas) query = query.eq('kelas', kelas);
+      if (tanggal) query = query.eq('tanggal_kegiatan', tanggal);
       
       if (nis && nis !== '' && nama && nama !== '') {
         query = query.or(`nisn.eq."${nis}",nama_murid.eq."${nama}"`);
@@ -2005,10 +2006,21 @@ app.get('/api/admin/stats', async (req, res) => {
           const waktu = d.waktu_kegiatan || '00:00:00';
           dateStr = `${d.tanggal_kegiatan}T${waktu}`;
         }
+        
+        let habit_id = '';
+        if (d.jenis_kebiasaan === 'Bangun Pagi') habit_id = 'bangun_pagi';
+        if (d.jenis_kebiasaan === 'Beribadah') habit_id = 'beribadah';
+        if (d.jenis_kebiasaan === 'Berolahraga') habit_id = 'berolahraga';
+        if (d.jenis_kebiasaan === 'Makan Sehat') habit_id = 'makan_sehat';
+        if (d.jenis_kebiasaan === 'Gemar Belajar') habit_id = 'gemar_belajar';
+        if (d.jenis_kebiasaan === 'Bermasyarakat') habit_id = 'bermasyarakat';
+        if (d.jenis_kebiasaan === 'Tidur Cepat') habit_id = 'tidur_cepat';
+
         return {
           id: d.id,
           nama: d.nama_murid,
           kelas: d.kelas,
+          habit_id: habit_id,
           habit_label: d.jenis_kebiasaan,
           tanggal: dateStr,
           keterangan: d.keterangan,

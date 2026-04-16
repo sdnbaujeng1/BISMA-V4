@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { LogIn, Moon, Sun, BookOpen, AlertCircle, X, User, Backpack, Calculator, GraduationCap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
 
 export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }: { onNavigate: (page: string) => void, darkMode: boolean, toggleDarkMode: () => void }) {
   const [data, setData] = useState<any>(null);
-  const [schoolIdentity, setSchoolIdentity] = useState<any>(null);
+  const schoolIdentity = useSchoolIdentity();
   const [time, setTime] = useState(new Date());
   const [showAbsentModal, setShowAbsentModal] = useState(false);
 
@@ -26,7 +27,7 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
       if (!storedData) {
          setData({
            appName: "BISMA",
-           pengumuman: "Selamat datang di Sistem Monitoring KBM SDN BAUJENG I BEJI. Silahkan login untuk akses fitur lainnya.",
+           pengumuman: "Selamat datang di Sistem Monitoring KBM. Silahkan login untuk akses fitur lainnya.",
            kelas1: 0, kelas2: 0, kelas3: 0, kelas4: 0, kelas5: 0, kelas6: 0,
            totalStudents: 0, totalJP: 0,
            completedKBM: 0, totalScheduled: 240, percentage: 0,
@@ -35,44 +36,7 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
       }
     };
 
-    // Load School Identity Data
-    const loadSchoolIdentity = async () => {
-      try {
-        const res = await fetch('/api/pengaturan');
-        const result = await res.json();
-        if (result.success && result.data) {
-          setSchoolIdentity(result.data);
-          localStorage.setItem('school_identity_data', JSON.stringify(result.data));
-        } else {
-          const storedIdentity = localStorage.getItem('school_identity_data');
-          if (storedIdentity) {
-            try {
-              setSchoolIdentity(JSON.parse(storedIdentity));
-            } catch (e) {}
-          } else {
-             setSchoolIdentity({
-              schoolName: "UPT Satuan Pendidikan SDN Baujeng 1",
-              logo1x1: "https://i.imghippo.com/files/xbYy2711Wk.png"
-            });
-          }
-        }
-      } catch (e) {
-        const storedIdentity = localStorage.getItem('school_identity_data');
-        if (storedIdentity) {
-          try {
-            setSchoolIdentity(JSON.parse(storedIdentity));
-          } catch (e) {}
-        } else {
-           setSchoolIdentity({
-            schoolName: "UPT Satuan Pendidikan SDN Baujeng 1",
-            logo1x1: "https://i.imghippo.com/files/xbYy2711Wk.png"
-          });
-        }
-      }
-    };
-
     loadPublicData();
-    loadSchoolIdentity();
     
     fetch('/api/public-dashboard')
       .then(res => res.json())
@@ -106,23 +70,14 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
       } catch (e) {
         setData((prev: any) => ({ ...prev, ...localData }));
       }
-      
-      const storedIdentity = localStorage.getItem('school_identity_data');
-      if (storedIdentity) {
-        try {
-          setSchoolIdentity(JSON.parse(storedIdentity));
-        } catch (e) {}
-      }
     };
 
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('public-data-update', handleStorageChange);
-    window.addEventListener('school-identity-update', handleStorageChange);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('public-data-update', handleStorageChange);
-      window.removeEventListener('school-identity-update', handleStorageChange);
     };
   }, []);
 
@@ -132,21 +87,20 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <img 
-              src={schoolIdentity?.logo1x1 || "https://i.imghippo.com/files/xbYy2711Wk.png"} 
+              src={schoolIdentity.schoolLogo} 
               alt="Logo" 
               className="h-12 w-12 object-contain drop-shadow-xl rounded-lg transform hover:scale-110 transition-transform duration-500" 
               style={{
                 filter: 'drop-shadow(0 10px 8px rgb(0 0 0 / 0.2)) drop-shadow(0 4px 3px rgb(0 0 0 / 0.1))',
                 transform: 'perspective(500px) rotateY(15deg)'
               }}
-              onError={(e) => { (e.target as HTMLImageElement).src = "https://i.imghippo.com/files/xbYy2711Wk.png"; }}
             />
             <div>
               <h1 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight leading-tight uppercase">
                 {data?.appName || "BISMA"}
               </h1>
               <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase">
-                {schoolIdentity?.schoolName || "UPT Satuan Pendidikan SDN Baujeng 1"}
+                {schoolIdentity.schoolName}
               </p>
             </div>
           </div>
@@ -307,7 +261,7 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
       </main>
       
       <footer className="py-6 text-center text-slate-400 dark:text-slate-600 text-sm">
-        &copy; {new Date().getFullYear()} {schoolIdentity?.schoolName || "UPT Satuan Pendidikan SDN Baujeng 1"}. All rights reserved.
+        &copy; {new Date().getFullYear()} {schoolIdentity.schoolName}. All rights reserved.
       </footer>
 
       {/* Absent Modal */}

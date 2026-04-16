@@ -3,6 +3,8 @@ import { LogOut, CalendarCheck, BarChart2, FilePenLine, Printer, UserCheck, Clip
 import { motion, AnimatePresence } from 'motion/react';
 import UnifiedAnnouncementCard from '../components/UnifiedAnnouncementCard';
 
+import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
+
 export default function MainDashboard({ user, onLogout, onNavigate, darkMode, toggleDarkMode }: { user: any, onLogout: () => void, onNavigate: (page: string) => void, darkMode: boolean, toggleDarkMode: () => void }) {
   const [stats, setStats] = useState<any>(null);
   const [time, setTime] = useState(new Date());
@@ -12,7 +14,8 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
   const [tendikStats, setTendikStats] = useState<any>(null);
   const [activity, setActivity] = useState('');
   const [loadingActivity, setLoadingActivity] = useState(false);
-  const [logoUrl, setLogoUrl] = useState("https://i.imghippo.com/files/xbYy2711Wk.png");
+  const schoolIdentity = useSchoolIdentity();
+  const logoUrl = schoolIdentity.schoolLogo;
 
   const colors: Record<string, { gradient: string, text: string, bg: string, border: string, ring: string }> = {
     blue: { gradient: 'from-blue-600 to-indigo-600', text: 'text-blue-600', bg: 'bg-blue-600', border: 'border-blue-200', ring: 'ring-blue-500' },
@@ -56,35 +59,10 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
       if (newColor) setThemeColor(newColor);
     };
 
-    const fetchSettings = async () => {
-      try {
-        const res = await fetch('/api/pengaturan');
-        const result = await res.json();
-        if (result.success && result.data && result.data.logo1x1) {
-          setLogoUrl(result.data.logo1x1);
-        } else {
-          const stored = localStorage.getItem('school_identity_data');
-          if (stored) {
-            const data = JSON.parse(stored);
-            if (data.logo1x1) setLogoUrl(data.logo1x1);
-          }
-        }
-      } catch (e) {
-        const stored = localStorage.getItem('school_identity_data');
-        if (stored) {
-          const data = JSON.parse(stored);
-          if (data.logo1x1) setLogoUrl(data.logo1x1);
-        }
-      }
-    };
-    fetchSettings();
-
     window.addEventListener('theme-color-change', handleThemeChange);
-    window.addEventListener('school-identity-update', fetchSettings);
     return () => {
       clearInterval(timer);
       window.removeEventListener('theme-color-change', handleThemeChange);
-      window.removeEventListener('school-identity-update', fetchSettings);
     };
   }, [user]);
 
@@ -528,7 +506,7 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
                 
                 <div className="mt-8">
                   <p className="text-xs text-slate-400">
-                    &copy; {new Date().getFullYear()} UPT Satuan Pendidikan SDN Baujeng 1
+                    &copy; {new Date().getFullYear()} {schoolIdentity.schoolName}
                   </p>
                 </div>
               </div>

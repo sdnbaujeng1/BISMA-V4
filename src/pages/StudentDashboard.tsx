@@ -18,6 +18,7 @@ import {
   User,
   Info,
   ClipboardList,
+  Download,
   BookHeart,
   Clock,
   Save,
@@ -52,43 +53,18 @@ function Edugame({ onBack }: { onBack: () => void }) {
   );
 }
 
+import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
+
 export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkMode, onNavigate }: { user: any, onLogout: () => void, darkMode: boolean, toggleDarkMode: () => void, onNavigate: (page: string) => void }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showAbout, setShowAbout] = useState(false);
   const [time, setTime] = useState(new Date());
-  const [logoUrl, setLogoUrl] = useState("https://i.imghippo.com/files/xbYy2711Wk.png");
+  const schoolIdentity = useSchoolIdentity();
+  const logoUrl = schoolIdentity.schoolLogo;
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
-    
-    const fetchSettings = async () => {
-      try {
-        const res = await fetch('/api/pengaturan');
-        const result = await res.json();
-        if (result.success && result.data && result.data.logo1x1) {
-          setLogoUrl(result.data.logo1x1);
-        } else {
-          const stored = localStorage.getItem('school_identity_data');
-          if (stored) {
-            const data = JSON.parse(stored);
-            if (data.logo1x1) setLogoUrl(data.logo1x1);
-          }
-        }
-      } catch (e) {
-        const stored = localStorage.getItem('school_identity_data');
-        if (stored) {
-          const data = JSON.parse(stored);
-          if (data.logo1x1) setLogoUrl(data.logo1x1);
-        }
-      }
-    };
-    fetchSettings();
-
-    window.addEventListener('school-identity-update', fetchSettings);
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener('school-identity-update', fetchSettings);
-    };
+    return () => clearInterval(timer);
   }, []);
 
   const renderContent = () => {
@@ -284,7 +260,7 @@ export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkM
                 
                 <div className="mt-8">
                   <p className="text-xs text-slate-400">
-                    &copy; {new Date().getFullYear()} UPT Satuan Pendidikan SDN Baujeng 1
+                    &copy; {new Date().getFullYear()} {schoolIdentity.schoolName}
                   </p>
                 </div>
               </div>
@@ -530,9 +506,113 @@ function ChatbotView() {
   );
 }
 
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
 function JadwalHariIni({ user, onBack }: { user: any, onBack: () => void }) {
   const [jadwal, setJadwal] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const schoolIdentity = useSchoolIdentity();
+
+  const handleDownloadPDF = async () => {
+    try {
+      const kelas = user?.Kelas || 'Kelas 1';
+      // Fetch full schedule
+      const res = await fetch(`/api/jadwal?kelas=${kelas}`);
+      const data = await res.json();
+      
+      if (!data.success || !data.data) {
+        alert("Gagal mengambil data jadwal penuh");
+        return;
+      }
+
+      const fullSchedule = data.data;
+      const groupedDays: any = {};
+      
+      // Group by day then sort by jam
+      fullSchedule.forEach((j: any) => {
+        if (!groupedDays[j.hari]) groupedDays[j.hari] = [];
+        groupedDays[j.hari].push(j);
+      });
+
+      const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      
+      const doc = new jsPDF('p', 'pt', 'a4');
+      
+      // Header
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(schoolIdentity.schoolName, doc.internal.pageSize.getWidth() / 2, 40, { align: 'center' });
+      
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Jadwal Pelajaran Siswa', doc.internal.pageSize.getWidth() / 2, 60, { align: 'center' });
+      
+      doc.setFontSize(10);
+      doc.text(`Nama: ${user?.Nama_Murid || user?.name || ''} | Kelas: ${kelas}`, doc.internal.pageSize.getWidth() / 2, 80, { align: 'center' });
+      
+      const tableColumn = ["Hari", "Jam Ke", "Mata Pelajaran", "Guru"];
+      const tableRows: any[] = [];
+
+      days.forEach(hari => {
+        const todaySchedule = groupedDays[hari] || [];
+        todaySchedule.sort((a: any, b: any) => a.jam - b.jam);
+        
+        let startJam = 0;
+        let lastMapel = '';
+        let lastGuru = '';
+        
+        todaySchedule.forEach((j: any) => {
+          if (startJam === 0) {
+            startJam = j.jam;
+            lastMapel = j.mapel;
+            lastGuru = j.guru;
+          } else if (j.mapel === lastMapel && j.guru === lastGuru) {
+            // Continuation
+          } else {
+            const endJam = j.jam - 1;
+            tableRows.push([
+              hari,
+              startJam === endJam ? String(startJam) : `${startJam}-${endJam}`,
+              lastMapel,
+              lastGuru
+            ]);
+            startJam = j.jam;
+            lastMapel = j.mapel;
+            lastGuru = j.guru;
+          }
+        });
+        
+        if (startJam > 0) {
+          const endJam = todaySchedule[todaySchedule.length - 1].jam;
+          tableRows.push([
+            hari,
+            startJam === endJam ? String(startJam) : `${startJam}-${endJam}`,
+            lastMapel,
+            lastGuru
+          ]);
+        }
+      });
+
+      (doc as any).autoTable({
+        head: [tableColumn],
+        body: tableRows,
+        startY: 100,
+        theme: 'grid',
+        styles: { fontSize: 10, cellPadding: 5 },
+        headStyles: { fillColor: [192, 38, 211], textColor: 255, fontStyle: 'bold' }, // fuchsia-600
+        didParseCell: function(data: any) {
+          // Add some simple row span simulation by clearing text if cell above is same day
+          // Actual rowSpan is complex in autoTable without manual definition. We'll leave it simple.
+        }
+      });
+
+      doc.save(`Jadwal_Pelajaran_${user?.Nama_Murid || 'Siswa'}.pdf`);
+    } catch (e) {
+      console.error(e);
+      alert("Terjadi kesalahan saat membuat PDF");
+    }
+  };
 
   useEffect(() => {
     const fetchJadwal = async () => {
@@ -575,14 +655,22 @@ function JadwalHariIni({ user, onBack }: { user: any, onBack: () => void }) {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center gap-4 mb-6">
-        <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-          <X className="w-6 h-6 text-slate-500" />
-        </button>
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Jadwal Hari Ini</h2>
-          <p className="text-slate-500 dark:text-slate-400">{new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-4">
+          <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+            <X className="w-6 h-6 text-slate-500" />
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Jadwal Hari Ini</h2>
+            <p className="text-slate-500 dark:text-slate-400">{new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          </div>
         </div>
+        <button 
+          onClick={handleDownloadPDF}
+          className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-colors text-sm font-bold"
+        >
+          <Download className="w-4 h-4" /> Download PDF Jadwal Penuh
+        </button>
       </header>
 
       <div className="space-y-4">
@@ -730,6 +818,7 @@ function BankSampah({ user, onBack }: { user: any, onBack: () => void }) {
 function JurnalKasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
   const [jurnalData, setJurnalData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const schoolIdentity = useSchoolIdentity();
 
   useEffect(() => {
     const fetchJurnal = async () => {
@@ -775,13 +864,7 @@ function JurnalKasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
         </button>
       </header>
 
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6 print:shadow-none print:border-none print:p-0 print:w-full print:max-w-[210mm] print:mx-auto">
-        <div className="hidden print:block mb-6 text-center border-b-2 border-black pb-4">
-          <h2 className="text-2xl font-bold uppercase">Jurnal Kasih Ibu</h2>
-          <p className="text-lg mt-1">Nama: {user?.Nama_Murid || user?.name}</p>
-          <p className="text-md">Kelas: {user?.Kelas}</p>
-        </div>
-
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6 print:shadow-none print:border-none print:p-0 print:w-full print:max-w-[210mm] print:mx-auto print:bg-white print:text-black">
         {loading ? (
           <div className="text-center py-12 text-slate-500 dark:text-slate-400 print:hidden">Memuat data...</div>
         ) : jurnalData.length === 0 ? (
@@ -789,13 +872,25 @@ function JurnalKasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
         ) : (
           <div className="overflow-x-auto print:overflow-visible">
             <table className="w-full text-sm print:text-xs border-collapse border border-slate-200 dark:border-slate-700 print:border-slate-300 table-fixed">
-              <thead className="bg-slate-50 dark:bg-slate-900/50 print:bg-slate-100">
-                <tr>
-                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-center w-12 print:w-10">No</th>
-                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-left w-32 print:w-28">Hari/Tanggal</th>
-                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-left w-36 print:w-32">Aktivitas</th>
-                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-center w-24 print:w-20">Perasaan</th>
-                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-left">Keterangan</th>
+              <thead className="bg-slate-50 dark:bg-slate-900/50 print:bg-white">
+                <tr className="bg-white dark:bg-slate-800">
+                  <td colSpan={5} className="border-none p-0">
+                    <div className="flex items-center gap-6 mb-4 border-b-2 border-black dark:border-white print:border-black pb-4 text-black dark:text-white pt-4">
+                      {schoolIdentity.schoolLogo && <img src={schoolIdentity.schoolLogo} className="h-20 w-20 object-contain" alt="Logo" />}
+                      <div className="text-left flex-1">
+                         <h3 className="text-2xl font-bold uppercase tracking-wide flex-wrap">{schoolIdentity.schoolName}</h3>
+                         <h4 className="text-xl font-semibold mt-1">Jurnal Kasih Ibu</h4>
+                         <p className="text-sm mt-1">Nama: {user?.Nama_Murid || user?.name} | Kelas: {user?.Kelas}</p>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr className="bg-slate-50 dark:bg-slate-900/50 print:bg-slate-100">
+                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-center w-12 print:w-10 text-slate-700 dark:text-slate-300">No</th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-left w-32 print:w-28 text-slate-700 dark:text-slate-300">Hari/Tanggal</th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-left w-36 print:w-32 text-slate-700 dark:text-slate-300">Aktivitas</th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-center w-24 print:w-20 text-slate-700 dark:text-slate-300">Perasaan</th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-left text-slate-700 dark:text-slate-300">Keterangan</th>
                 </tr>
               </thead>
               <tbody>
@@ -857,6 +952,30 @@ function KasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
   });
   const [submitting, setSubmitting] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [completedHabits, setCompletedHabits] = useState<string[]>([]);
+  
+  const getLocalDateStr = () => {
+    const d = new Date();
+    // use exact current local date instead of utc
+    return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+  };
+
+  useEffect(() => {
+    const fetchTodayHabits = async () => {
+      try {
+        const todayStr = getLocalDateStr();
+        const res = await fetch(`/api/kasih-ibu?nis=${user?.NISN || user?.NIS || user?.id}&tanggal=${todayStr}`);
+        const result = await res.json();
+        if (result.success && result.data) {
+          const filled = result.data.map((item: any) => item.habit_id);
+          setCompletedHabits(filled);
+        }
+      } catch (e) {
+        console.error("Failed to fetch today habits", e);
+      }
+    };
+    fetchTodayHabits();
+  }, [user]);
 
   useEffect(() => {
     if (selectedHabit) {
@@ -901,8 +1020,8 @@ function KasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
           kelas: user?.Kelas,
           habit_id: selectedHabit.id,
           habit_label: selectedHabit.label,
-          tanggal: currentTime.toISOString().split('T')[0],
-          waktu: currentTime.toTimeString().split(' ')[0],
+          tanggal: getLocalDateStr(),
+          waktu: currentTime.toLocaleTimeString('id-ID', { hour12: false }),
           perasaan: 'Senang', // Default feeling, could be added to UI later
           keterangan: finalKeterangan
         })
@@ -915,6 +1034,14 @@ function KasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
         setKeterangan('');
         setStatusPembiasaan('');
         setSholatChecklist({ Subuh: '', Dhuhur: '', Ashar: '', Maghrib: '', Isya: '' });
+        
+        // Refresh completed habits
+        const todayStr = getLocalDateStr();
+        const resList = await fetch(`/api/kasih-ibu?nis=${user?.NISN || user?.NIS || user?.id}&tanggal=${todayStr}`);
+        const resultList = await resList.json();
+        if (resultList.success && resultList.data) {
+          setCompletedHabits(resultList.data.map((item: any) => item.habit_id));
+        }
       } else {
         alert("Gagal menyimpan: " + result.message);
       }
@@ -938,23 +1065,35 @@ function KasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {habits.map((habit) => (
+        {habits.map((habit) => {
+          const isCompleted = completedHabits.includes(habit.id);
+          return (
           <button
             key={habit.id}
-            onClick={() => setSelectedHabit(habit)}
-            className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition-all text-left group relative overflow-hidden"
+            disabled={isCompleted}
+            onClick={() => !isCompleted && setSelectedHabit(habit)}
+            className={`p-6 rounded-2xl shadow-sm border transition-all text-left group relative overflow-hidden ${
+              isCompleted 
+                ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-800/30 opacity-60 cursor-not-allowed' 
+                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:shadow-md'
+            }`}
           >
+            {isCompleted && (
+              <div className="absolute top-4 right-4 bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 p-1.5 rounded-full">
+                <CheckCircle className="w-5 h-5" />
+              </div>
+            )}
             <div className="flex items-start gap-4 relative z-10">
-              <div className="text-4xl group-hover:scale-125 transition-transform duration-300 drop-shadow-md">
+              <div className={`text-4xl transition-transform duration-300 drop-shadow-md ${!isCompleted && 'group-hover:scale-125'}`}>
                 {habit.icon}
               </div>
               <div>
-                <h3 className="font-bold text-slate-800 dark:text-white text-lg">{habit.label}</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{habit.desc}</p>
+                <h3 className={`font-bold text-lg ${isCompleted ? 'text-green-700 dark:text-green-400' : 'text-slate-800 dark:text-white'}`}>{habit.label}</h3>
+                <p className={`text-sm mt-1 ${isCompleted ? 'text-green-600/70 dark:text-green-500/70' : 'text-slate-500 dark:text-slate-400'}`}>{habit.desc}</p>
               </div>
             </div>
           </button>
-        ))}
+        )})}
       </div>
 
       {/* Modal Input */}
