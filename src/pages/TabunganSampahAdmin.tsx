@@ -447,9 +447,20 @@ export default function TabunganSampahAdmin({ showToast }: { showToast: (msg: st
                     value={exchangeData.harga}
                     onChange={(e) => setExchangeData({...exchangeData, harga: e.target.value})}
                   />
+                  {exchangeData.harga && exchangeData.siswa && (
+                    <p className={`text-xs mt-1 font-medium ${Number(exchangeData.harga) > getStudentBalance(exchangeData.siswa) ? 'text-red-500' : 'text-purple-600 dark:text-purple-400'}`}>
+                      {Number(exchangeData.harga) > getStudentBalance(exchangeData.siswa) 
+                        ? 'Saldo tabungan tidak mencukupi!' 
+                        : `Saldo setelah penukaran: Rp ${(getStudentBalance(exchangeData.siswa) - Number(exchangeData.harga)).toLocaleString('id-ID')}`}
+                    </p>
+                  )}
                 </div>
                 
-                <button type="submit" disabled={loading} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-purple-200 dark:shadow-none transition-all mt-4 disabled:opacity-50">
+                <button 
+                  type="submit" 
+                  disabled={loading || (exchangeData.siswa ? Number(exchangeData.harga) > getStudentBalance(exchangeData.siswa) : false)} 
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-purple-200 dark:shadow-none transition-all mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   {loading ? 'Memproses...' : 'Tukar ATK'}
                 </button>
               </form>

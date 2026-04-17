@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, Shield, GraduationCap, Briefcase, Monitor } from 'lucide-react';
 import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
+import { motion } from 'motion/react';
 
 export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) => void, onNavigate: (page: string) => void }) {
   const [nip, setNip] = useState('');
@@ -43,7 +44,12 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-green-50 dark:bg-slate-900 transition-colors">
-      <main className="w-full max-w-xl z-10">
+      <motion.main 
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="w-full max-w-xl z-10"
+      >
         <div className="text-center mb-6">
           <img src={schoolIdentity.schoolLogo} alt="Logo" className="mx-auto h-28 w-auto mb-4 drop-shadow-xl hover:scale-105 transition-transform duration-300" />
           <h1 className="text-2xl font-bold text-slate-800 dark:text-white">LOGIN BISMA</h1>
@@ -112,7 +118,7 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
             Kembali ke Dashboard
           </button>
         </div>
-      </main>
+      </motion.main>
       <footer className="mt-8 text-center text-xs text-slate-500 dark:text-slate-400 z-10">© Tim IT {schoolIdentity.schoolName}</footer>
     </div>
   );

@@ -86,6 +86,13 @@ export default function BankSampahGuru({ user, onNavigate }: { user: any, onNavi
     filterStudentsByClass(students, newClass);
   };
 
+  const getStudentBalance = (studentName: string) => {
+    if (!studentName) return 0;
+    const studentNameLower = studentName.toLowerCase().trim();
+    const studentTransactions = transactions.filter(t => t.siswa && t.siswa.toLowerCase().trim() === studentNameLower);
+    return studentTransactions.reduce((acc, curr) => acc + (Number(curr.nilai) || 0), 0);
+  };
+
   const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const weight = e.target.value;
     const selectedType = wasteTypes.find(t => t.nama === formData.jenisSampah);
@@ -410,6 +417,14 @@ export default function BankSampahGuru({ user, onNavigate }: { user: any, onNavi
                         <option key={idx} value={s['Nama Lengkap']}>{s['Nama Lengkap']}</option>
                     ))}
                   </select>
+                  {exchangeData.siswa && (
+                    <div className="mt-2 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-100 dark:border-purple-800 flex items-center justify-between">
+                      <span className="text-sm text-purple-700 dark:text-purple-300 font-medium">Saldo Tabungan Tersedia:</span>
+                      <span className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                        Rp {getStudentBalance(exchangeData.siswa).toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Nama ATK</label>
@@ -432,9 +447,20 @@ export default function BankSampahGuru({ user, onNavigate }: { user: any, onNavi
                     value={exchangeData.harga}
                     onChange={(e) => setExchangeData({...exchangeData, harga: e.target.value})}
                   />
+                  {exchangeData.harga && exchangeData.siswa && (
+                    <p className={`text-xs mt-1 font-medium ${Number(exchangeData.harga) > getStudentBalance(exchangeData.siswa) ? 'text-red-500' : 'text-purple-600 dark:text-purple-400'}`}>
+                      {Number(exchangeData.harga) > getStudentBalance(exchangeData.siswa) 
+                        ? 'Saldo tabungan tidak mencukupi!' 
+                        : `Saldo setelah penukaran: Rp ${(getStudentBalance(exchangeData.siswa) - Number(exchangeData.harga)).toLocaleString('id-ID')}`}
+                    </p>
+                  )}
                 </div>
                 
-                <button type="submit" disabled={loading} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-purple-200 dark:shadow-none transition-all mt-4 disabled:opacity-50">
+                <button 
+                  type="submit" 
+                  disabled={loading || (exchangeData.siswa ? Number(exchangeData.harga) > getStudentBalance(exchangeData.siswa) : false)} 
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-purple-200 dark:shadow-none transition-all mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   {loading ? 'Memproses...' : 'Tukar ATK'}
                 </button>
               </form>
