@@ -1,7 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { Monitor, Calendar, RefreshCw, AlertTriangle, Users, Percent, Sparkles, Clock, CheckCircle2, XCircle, LogOut, X, HeartHandshake } from 'lucide-react';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
+import { Monitor, Calendar, RefreshCw, AlertTriangle, Users, Percent, Sparkles, Clock, CheckCircle2, XCircle, LogOut, X, HeartHandshake, Star, MessageSquare, Briefcase } from 'lucide-react';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    const isSpike = data.visitors >= 5000;
+    
+    return (
+      <div className="bg-white dark:bg-slate-800 p-4 border border-slate-200 dark:border-slate-700 shadow-xl rounded-xl">
+        <p className="font-bold text-slate-800 dark:text-white mb-2">{label}</p>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-teal-500"></div>
+          <span className="text-sm text-slate-600 dark:text-slate-300">
+            Total Kunjungan: <span className="font-bold text-slate-800 dark:text-white">{new Intl.NumberFormat('id-ID').format(data.visitors)}</span>
+          </span>
+        </div>
+        {isSpike && (
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+            <p className="text-xs text-teal-600 dark:text-teal-400 font-medium break-words max-w-[200px] leading-relaxed">
+              Lonjakan Signifikan <br/> Estimasi setara puncak <span className="font-bold text-teal-700 dark:text-teal-300">{(data.visitors / 30).toFixed(0)} kunjungan/hari</span> (akumulasi 30 hari).
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function MonitoringDashboard({ onLogout }: { onLogout: () => void }) {
   const [data, setData] = useState<any>(null);
@@ -17,6 +44,44 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
   const [analisaMonth, setAnalisaMonth] = useState(new Date().toISOString().slice(0, 7));
   const [kasihIbuStats, setKasihIbuStats] = useState<any[]>([]);
   const [showConclusion, setShowConclusion] = useState(false);
+  const [visitorStats, setVisitorStats] = useState<{ month: string, visitors: number }[]>([]);
+
+  // Telemetry config state
+  const [pieData, setPieData] = useState([{ name: 'SD/MI', value: 45 }, { name: 'SMP/MTs', value: 25 }, { name: 'SMA/SMK/MA', value: 15 }, { name: 'Lainnya', value: 15 }]);
+  const [wordCloud, setWordCloud] = useState([{ text: 'Inovatif', count: 120 }, { text: 'Aman', count: 90 }, { text: 'Keren', count: 85 }]);
+  const [testimonials, setTestimonials] = useState<any[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('visitor_config');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.monthly_stats) {
+          setVisitorStats(parsed.monthly_stats);
+        } else {
+          setVisitorStats([
+            { month: 'Jun 24', visitors: 300 },
+            { month: 'Jul 24', visitors: 400 },
+            { month: 'Ags 24', visitors: 520 },
+            { month: 'Sep 24', visitors: 650 },
+            { month: 'Okt 24', visitors: 780 },
+            { month: 'Nov 24', visitors: 850 },
+            { month: 'Des 24', visitors: 860 },
+            { month: 'Jan 25', visitors: 890 },
+            { month: 'Feb 25', visitors: 920 },
+            { month: 'Mar 25', visitors: 960 },
+            { month: 'Apr 25', visitors: 990 },
+            { month: 'Mei 25', visitors: 28000 },
+            { month: 'Jun 25', visitors: 30000 },
+          ]);
+        }
+        
+        if (parsed.pie_data) setPieData(parsed.pie_data);
+        if (parsed.word_cloud) setWordCloud(parsed.word_cloud);
+        if (parsed.testimonials) setTestimonials(parsed.testimonials);
+      }
+    } catch (e) {}
+  }, []);
 
   const renderCustomDot = (props: any) => {
     const { cx, cy, payload } = props;
@@ -227,6 +292,58 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
             <div className="text-[10px] md:text-xs font-bold text-slate-500 uppercase leading-tight truncate md:whitespace-normal">Total JP</div>
             <div className="text-lg md:text-2xl font-bold text-purple-600 dark:text-purple-400 truncate">{data?.stats?.totalJP || 0} JP</div>
           </div>
+        </div>
+      </div>
+
+      {/* Visitor Statistics Chart */}
+      <div className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-2">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+              <Users className="w-5 h-5 text-teal-500" /> Statistik Pengunjung Dashboard Publik
+            </h2>
+            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">Grafik Tren Pengunjung Halaman Publik (Juni 2024 - Juni 2025)</p>
+          </div>
+          <div className="text-xs bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 px-3 py-1.5 rounded-full font-medium border border-teal-100 dark:border-teal-800">
+            Prediksi Lonjakan: Mei & Juni (±1000 Kunjungan Hari)
+          </div>
+        </div>
+        
+        <div className="h-64 md:h-80 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={visitorStats}
+              margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+              <XAxis 
+                dataKey="month" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fontSize: 10, fill: '#64748b' }} 
+                dy={10} 
+              />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fontSize: 10, fill: '#64748b' }} 
+                dx={-10}
+                tickFormatter={(value) => value > 999 ? `${(value/1000).toFixed(1)}k` : value}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+              <Line 
+                type="monotone" 
+                dataKey="visitors" 
+                name="Total Kunjungan"
+                stroke="#14b8a6" 
+                strokeWidth={3}
+                dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} 
+                activeDot={{ r: 6, strokeWidth: 0, fill: '#0f766e' }}
+                animationDuration={1500}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
@@ -530,6 +647,106 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      </div>
+      
+      {/* Testimonials & Demographics Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+        {/* Pie Chart */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
+              <Briefcase className="w-5 h-5" />
+            </div>
+            <h2 className="text-lg font-bold">Asal Pengunjung</h2>
+          </div>
+          <div className="flex-1 min-h-[250px] relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#f59e0b', '#6366f1'][index % 4]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  itemStyle={{ color: '#1e293b', fontWeight: 'bold' }}
+                />
+                <Legend verticalAlign="bottom" height={36} iconType="circle" />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Word Cloud */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded-lg">
+              <MessageSquare className="w-5 h-5" />
+            </div>
+            <h2 className="text-lg font-bold">Kata Kunci Testimoni</h2>
+          </div>
+          <div className="flex-1 flex flex-wrap items-center justify-center gap-3 py-4">
+            {wordCloud.map((wc, i) => {
+              const maxCount = Math.max(...wordCloud.map(w => w.count));
+              const fontSize = Math.max(12, (wc.count / maxCount) * 36);
+              const colors = ['text-teal-500', 'text-blue-500', 'text-indigo-500', 'text-purple-500', 'text-rose-500', 'text-orange-500'];
+              return (
+                <motion.span
+                  key={i}
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: i * 0.1 }}
+                  className={`font-black ${colors[i % colors.length]} dark:opacity-90 leading-none`}
+                  style={{ fontSize: `${fontSize}px` }}
+                >
+                  {wc.text}
+                </motion.span>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Testimonials */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col items-stretch lg:col-span-1 overflow-hidden">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded-lg">
+              <Star className="w-5 h-5" />
+            </div>
+            <h2 className="text-lg font-bold">Testimoni Masyakarat</h2>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-4 pr-2 md:max-h-[300px]">
+            {testimonials.map((t, i) => (
+              <div key={i} className="p-4 bg-slate-50 dark:bg-slate-700/30 border border-slate-100 dark:border-slate-700 rounded-2xl">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h4 className="font-bold text-slate-800 dark:text-white text-sm">{t.name}</h4>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">{t.lembaga}</p>
+                  </div>
+                  <div className="flex text-yellow-400">
+                    {[...Array(5)].map((_, starIndex) => (
+                      <Star key={starIndex} className={`w-3 h-3 ${starIndex < t.rating ? 'fill-current' : 'text-slate-300 dark:text-slate-600'}`} />
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300 italic mb-2">"{t.testimoni}"</p>
+                <div className="inline-block px-2 py-1 bg-white dark:bg-slate-800 rounded text-[9px] font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                  {t.fitur}
+                </div>
+              </div>
+            ))}
+            {testimonials.length === 0 && (
+              <div className="text-center py-8 text-slate-400 italic text-sm">Belum ada testimoni.</div>
+            )}
           </div>
         </div>
       </div>

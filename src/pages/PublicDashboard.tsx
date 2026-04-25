@@ -2,15 +2,43 @@ import { useEffect, useState } from 'react';
 import { LogIn, Moon, Sun, BookOpen, AlertCircle, X, User, Backpack, Calculator, GraduationCap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
+import HelpDeskFloat from '../components/HelpDeskFloat';
 
 export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }: { onNavigate: (page: string) => void, darkMode: boolean, toggleDarkMode: () => void }) {
   const [data, setData] = useState<any>(null);
   const schoolIdentity = useSchoolIdentity();
   const [time, setTime] = useState(new Date());
   const [showAbsentModal, setShowAbsentModal] = useState(false);
+  const [fakeVisitor, setFakeVisitor] = useState(0);
 
   useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
+    const timer = setInterval(() => {
+      setTime(new Date());
+    }, 1000);
+
+    // Visitor effect
+    let visitorInterval: ReturnType<typeof setInterval>;
+    const updateVisitor = () => {
+      const configStr = localStorage.getItem('visitor_config');
+      if (configStr) {
+        try {
+          const config = JSON.parse(configStr);
+          if (config.enable_fake_visitor) {
+            // Randomly increase/decrease by a small amount
+            setFakeVisitor(prev => {
+              if (prev === 0) return config.base_visitor_count + Math.floor(Math.random() * 5);
+              const change = Math.random() > 0.5 ? 1 : -1;
+              return Math.max(config.base_visitor_count, prev + change);
+            });
+          } else {
+            setFakeVisitor(0);
+          }
+        } catch (e) {}
+      }
+    };
+    
+    updateVisitor();
+    visitorInterval = setInterval(updateVisitor, 3000); // update every 3s
     
     // Load Public Dashboard Data
     const loadPublicData = () => {
@@ -45,7 +73,10 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
       })
       .catch(() => {});
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      clearInterval(visitorInterval);
+    };
   }, []);
 
   // Listen for storage changes to update in real-time
@@ -105,7 +136,17 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-6">
+            {fakeVisitor > 0 && (
+              <div className="hidden md:flex flex-col items-end border-r border-slate-200 dark:border-slate-700 pr-6">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-0.5">Live Visitors</span>
+                <span className="font-mono text-lg font-light text-slate-800 dark:text-slate-200 leading-none">
+                  {fakeVisitor.toLocaleString('id-ID')}
+                  <span className="inline-block w-1.5 h-1.5 bg-green-500 rounded-full ml-2 animate-pulse mb-1"></span>
+                </span>
+              </div>
+            )}
+            
              <div className="hidden md:flex flex-col items-end mr-4">
                 <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
                   {time.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
@@ -323,6 +364,8 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
           </div>
         )}
       </AnimatePresence>
+      
+      <HelpDeskFloat />
     </div>
   );
 }

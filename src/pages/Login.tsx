@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, Shield, GraduationCap, Briefcase, Monitor } from 'lucide-react';
 import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
 import { motion } from 'motion/react';
+import HelpDeskFloat from '../components/HelpDeskFloat';
 
 export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) => void, onNavigate: (page: string) => void }) {
   const [nip, setNip] = useState('');
@@ -120,6 +121,7 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
         </div>
       </motion.main>
       <footer className="mt-8 text-center text-xs text-slate-500 dark:text-slate-400 z-10">© Tim IT {schoolIdentity.schoolName}</footer>
+      <HelpDeskFloat />
     </div>
   );
 }

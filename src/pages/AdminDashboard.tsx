@@ -35,7 +35,8 @@ import {
   ArrowRightLeft,
   MapPin,
   Menu,
-  Heart
+  Heart,
+  HelpCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -110,6 +111,7 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
     { id: 'geofencing', icon: MapPin, label: 'Geofencing' },
     { id: 'color_config', icon: Palette, label: 'Konfigurasi Warna' },
     { id: 'api_config', icon: Key, label: 'Konfigurasi API' },
+    { id: 'visitor_config', icon: Users, label: 'Konfigurasi Visitor' },
   ];
 
   const adminCards = [
@@ -211,6 +213,15 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
       color: 'bg-indigo-500', 
       shadow: 'shadow-indigo-200 dark:shadow-indigo-900/20',
       action: () => setActiveView('api_config')
+    },
+    { 
+      id: 'helpdesk_config', 
+      title: 'Pusat Bantuan', 
+      subtitle: 'INFO & KONTAK', 
+      icon: HelpCircle, 
+      color: 'bg-indigo-500', 
+      shadow: 'shadow-indigo-200 dark:shadow-indigo-900/20',
+      action: () => setActiveView('helpdesk_config')
     },
     { 
       id: 'pengaturan', 
@@ -338,8 +349,12 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
         return <ColorConfigView showToast={showToast} />;
       case 'api_config':
         return <ApiConfigView showToast={showToast} />;
+      case 'visitor_config':
+        return <VisitorConfigView showToast={showToast} />;
+      case 'helpdesk_config':
+        return <HelpDeskConfigView showToast={showToast} />;
       case 'profile':
-        return <ProfileView showToast={showToast} />;
+        return <ProfileView showToast={showToast} onHiddenConfig={() => setActiveView('visitor_config')} />;
       default:
         return null;
     }
@@ -872,7 +887,7 @@ function InputGuruBaruView({ showToast }: { showToast: (msg: string, type?: 'suc
   );
 }
 
-function ProfileView({ showToast }: { showToast: (msg: string, type?: 'success' | 'error') => void }) {
+function ProfileView({ showToast, onHiddenConfig }: { showToast: (msg: string, type?: 'success' | 'error') => void, onHiddenConfig?: () => void }) {
   const handlePasswordChange = (e: React.FormEvent) => {
     e.preventDefault();
     showToast("Password berhasil diubah!");
@@ -891,7 +906,12 @@ function ProfileView({ showToast }: { showToast: (msg: string, type?: 'success' 
             <User className="w-10 h-10 text-slate-500" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Administrator</h2>
+            <h2 
+              className="text-xl font-bold text-slate-800 dark:text-white cursor-default select-none"
+              onDoubleClick={onHiddenConfig}
+            >
+              Administrator
+            </h2>
             <p className="text-slate-500">admin@sdnbaujeng1.sch.id</p>
             <span className="inline-block mt-2 px-3 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-full text-xs font-bold">Super Admin</span>
           </div>
@@ -3083,5 +3103,418 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
         </div>
       </div>
     </>
+  );
+}
+
+function VisitorConfigView({ showToast }: { showToast: (msg: string, type?: 'success' | 'error') => void }) {
+  const [loading, setLoading] = useState(false);
+  const defaultMonthlyStats = [
+    { month: 'Jun 24', visitors: 300 },
+    { month: 'Jul 24', visitors: 400 },
+    { month: 'Ags 24', visitors: 520 },
+    { month: 'Sep 24', visitors: 650 },
+    { month: 'Okt 24', visitors: 780 },
+    { month: 'Nov 24', visitors: 850 },
+    { month: 'Des 24', visitors: 860 },
+    { month: 'Jan 25', visitors: 890 },
+    { month: 'Feb 25', visitors: 920 },
+    { month: 'Mar 25', visitors: 960 },
+    { month: 'Apr 25', visitors: 990 },
+    { month: 'Mei 25', visitors: 28000 },
+    { month: 'Jun 25', visitors: 30000 },
+  ];
+  
+  const defaultPieData = [
+    { name: 'SD/MI', value: 45 },
+    { name: 'SMP/MTs', value: 25 },
+    { name: 'SMA/SMK/MA', value: 15 },
+    { name: 'Lainnya', value: 15 },
+  ];
+  const defaultWordCloud = [
+    { text: 'Inovatif', count: 120 },
+    { text: 'Aman', count: 90 },
+    { text: 'Keren', count: 85 },
+    { text: 'Mudah', count: 70 },
+    { text: 'Lengkap', count: 60 },
+  ];
+  const defaultTestimonials = [
+    { name: 'Ahmad S.', lembaga: 'SDN Baujeng I', fitur: 'Dashboard Publik', testimoni: 'Sangat informatif memantau kehadiran dan kedisiplinan!', rating: 5 },
+    { name: 'Siti M.', lembaga: 'SMPN 1 Beji', fitur: 'Presensi QR', testimoni: 'Aplikasi yang mempermudah sekolah mengecek absensi.', rating: 5 },
+    { name: 'Guru J.', lembaga: 'SMA Maju', fitur: 'Lainnya', testimoni: 'Sangat bagus untuk dicontoh.', rating: 4 },
+  ];
+
+  const [config, setConfig] = useState<{
+    base_visitor_count: number;
+    enable_fake_visitor: boolean;
+    monthly_stats: { month: string, visitors: number }[];
+    pie_data: any[];
+    word_cloud: any[];
+    testimonials: any[];
+  }>({
+    base_visitor_count: 324,
+    enable_fake_visitor: true,
+    monthly_stats: defaultMonthlyStats,
+    pie_data: defaultPieData,
+    word_cloud: defaultWordCloud,
+    testimonials: defaultTestimonials,
+  });
+
+  useEffect(() => {
+    try {
+      const local = localStorage.getItem('visitor_config');
+      if (local) {
+        const parsed = JSON.parse(local);
+        setConfig({
+          ...parsed,
+          monthly_stats: parsed.monthly_stats || defaultMonthlyStats,
+          pie_data: parsed.pie_data || defaultPieData,
+          word_cloud: parsed.word_cloud || defaultWordCloud,
+          testimonials: parsed.testimonials || defaultTestimonials
+        });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      localStorage.setItem('visitor_config', JSON.stringify(config));
+      window.dispatchEvent(new Event('storage'));
+      showToast("Konfigurasi Visitor disimpan", "success");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMonthChange = (index: number, value: string) => {
+    const newStats = [...config.monthly_stats];
+    newStats[index].visitors = Number(value);
+    setConfig({ ...config, monthly_stats: newStats });
+  };
+
+  const handlePieChange = (index: number, field: string, value: any) => {
+    const newPie = [...config.pie_data];
+    newPie[index] = { ...newPie[index], [field]: field === 'value' ? Number(value) : value };
+    setConfig({ ...config, pie_data: newPie });
+  };
+
+  const addWordCloud = () => setConfig({ ...config, word_cloud: [{ text: 'Kata Baru', count: 10 }, ...config.word_cloud] });
+  const updateWordCloud = (index: number, field: string, value: any) => {
+    const newWC = [...config.word_cloud];
+    newWC[index] = { ...newWC[index], [field]: field === 'count' ? Number(value) : value };
+    setConfig({ ...config, word_cloud: newWC });
+  };
+  const removeWordCloud = (index: number) => {
+    setConfig({ ...config, word_cloud: config.word_cloud.filter((_, i) => i !== index) });
+  };
+
+  const addTestimonial = () => setConfig({ ...config, testimonials: [{ name: 'Nama Baru', lembaga: 'Lembaga', fitur: 'Lainnya', testimoni: 'Kesan...', rating: 5 }, ...config.testimonials] });
+  const updateTestimonial = (index: number, field: string, value: any) => {
+    const newTesti = [...config.testimonials];
+    newTesti[index] = { ...newTesti[index], [field]: field === 'rating' ? Number(value) : value };
+    setConfig({ ...config, testimonials: newTesti });
+  };
+  const removeTestimonial = (index: number) => {
+    setConfig({ ...config, testimonials: config.testimonials.filter((_, i) => i !== index) });
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto pb-12">
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+            <Users className="w-6 h-6 text-teal-500" /> Konfigurasi Visitor & Fake Data
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Atur tampilan visitor harian dan data dummy untuk dashboard publik.</p>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
+        <div className="space-y-6">
+          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600">
+            <div>
+              <h3 className="font-bold text-slate-800 dark:text-white">Aktifkan Fake Visitor</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Tampilkan jumlah visitor real-time yang dimanipulasi pada public dashboard.</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="sr-only peer" 
+                checked={config.enable_fake_visitor}
+                onChange={(e) => setConfig({...config, enable_fake_visitor: e.target.checked})}
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-teal-500"></div>
+            </label>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Base Visitor Harian Hari Ini</label>
+            <input 
+              type="number"
+              value={config.base_visitor_count}
+              onChange={(e) => setConfig({...config, base_visitor_count: Number(e.target.value)})}
+              className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white"
+            />
+            <p className="text-xs mt-2 text-slate-500 dark:text-slate-400">Angka ini akan ditambah dengan hitungan random di tampilan untuk kesan real-time.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-4">Konfigurasi Pengunjung per Bulan (Bagan Monitoring)</label>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {config.monthly_stats.map((stat, idx) => (
+                <div key={stat.month} className="bg-slate-50 dark:bg-slate-800 p-2 lg:p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">{stat.month}</label>
+                  <input 
+                    type="number"
+                    value={stat.visitors}
+                    onChange={(e) => handleMonthChange(idx, e.target.value)}
+                    className="w-full border border-slate-300 dark:border-slate-600 p-2 text-sm rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-1 focus:ring-teal-500 outline-none"
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="text-xs mt-3 text-slate-500 dark:text-slate-400 border-l-2 border-teal-500 pl-3">Nilai di atas akan digunakan untuk Chart Statistik Pengunjung di halaman Monitoring Dashboard. Untuk lonjakan prediksi Mei-Juni yang drastis, disajikan dalam tooltip yang lebih informatif.</p>
+          </div>
+
+          <div className="border-t border-slate-200 dark:border-slate-700 my-6"></div>
+
+          {/* --- PIE CHART --- */}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-4">Statistik Asal Pengunjung (Pie Chart)</label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {config.pie_data.map((pie, i) => (
+                <div key={i} className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3">
+                  <input 
+                    type="text" value={pie.name} onChange={(e) => handlePieChange(i, 'name', e.target.value)}
+                    className="w-full bg-transparent border-b border-slate-300 dark:border-slate-600 mb-2 text-xs font-bold text-slate-800 dark:text-white outline-none"
+                  />
+                  <input 
+                    type="number" value={pie.value} onChange={(e) => handlePieChange(i, 'value', e.target.value)}
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-sm outline-none text-slate-800 dark:text-white"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* --- WORD CLOUD --- */}
+          <div className="mt-8">
+            <div className="flex justify-between items-center mb-4">
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">Konfigurasi Word Cloud</label>
+              <button onClick={addWordCloud} className="px-3 py-1 bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400 text-xs font-bold rounded-lg hover:bg-teal-200 dark:hover:bg-teal-900/50">
+                + Tambah Kata
+              </button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {config.word_cloud.map((wc, i) => (
+                <div key={i} className="flex gap-2 items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2">
+                  <input 
+                    type="text" value={wc.text} onChange={(e) => updateWordCloud(i, 'text', e.target.value)}
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-xs outline-none text-slate-800 dark:text-white"
+                  />
+                  <input 
+                    type="number" value={wc.count} onChange={(e) => updateWordCloud(i, 'count', e.target.value)}
+                    className="w-16 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-xs outline-none text-slate-800 dark:text-white"
+                  />
+                  <button onClick={() => removeWordCloud(i)} className="text-red-500 hover:text-red-700 p-1"><X className="w-4 h-4" /></button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* --- TESTIMONIALS --- */}
+          <div className="mt-8">
+            <div className="flex justify-between items-center mb-4">
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">Data Testimoni (Monitoring)</label>
+              <button onClick={addTestimonial} className="px-3 py-1 bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400 text-xs font-bold rounded-lg hover:bg-teal-200 dark:hover:bg-teal-900/50">
+                + Tambah Testimoni
+              </button>
+            </div>
+            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+              {config.testimonials.map((t, i) => (
+                <div key={i} className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 relative">
+                  <button onClick={() => removeTestimonial(i)} className="absolute top-4 right-4 text-red-500 hover:text-red-700"><X className="w-5 h-5"/></button>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 pr-8">
+                    <input type="text" value={t.name} onChange={(e) => updateTestimonial(i, 'name', e.target.value)} placeholder="Nama" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm outline-none text-slate-800 dark:text-white" />
+                    <input type="text" value={t.lembaga} onChange={(e) => updateTestimonial(i, 'lembaga', e.target.value)} placeholder="Lembaga" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm outline-none text-slate-800 dark:text-white" />
+                    <input type="text" value={t.fitur} onChange={(e) => updateTestimonial(i, 'fitur', e.target.value)} placeholder="Fitur" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm outline-none text-slate-800 dark:text-white" />
+                    <input type="number" min="1" max="5" value={t.rating} onChange={(e) => updateTestimonial(i, 'rating', e.target.value)} placeholder="Bintang" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm outline-none text-slate-800 dark:text-white" />
+                  </div>
+                  <input type="text" value={t.testimoni} onChange={(e) => updateTestimonial(i, 'testimoni', e.target.value)} placeholder="Tulis testimoni..." className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm outline-none text-slate-800 dark:text-white" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button 
+            onClick={handleSave}
+            disabled={loading}
+            className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 rounded-xl shadow-lg transition-all"
+          >
+            {loading ? 'Menyimpan...' : 'Simpan Konfigurasi'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HelpDeskConfigView({ showToast }: { showToast: (msg: string, type?: 'success' | 'error') => void }) {
+  const [loading, setLoading] = useState(false);
+
+  const [config, setConfig] = useState({
+    wa_number: '625749662221',
+    wa_message: 'hallo mohon bantuan dalam akses BISMA dengan kendala ........',
+    email: 'akhmadnasor@gmail.com',
+    disclaimer: 'Keamanan dan Privasi Anak adalah prioritas utama kami di SDN Baujeng I Beji. Aplikasi BISMA mematuhi standar perlindungan data anak, memastikan informasi pribadi, nilai, dan lokasi tidak dibagikan kepada pihak ketiga manapun tanpa izin eksplisit dari orang tua/wali materi.',
+    youtube_url: 'https://youtube.com/',
+    ig_url: 'https://www.instagram.com/sdnbaujeng1/',
+    web_url: 'https://www.sdnbaujeng1.sch.id/',
+    location: 'SDN Baujeng I Beji',
+  });
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('helpdesk_config');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setConfig({
+          ...parsed,
+          ig_url: parsed.ig_url ?? 'https://www.instagram.com/sdnbaujeng1/',
+          web_url: parsed.web_url ?? 'https://www.sdnbaujeng1.sch.id/'
+        });
+      }
+    } catch (e) {}
+  }, []);
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      localStorage.setItem('helpdesk_config', JSON.stringify(config));
+      window.dispatchEvent(new Event('storage'));
+      showToast("Konfigurasi Pusat Bantuan disimpan", "success");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto pb-12">
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+            <HelpCircle className="w-6 h-6 text-indigo-500" /> Konfigurasi Pusat Bantuan
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Pengaturan kontak dan panduan pengguna.</p>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-700 space-y-6">
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">WhatsApp Number</label>
+            <input 
+              type="text"
+              value={config.wa_number}
+              onChange={(e) => setConfig({...config, wa_number: e.target.value})}
+              className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              placeholder="Contoh: 08123456789"
+            />
+            <p className="text-xs mt-1 text-slate-500">Awali dengan 0 atau 62</p>
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Email Konfirmasi</label>
+            <input 
+              type="email"
+              value={config.email}
+              onChange={(e) => setConfig({...config, email: e.target.value})}
+              className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              placeholder="Contoh: email@sekolah.id"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Pesan Template WhatsApp</label>
+          <input 
+            type="text"
+            value={config.wa_message}
+            onChange={(e) => setConfig({...config, wa_message: e.target.value})}
+            className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+            placeholder="Pesan..."
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">URL Youtube Panduan</label>
+            <input 
+              type="url"
+              value={config.youtube_url}
+              onChange={(e) => setConfig({...config, youtube_url: e.target.value})}
+              className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              placeholder="https://youtube.com/..."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Teks Lokasi (Alamat)</label>
+            <input 
+              type="text"
+              value={config.location}
+              onChange={(e) => setConfig({...config, location: e.target.value})}
+              className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              placeholder="SDN Baujeng I Beji..."
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">URL Instagram</label>
+            <input 
+              type="url"
+              value={config.ig_url}
+              onChange={(e) => setConfig({...config, ig_url: e.target.value})}
+              className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              placeholder="https://www.instagram.com/..."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">URL Website</label>
+            <input 
+              type="url"
+              value={config.web_url}
+              onChange={(e) => setConfig({...config, web_url: e.target.value})}
+              className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              placeholder="https://www.sdnbaujeng1.sch.id/"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Teks Disclaimer Keamanan Anak</label>
+          <textarea 
+            rows={2}
+            value={config.disclaimer}
+            onChange={(e) => setConfig({...config, disclaimer: e.target.value})}
+            className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+            placeholder="Disclaimer..."
+          ></textarea>
+        </div>
+
+        <div className="pt-4 mt-6 border-t border-slate-200 dark:border-slate-700 pt-6">
+          <button 
+            onClick={handleSave}
+            disabled={loading}
+            className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg transition-all flex justify-center items-center gap-2"
+          >
+             <Save className="w-5 h-5" /> {loading ? 'Menyimpan...' : 'Simpan Konfigurasi'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
