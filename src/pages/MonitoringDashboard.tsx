@@ -450,6 +450,106 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
         })}
       </div>
 
+      {/* Testimonials & Demographics Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+        {/* Pie Chart */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
+              <Briefcase className="w-5 h-5" />
+            </div>
+            <h2 className="text-lg font-bold">Asal Pengunjung</h2>
+          </div>
+          <div className="flex-1 min-h-[250px] relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#f59e0b', '#6366f1'][index % 4]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  itemStyle={{ color: '#1e293b', fontWeight: 'bold' }}
+                />
+                <Legend verticalAlign="bottom" height={36} iconType="circle" />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Word Cloud */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded-lg">
+              <MessageSquare className="w-5 h-5" />
+            </div>
+            <h2 className="text-lg font-bold">Kata Kunci Testimoni</h2>
+          </div>
+          <div className="flex-1 flex flex-wrap items-center justify-center gap-3 py-4">
+            {wordCloud.map((wc, i) => {
+              const maxCount = Math.max(...wordCloud.map(w => w.count));
+              const fontSize = Math.max(12, (wc.count / maxCount) * 36);
+              const colors = ['text-teal-500', 'text-blue-500', 'text-indigo-500', 'text-purple-500', 'text-rose-500', 'text-orange-500'];
+              return (
+                <motion.span
+                  key={i}
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: i * 0.1 }}
+                  className={`font-black ${colors[i % colors.length]} dark:opacity-90 leading-none`}
+                  style={{ fontSize: `${fontSize}px` }}
+                >
+                  {wc.text}
+                </motion.span>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Testimonials */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col items-stretch lg:col-span-1 overflow-hidden">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded-lg">
+              <Star className="w-5 h-5" />
+            </div>
+            <h2 className="text-lg font-bold">Testimoni</h2>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-4 pr-2 md:max-h-[300px]">
+            {testimonials.map((t, i) => (
+              <div key={i} className="p-4 bg-slate-50 dark:bg-slate-700/30 border border-slate-100 dark:border-slate-700 rounded-2xl">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h4 className="font-bold text-slate-800 dark:text-white text-sm">{t.name}</h4>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">{t.lembaga}</p>
+                  </div>
+                  <div className="flex text-yellow-400">
+                    {[...Array(5)].map((_, starIndex) => (
+                      <Star key={starIndex} className={`w-3 h-3 ${starIndex < t.rating ? 'fill-current' : 'text-slate-300 dark:text-slate-600'}`} />
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300 italic mb-2">"{t.testimoni}"</p>
+                <div className="inline-block px-2 py-1 bg-white dark:bg-slate-800 rounded text-[9px] font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                  {t.fitur}
+                </div>
+              </div>
+            ))}
+            {testimonials.length === 0 && (
+              <div className="text-center py-8 text-slate-400 italic text-sm">Belum ada testimoni.</div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Analisa Data Siswa */}
       <div className="mt-8">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
@@ -647,106 +747,6 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
                 )}
               </tbody>
             </table>
-          </div>
-        </div>
-      </div>
-      
-      {/* Testimonials & Demographics Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-        {/* Pie Chart */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
-              <Briefcase className="w-5 h-5" />
-            </div>
-            <h2 className="text-lg font-bold">Asal Pengunjung</h2>
-          </div>
-          <div className="flex-1 min-h-[250px] relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#f59e0b', '#6366f1'][index % 4]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  itemStyle={{ color: '#1e293b', fontWeight: 'bold' }}
-                />
-                <Legend verticalAlign="bottom" height={36} iconType="circle" />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Word Cloud */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded-lg">
-              <MessageSquare className="w-5 h-5" />
-            </div>
-            <h2 className="text-lg font-bold">Kata Kunci Testimoni</h2>
-          </div>
-          <div className="flex-1 flex flex-wrap items-center justify-center gap-3 py-4">
-            {wordCloud.map((wc, i) => {
-              const maxCount = Math.max(...wordCloud.map(w => w.count));
-              const fontSize = Math.max(12, (wc.count / maxCount) * 36);
-              const colors = ['text-teal-500', 'text-blue-500', 'text-indigo-500', 'text-purple-500', 'text-rose-500', 'text-orange-500'];
-              return (
-                <motion.span
-                  key={i}
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
-                  className={`font-black ${colors[i % colors.length]} dark:opacity-90 leading-none`}
-                  style={{ fontSize: `${fontSize}px` }}
-                >
-                  {wc.text}
-                </motion.span>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Testimonials */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col items-stretch lg:col-span-1 overflow-hidden">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded-lg">
-              <Star className="w-5 h-5" />
-            </div>
-            <h2 className="text-lg font-bold">Testimoni Masyakarat</h2>
-          </div>
-          <div className="flex-1 overflow-y-auto space-y-4 pr-2 md:max-h-[300px]">
-            {testimonials.map((t, i) => (
-              <div key={i} className="p-4 bg-slate-50 dark:bg-slate-700/30 border border-slate-100 dark:border-slate-700 rounded-2xl">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <h4 className="font-bold text-slate-800 dark:text-white text-sm">{t.name}</h4>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400">{t.lembaga}</p>
-                  </div>
-                  <div className="flex text-yellow-400">
-                    {[...Array(5)].map((_, starIndex) => (
-                      <Star key={starIndex} className={`w-3 h-3 ${starIndex < t.rating ? 'fill-current' : 'text-slate-300 dark:text-slate-600'}`} />
-                    ))}
-                  </div>
-                </div>
-                <p className="text-xs text-slate-600 dark:text-slate-300 italic mb-2">"{t.testimoni}"</p>
-                <div className="inline-block px-2 py-1 bg-white dark:bg-slate-800 rounded text-[9px] font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                  {t.fitur}
-                </div>
-              </div>
-            ))}
-            {testimonials.length === 0 && (
-              <div className="text-center py-8 text-slate-400 italic text-sm">Belum ada testimoni.</div>
-            )}
           </div>
         </div>
       </div>
