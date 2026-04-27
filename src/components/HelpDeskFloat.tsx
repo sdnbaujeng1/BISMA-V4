@@ -7,7 +7,7 @@ export default function HelpDeskFloat() {
   const [activeModal, setActiveModal] = useState<'disclaimer' | 'testimoni' | 'testimoniSuccess' | 'location' | null>(null);
   
   const [config, setConfig] = useState({
-    wa_number: '625749662221',
+    wa_number: '6285743524766',
     wa_message: 'hallo mohon bantuan dalam akses BISMA dengan kendala ........',
     email: 'akhmadnasor@gmail.com',
     disclaimer: 'Keamanan dan Privasi Anak adalah prioritas utama kami di SDN Baujeng I Beji. Aplikasi BISMA mematuhi standar perlindungan data anak, memastikan informasi pribadi, nilai, dan lokasi tidak dibagikan kepada pihak ketiga manapun tanpa izin eksplisit dari orang tua/wali materi.',
@@ -15,7 +15,8 @@ export default function HelpDeskFloat() {
     location: 'SDN Baujeng I Beji',
     ig_url: 'https://www.instagram.com/sdnbaujeng1/',
     web_url: 'https://www.sdnbaujeng1.sch.id/',
-    map_embed_url: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1419!2d112.735817!3d-7.623635!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dd7c490a2c53f81%3A0xc6ad50bd669ecb9b!2sSDN%20Baujeng%201!5e0!3m2!1sid!2sid!4v1714000000000!5m2!1sid!2sid'
+    map_embed_url: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1419!2d112.735817!3d-7.623635!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dd7c490a2c53f81%3A0xc6ad50bd669ecb9b!2sSDN%20Baujeng%201!5e0!3m2!1sid!2sid!4v1714000000000!5m2!1sid!2sid',
+    map_link_url: 'https://maps.app.goo.gl/6SZ4yHvr9FMNzdZG9'
   });
 
   const [testimoniData, setTestimoniData] = useState({
@@ -137,7 +138,7 @@ export default function HelpDeskFloat() {
                   </div>
                 </a>
 
-                <a href={`mailto:${config.email}?subject=Konfirmasi BISMA`} target="_top" className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-left group">
+                <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(config.email)}&su=${encodeURIComponent('Konfirmasi BISMA')}`} target="_blank" rel="noopener noreferrer" className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-left group">
                   <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                     <Mail className="w-5 h-5" />
                   </div>
@@ -239,24 +240,19 @@ export default function HelpDeskFloat() {
                 <MapPin className="w-8 h-8" />
               </div>
               <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Lokasi Sekolah</h2>
-              <p className="text-slate-500 mb-6">{config.location}</p>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <p className="text-slate-500">{config.location}</p>
+                {config.map_link_url && (
+                  <a href={config.map_link_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
+                    <Globe className="w-4 h-4" /> Buka di Google Maps
+                  </a>
+                )}
+              </div>
               
               <div className="w-full h-[300px] md:h-[400px] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900">
                 {config.map_embed_url ? (
                   <iframe 
-                    src={(() => {
-                      const url = config.map_embed_url;
-                      if (!url) return '';
-                      if (url.includes('output=embed') || url.includes('/embed?')) return url;
-                      if (url.includes('/place/')) {
-                        const placeParts = url.split('/place/');
-                        if (placeParts.length > 1) {
-                          const placeName = placeParts[1].split('/')[0];
-                          return `https://maps.google.com/maps?q=${placeName}&output=embed`;
-                        }
-                      }
-                      return url.includes('?') ? `${url}&output=embed` : `${url}?output=embed`;
-                    })()}
+                    src={config.map_embed_url}
                     width="100%" 
                     height="100%" 
                     style={{ border: 0 }} 

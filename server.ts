@@ -477,10 +477,24 @@ app.get('/api/admin/stats', async (req, res) => {
   app.get('/api/helpdesk-config', async (req, res) => {
     const { data, error } = await supabase.from('pengaturan').select('*').eq('key', 'helpdesk_config').maybeSingle();
     if (error) return res.status(500).json({ success: false, message: error.message });
-    let configObj = null;
+    let configObj: any = null;
     if (data && data.value) {
       try { configObj = JSON.parse(data.value); } catch (e) {}
     }
+    
+    // Fallback overrides to ensure updated config reaches clients
+    if (!configObj) configObj = {};
+    if (!configObj.wa_number || configObj.wa_number === '625749662221') {
+      configObj.wa_number = '6285743524766';
+    }
+    if (!configObj.map_embed_url || configObj.map_embed_url.includes('maps.app.goo.gl')) {
+       // use standard google map embed query using coordinates for SDN Baujeng 1
+       configObj.map_embed_url = 'https://maps.google.com/maps?q=SDN%20Baujeng%201%20Beji&t=&z=15&ie=UTF8&iwloc=&output=embed';
+    }
+    if (!configObj.map_link_url) {
+       configObj.map_link_url = 'https://maps.app.goo.gl/6SZ4yHvr9FMNzdZG9';
+    }
+
     res.json({ success: true, data: configObj });
   });
 

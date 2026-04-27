@@ -3434,7 +3434,7 @@ function HelpDeskConfigView({ showToast }: { showToast: (msg: string, type?: 'su
   const [loading, setLoading] = useState(false);
 
   const [config, setConfig] = useState({
-    wa_number: '625749662221',
+    wa_number: '6285743524766',
     wa_message: 'hallo mohon bantuan dalam akses BISMA dengan kendala ........',
     email: 'akhmadnasor@gmail.com',
     disclaimer: 'Keamanan dan Privasi Anak adalah prioritas utama kami di SDN Baujeng I Beji. Aplikasi BISMA mematuhi standar perlindungan data anak, memastikan informasi pribadi, nilai, dan lokasi tidak dibagikan kepada pihak ketiga manapun tanpa izin eksplisit dari orang tua/wali materi.',
@@ -3443,6 +3443,7 @@ function HelpDeskConfigView({ showToast }: { showToast: (msg: string, type?: 'su
     web_url: 'https://www.sdnbaujeng1.sch.id/',
     location: 'SDN Baujeng I Beji',
     map_embed_url: '',
+    map_link_url: 'https://maps.app.goo.gl/6SZ4yHvr9FMNzdZG9'
   });
 
   useEffect(() => {
@@ -3507,7 +3508,8 @@ function HelpDeskConfigView({ showToast }: { showToast: (msg: string, type?: 'su
           ig_url: config.ig_url,
           web_url: config.web_url,
           location: config.location,
-          map_embed_url: config.map_embed_url
+          map_embed_url: config.map_embed_url,
+          map_link_url: config.map_link_url
         })
       });
 
@@ -3538,13 +3540,23 @@ function HelpDeskConfigView({ showToast }: { showToast: (msg: string, type?: 'su
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Google Map Embed URL</label>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Google Map Embed/Iframe URL</label>
             <input 
               type="url"
               value={config.map_embed_url || ''}
               onChange={(e) => setConfig({...config, map_embed_url: e.target.value})}
               className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
               placeholder="https://www.google.com/maps/embed?..."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Google Map Direct Link</label>
+            <input 
+              type="url"
+              value={config.map_link_url || ''}
+              onChange={(e) => setConfig({...config, map_link_url: e.target.value})}
+              className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              placeholder="https://maps.app.goo.gl/..."
             />
           </div>
           <div>
