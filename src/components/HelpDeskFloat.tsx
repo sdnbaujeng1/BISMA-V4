@@ -244,7 +244,19 @@ export default function HelpDeskFloat() {
               <div className="w-full h-[300px] md:h-[400px] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900">
                 {config.map_embed_url ? (
                   <iframe 
-                    src={config.map_embed_url} 
+                    src={(() => {
+                      const url = config.map_embed_url;
+                      if (!url) return '';
+                      if (url.includes('output=embed') || url.includes('/embed?')) return url;
+                      if (url.includes('/place/')) {
+                        const placeParts = url.split('/place/');
+                        if (placeParts.length > 1) {
+                          const placeName = placeParts[1].split('/')[0];
+                          return `https://maps.google.com/maps?q=${placeName}&output=embed`;
+                        }
+                      }
+                      return url.includes('?') ? `${url}&output=embed` : `${url}?output=embed`;
+                    })()}
                     width="100%" 
                     height="100%" 
                     style={{ border: 0 }} 
