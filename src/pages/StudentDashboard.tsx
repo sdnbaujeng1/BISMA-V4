@@ -120,7 +120,7 @@ export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkM
             </div>
           </div>
           <div className="flex items-center gap-3">
-             <button onClick={toggleDarkMode} className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors">
+             <button onClick={toggleDarkMode} className="hidden md:block bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors">
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
             <button onClick={onLogout} className="bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold">
@@ -403,7 +403,7 @@ function Profil({ user, onLogout, darkMode, toggleDarkMode }: { user: any, onLog
         <div className="pt-6 space-y-3">
            <button 
             onClick={toggleDarkMode}
-            className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            className="hidden md:flex w-full items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           >
             <span className="font-medium text-slate-700 dark:text-slate-200 flex items-center gap-2">
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}

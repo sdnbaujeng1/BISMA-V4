@@ -75,12 +75,81 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
             { month: 'Jun 25', visitors: 30000 },
           ]);
         }
-        
-        if (parsed.pie_data) setPieData(parsed.pie_data);
-        if (parsed.word_cloud) setWordCloud(parsed.word_cloud);
-        if (parsed.testimonials) setTestimonials(parsed.testimonials);
       }
     } catch (e) {}
+
+    const fetchHelpdeskData = async () => {
+        try {
+          let testmonialsFromConfig: any[] = [];
+          const configRes = await fetch('/api/helpdesk-config');
+          if (configRes.ok) {
+            const configData = await configRes.json();
+            if (configData.success && configData.data) {
+              const parsed = configData.data;
+              if (parsed.pie_data && parsed.pie_data.length > 0) setPieData(parsed.pie_data);
+              if (parsed.word_cloud && parsed.word_cloud.length > 0) setWordCloud(parsed.word_cloud);
+              if (parsed.testimonials) testmonialsFromConfig = parsed.testimonials;
+            }
+          }
+          
+          const testiRes = await fetch('/api/testimoni');
+          if (testiRes.ok) {
+            const testiData = await testiRes.json();
+            if (testiData.success && Array.isArray(testiData.data)) {
+              const tests = testiData.data;
+              // Combine both sets - live submitted and configured mock ones
+              setTestimonials([...tests, ...testmonialsFromConfig]);
+
+              // If there's no custom pie data set by config, compute it
+              const pieCounts: Record<string, number> = { 'SD/MI': 0, 'SMP/MTs': 0, 'SMA/SMK/MA': 0, 'Lainnya': 0 };
+              let hasPieData = false;
+              if (tests.length > 0) {
+                // Compute Asal Pengunjung
+                tests.forEach((t: any) => {
+                  const l = (t.lembaga || '').toUpperCase();
+                  if (l.includes('SD') || l.includes('MI')) pieCounts['SD/MI']++;
+                  else if (l.includes('SMP') || l.includes('MTS')) pieCounts['SMP/MTs']++;
+                  else if (l.includes('SMA') || l.includes('SMK') || l.includes('MA')) pieCounts['SMA/SMK/MA']++;
+                  else pieCounts['Lainnya']++;
+                });
+                const computedPie = Object.keys(pieCounts).map(k => ({ name: k, value: pieCounts[k] })).filter(d => d.value > 0);
+                // Only override if we didn't just load it from config overrides
+                if (computedPie.length > 0 && (!testmonialsFromConfig || testmonialsFromConfig.length === 0)) {
+                   setPieData(computedPie);
+                   hasPieData = true;
+                }
+
+                // Only override Word Cloud if not set by config overlays
+                if (!testmonialsFromConfig || testmonialsFromConfig.length === 0) {
+                   const stopWords = ['dan', 'yang', 'di', 'ke', 'dari', 'pada', 'untuk', 'dengan', 'ini', 'itu', 'juga', 'adalah', 'sebagai', 'saya', 'kami', 'kita', 'dalam', 'sangat', 'bisa', 'akan', 'atau', 'lebih', 'sudah', 'secara', 'karena', 'saat'];
+                   const wordCounts: Record<string, number> = {};
+                   tests.forEach((t: any) => {
+                     const words = (t.testimoni || '').toLowerCase().match(/\b[a-z]+\b/g) || [];
+                     words.forEach((w: string) => {
+                       if (w.length > 3 && !stopWords.includes(w)) {
+                         wordCounts[w] = (wordCounts[w] || 0) + 1;
+                       }
+                     });
+                   });
+                   const computedWords = Object.keys(wordCounts)
+                     .map(w => ({ text: w, count: wordCounts[w] }))
+                     .sort((a, b) => b.count - a.count)
+                     .slice(0, 20);
+                   if (computedWords.length > 0) setWordCloud(computedWords);
+                }
+              }
+            } else {
+              setTestimonials(testmonialsFromConfig);
+            }
+          } else {
+             setTestimonials(testmonialsFromConfig);
+          }
+        } catch (e) {
+          console.error("Error fetching helpdesk data", e);
+        }
+      };
+      
+      fetchHelpdeskData();
   }, []);
 
   const renderCustomDot = (props: any) => {

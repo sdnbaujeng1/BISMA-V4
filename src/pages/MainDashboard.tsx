@@ -159,7 +159,7 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={toggleDarkMode} className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors">
+            <button onClick={toggleDarkMode} className="hidden md:block bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors">
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
             <button onClick={onLogout} className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors">

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 
 export default function HelpDeskFloat() {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeModal, setActiveModal] = useState<'disclaimer' | 'testimoni' | 'testimoniSuccess' | null>(null);
+  const [activeModal, setActiveModal] = useState<'disclaimer' | 'testimoni' | 'testimoniSuccess' | 'location' | null>(null);
   
   const [config, setConfig] = useState({
     wa_number: '625749662221',
@@ -14,7 +14,8 @@ export default function HelpDeskFloat() {
     youtube_url: 'https://youtube.com/',
     location: 'SDN Baujeng I Beji',
     ig_url: 'https://www.instagram.com/sdnbaujeng1/',
-    web_url: 'https://www.sdnbaujeng1.sch.id/'
+    web_url: 'https://www.sdnbaujeng1.sch.id/',
+    map_embed_url: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1419!2d112.735817!3d-7.623635!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dd7c490a2c53f81%3A0xc6ad50bd669ecb9b!2sSDN%20Baujeng%201!5e0!3m2!1sid!2sid!4v1714000000000!5m2!1sid!2sid'
   });
 
   const [testimoniData, setTestimoniData] = useState({
@@ -26,18 +27,39 @@ export default function HelpDeskFloat() {
   });
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('helpdesk_config');
-      if (stored) {
-        setConfig(JSON.parse(stored));
+    const fetchConfig = async () => {
+      try {
+        const res = await fetch('/api/helpdesk-config');
+        if (res.ok) {
+          const resData = await res.json();
+          if (resData.success && resData.data) {
+            setConfig(prev => ({
+              ...prev,
+              ...resData.data
+            }));
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch helpdesk config", e);
       }
-    } catch (e) {}
+
+      // Fallback
+      try {
+        const stored = localStorage.getItem('helpdesk_config');
+        if (stored) {
+          setConfig(prev => ({ ...prev, ...JSON.parse(stored) }));
+        }
+      } catch (e) {}
+    };
+    
+    fetchConfig();
 
     const handleStorage = () => {
       try {
         const stored = localStorage.getItem('helpdesk_config');
         if (stored) {
-          setConfig(JSON.parse(stored));
+          setConfig(prev => ({ ...prev, ...JSON.parse(stored) }));
         }
       } catch (e) {}
     };
@@ -49,16 +71,44 @@ export default function HelpDeskFloat() {
   const handleWA = () => {
     // Format number assuming it might have 0 in front
     const num = config.wa_number.startsWith('0') ? '62' + config.wa_number.substring(1) : config.wa_number;
-    window.open(`https://wa.me/${num}?text=${encodeURIComponent(config.wa_message)}`, '_blank');
+    const url = `https://api.whatsapp.com/send?phone=${num}&text=${encodeURIComponent(config.wa_message)}`;
+    
+    // Create an invisible link to navigate securely out of iframe constraints if needed
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const handleEmail = () => {
-    window.open(`mailto:${config.email}?subject=Konfirmasi BISMA`, '_blank');
+    const url = `mailto:${config.email}?subject=Konfirmasi BISMA`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_top';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
-  const submitTestimoni = (e: React.FormEvent) => {
+  const submitTestimoni = async (e: React.FormEvent) => {
     e.preventDefault();
-    setActiveModal('testimoniSuccess');
+    try {
+      const response = await fetch('/api/testimoni', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testimoniData)
+      });
+      if (response.ok) {
+        setActiveModal('testimoniSuccess');
+      } else {
+        alert('Gagal mengirim testimoni');
+      }
+    } catch (e) {
+      alert('Terjadi kesalahan jaringan');
+    }
   };
 
   return (
@@ -77,7 +127,7 @@ export default function HelpDeskFloat() {
                 <p className="text-teal-50 text-xs">Pilih layanan yang Anda butuhkan</p>
               </div>
               <div className="p-2 space-y-1">
-                <button onClick={handleWA} className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-left group">
+                <a href={`https://api.whatsapp.com/send?phone=${config.wa_number.startsWith('0') ? '62' + config.wa_number.substring(1) : config.wa_number}&text=${encodeURIComponent(config.wa_message)}`} target="_blank" rel="noopener noreferrer" className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-left group">
                   <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center shrink-0">
                     <MessageCircle className="w-5 h-5" />
                   </div>
@@ -85,9 +135,9 @@ export default function HelpDeskFloat() {
                     <div className="font-bold text-slate-700 dark:text-slate-200 text-sm group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">Bantuan WhatsApp</div>
                     <div className="text-xs text-slate-500">Hubungi admin via chat</div>
                   </div>
-                </button>
+                </a>
 
-                <button onClick={handleEmail} className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-left group">
+                <a href={`mailto:${config.email}?subject=Konfirmasi BISMA`} target="_top" className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-left group">
                   <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                     <Mail className="w-5 h-5" />
                   </div>
@@ -95,7 +145,7 @@ export default function HelpDeskFloat() {
                     <div className="font-bold text-slate-700 dark:text-slate-200 text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Email Konfirmasi</div>
                     <div className="text-xs text-slate-500">{config.email}</div>
                   </div>
-                </button>
+                </a>
 
                 <button onClick={() => { setActiveModal('disclaimer'); setIsOpen(false); }} className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-left group">
                   <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
@@ -117,7 +167,7 @@ export default function HelpDeskFloat() {
                   </div>
                 </a>
 
-                <div className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-left group cursor-default">
+                <button onClick={() => { setActiveModal('location'); setIsOpen(false); }} className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-left group">
                   <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0">
                     <MapPin className="w-5 h-5" />
                   </div>
@@ -125,7 +175,7 @@ export default function HelpDeskFloat() {
                     <div className="font-bold text-slate-700 dark:text-slate-200 text-sm group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">Lokasi</div>
                     <div className="text-xs text-slate-500">{config.location}</div>
                   </div>
-                </div>
+                </button>
 
                 <a href={config.ig_url ?? 'https://www.instagram.com/sdnbaujeng1/'} target="_blank" rel="noreferrer" className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-left group">
                   <div className="w-10 h-10 rounded-full bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 flex items-center justify-center shrink-0">
@@ -176,6 +226,43 @@ export default function HelpDeskFloat() {
           )}
         </button>
       </div>
+
+      {/* Modal Location */}
+      {activeModal === 'location' && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl p-6 relative">
+            <button onClick={() => setActiveModal(null)} className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-full transition-colors z-10">
+              <X className="w-5 h-5 text-slate-600" />
+            </button>
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-full flex items-center justify-center mb-4">
+                <MapPin className="w-8 h-8" />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Lokasi Sekolah</h2>
+              <p className="text-slate-500 mb-6">{config.location}</p>
+              
+              <div className="w-full h-[300px] md:h-[400px] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900">
+                {config.map_embed_url ? (
+                  <iframe 
+                    src={config.map_embed_url} 
+                    width="100%" 
+                    height="100%" 
+                    style={{ border: 0 }} 
+                    allowFullScreen 
+                    loading="lazy" 
+                    referrerPolicy="no-referrer-when-downgrade"
+                  ></iframe>
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
+                    <MapPin className="w-12 h-12 mb-2 opacity-50" />
+                    <p>Peta belum dikonfigurasi</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Modal Disclaimer */}
       {activeModal === 'disclaimer' && (

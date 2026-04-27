@@ -138,11 +138,11 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
 
           <div className="flex items-center gap-6">
             {fakeVisitor > 0 && (
-              <div className="hidden md:flex flex-col items-end border-r border-slate-200 dark:border-slate-700 pr-6">
+              <div className="flex flex-col items-end border-r border-slate-200 dark:border-slate-700 pr-4 md:pr-6">
                 <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-0.5">Live Visitors</span>
-                <span className="font-mono text-lg font-light text-slate-800 dark:text-slate-200 leading-none">
+                <span className="font-mono text-lg font-light text-slate-800 dark:text-slate-200 leading-none flex items-center">
                   {fakeVisitor.toLocaleString('id-ID')}
-                  <span className="inline-block w-1.5 h-1.5 bg-green-500 rounded-full ml-2 animate-pulse mb-1"></span>
+                  <span className="inline-block w-1.5 h-1.5 bg-green-500 rounded-full ml-2 animate-pulse"></span>
                 </span>
               </div>
             )}
@@ -158,7 +158,7 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
 
             <button 
               onClick={toggleDarkMode}
-              className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+              className="hidden md:block p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
             >
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>

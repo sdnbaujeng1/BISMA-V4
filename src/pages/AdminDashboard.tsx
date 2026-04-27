@@ -452,7 +452,7 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
         <div className="flex flex-col gap-4 w-full px-2 mt-auto">
           <button
             onClick={toggleDarkMode}
-            className="p-3 rounded-xl flex justify-center text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-600 dark:hover:text-slate-300 transition-all group relative"
+            className="hidden md:flex p-3 rounded-xl justify-center text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-600 dark:hover:text-slate-300 transition-all group relative"
           >
             {darkMode ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
             <span className="absolute left-16 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
@@ -888,6 +888,24 @@ function InputGuruBaruView({ showToast }: { showToast: (msg: string, type?: 'suc
 }
 
 function ProfileView({ showToast, onHiddenConfig }: { showToast: (msg: string, type?: 'success' | 'error') => void, onHiddenConfig?: () => void }) {
+  const [clickCount, setClickCount] = useState(0);
+
+  const handleSecretClick = () => {
+    setClickCount((prev) => {
+      const newCount = prev + 1;
+      if (newCount >= 5) {
+        if (onHiddenConfig) onHiddenConfig();
+        return 0; // Reset after triggering
+      }
+      return newCount;
+    });
+
+    // Reset if they stop clicking
+    setTimeout(() => {
+      setClickCount(0);
+    }, 1500);
+  };
+
   const handlePasswordChange = (e: React.FormEvent) => {
     e.preventDefault();
     showToast("Password berhasil diubah!");
@@ -908,7 +926,7 @@ function ProfileView({ showToast, onHiddenConfig }: { showToast: (msg: string, t
           <div>
             <h2 
               className="text-xl font-bold text-slate-800 dark:text-white cursor-default select-none"
-              onDoubleClick={onHiddenConfig}
+              onClick={handleSecretClick}
             >
               Administrator
             </h2>
@@ -3160,21 +3178,46 @@ function VisitorConfigView({ showToast }: { showToast: (msg: string, type?: 'suc
   });
 
   useEffect(() => {
-    try {
-      const local = localStorage.getItem('visitor_config');
-      if (local) {
-        const parsed = JSON.parse(local);
-        setConfig({
-          ...parsed,
-          monthly_stats: parsed.monthly_stats || defaultMonthlyStats,
-          pie_data: parsed.pie_data || defaultPieData,
-          word_cloud: parsed.word_cloud || defaultWordCloud,
-          testimonials: parsed.testimonials || defaultTestimonials
-        });
+    const fetchConfig = async () => {
+      try {
+        const res = await fetch('/api/helpdesk-config');
+        if (res.ok) {
+          const resData = await res.json();
+          if (resData.success && resData.data) {
+            setConfig((prev: any) => ({
+              ...prev,
+              ...resData.data,
+              monthly_stats: resData.data.monthly_stats || defaultMonthlyStats,
+              pie_data: resData.data.pie_data || defaultPieData,
+              word_cloud: resData.data.word_cloud || defaultWordCloud,
+              testimonials: resData.data.testimonials || defaultTestimonials
+            }));
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch from supabase", e);
       }
-    } catch (e) {
-      console.error(e);
-    }
+      
+      // Fallback
+      try {
+        const local = localStorage.getItem('visitor_config');
+        if (local) {
+          const parsed = JSON.parse(local);
+          setConfig((prev: any) => ({
+            ...prev,
+            ...parsed,
+            monthly_stats: parsed.monthly_stats || defaultMonthlyStats,
+            pie_data: parsed.pie_data || defaultPieData,
+            word_cloud: parsed.word_cloud || defaultWordCloud,
+            testimonials: parsed.testimonials || defaultTestimonials
+          }));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchConfig();
   }, []);
 
   const handleSave = async () => {
@@ -3182,7 +3225,33 @@ function VisitorConfigView({ showToast }: { showToast: (msg: string, type?: 'suc
     try {
       localStorage.setItem('visitor_config', JSON.stringify(config));
       window.dispatchEvent(new Event('storage'));
-      showToast("Konfigurasi Visitor disimpan", "success");
+      
+      const fetchCurrent = await fetch('/api/helpdesk-config');
+      let currentHelpdesk = {};
+      if (fetchCurrent.ok) {
+        const resData = await fetchCurrent.json();
+        if (resData.success && resData.data) currentHelpdesk = resData.data;
+      }
+
+      const res = await fetch('/api/helpdesk-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...currentHelpdesk,
+          monthly_stats: config.monthly_stats,
+          pie_data: config.pie_data,
+          word_cloud: config.word_cloud,
+          testimonials: config.testimonials
+        })
+      });
+
+      if (res.ok) {
+        showToast("Konfigurasi Fake Dashboard disimpan ke Supabase", "success");
+      } else {
+        showToast("Gagal menyimpan ke Supabase, hanya tersimpan lokal", "error");
+      }
+    } catch (e) {
+      showToast("Gagal menyimpan ke Supabase, jaringan error", "error");
     } finally {
       setLoading(false);
     }
@@ -3373,20 +3442,43 @@ function HelpDeskConfigView({ showToast }: { showToast: (msg: string, type?: 'su
     ig_url: 'https://www.instagram.com/sdnbaujeng1/',
     web_url: 'https://www.sdnbaujeng1.sch.id/',
     location: 'SDN Baujeng I Beji',
+    map_embed_url: '',
   });
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('helpdesk_config');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setConfig({
-          ...parsed,
-          ig_url: parsed.ig_url ?? 'https://www.instagram.com/sdnbaujeng1/',
-          web_url: parsed.web_url ?? 'https://www.sdnbaujeng1.sch.id/'
-        });
+    const fetchConfig = async () => {
+      try {
+        const res = await fetch('/api/helpdesk-config');
+        if (res.ok) {
+          const resData = await res.json();
+          if (resData.success && resData.data) {
+            setConfig((prev) => ({
+              ...prev,
+              ...resData.data,
+              ig_url: resData.data.ig_url ?? 'https://www.instagram.com/sdnbaujeng1/',
+              web_url: resData.data.web_url ?? 'https://www.sdnbaujeng1.sch.id/'
+            }));
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch from supabase", e);
       }
-    } catch (e) {}
+      
+      try {
+        const stored = localStorage.getItem('helpdesk_config');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setConfig(prev => ({
+            ...prev,
+            ...parsed,
+            ig_url: parsed.ig_url ?? 'https://www.instagram.com/sdnbaujeng1/',
+            web_url: parsed.web_url ?? 'https://www.sdnbaujeng1.sch.id/'
+          }));
+        }
+      } catch (e) {}
+    };
+    fetchConfig();
   }, []);
 
   const handleSave = async () => {
@@ -3394,7 +3486,38 @@ function HelpDeskConfigView({ showToast }: { showToast: (msg: string, type?: 'su
     try {
       localStorage.setItem('helpdesk_config', JSON.stringify(config));
       window.dispatchEvent(new Event('storage'));
-      showToast("Konfigurasi Pusat Bantuan disimpan", "success");
+      
+      const fetchCurrent = await fetch('/api/helpdesk-config');
+      let currentHelpdesk = {};
+      if (fetchCurrent.ok) {
+        const resData = await fetchCurrent.json();
+        if (resData.success && resData.data) currentHelpdesk = resData.data;
+      }
+
+      const res = await fetch('/api/helpdesk-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...currentHelpdesk,
+          wa_number: config.wa_number,
+          wa_message: config.wa_message,
+          email: config.email,
+          disclaimer: config.disclaimer,
+          youtube_url: config.youtube_url,
+          ig_url: config.ig_url,
+          web_url: config.web_url,
+          location: config.location,
+          map_embed_url: config.map_embed_url
+        })
+      });
+
+      if (res.ok) {
+        showToast("Konfigurasi Pusat Bantuan disimpan ke Supabase", "success");
+      } else {
+        showToast("Gagal menyimpan ke Supabase, hanya tersimpan lokal", "error");
+      }
+    } catch (e) {
+      showToast("Gagal menyimpan ke Supabase, jaringan error", "error");
     } finally {
       setLoading(false);
     }
@@ -3414,6 +3537,16 @@ function HelpDeskConfigView({ showToast }: { showToast: (msg: string, type?: 'su
       <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-700 space-y-6">
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Google Map Embed URL</label>
+            <input 
+              type="url"
+              value={config.map_embed_url || ''}
+              onChange={(e) => setConfig({...config, map_embed_url: e.target.value})}
+              className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              placeholder="https://www.google.com/maps/embed?..."
+            />
+          </div>
           <div>
             <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">WhatsApp Number</label>
             <input 

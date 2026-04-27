@@ -434,6 +434,66 @@ app.get('/api/admin/stats', async (req, res) => {
     res.json({ success: true, message: 'Pengumuman diperbarui' });
   });
 
+  app.get('/api/testimoni', async (req, res) => {
+    const { data, error } = await supabase.from('pengaturan').select('*').eq('key', 'testimoni_list').maybeSingle();
+    if (error) return res.status(500).json({ success: false, message: error.message });
+    let list = [];
+    if (data && data.value) {
+      try { list = JSON.parse(data.value); } catch (e) {}
+    }
+    // Sort logic like before, descending by timestamp
+    if (list.length > 0) {
+      list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    }
+    res.json({ success: true, data: list });
+  });
+
+  app.post('/api/testimoni', async (req, res) => {
+    const { nama, lembaga, fitur, testimoni, rating } = req.body;
+    const { data: currData } = await supabase.from('pengaturan').select('*').eq('key', 'testimoni_list').maybeSingle();
+    let list = [];
+    if (currData && currData.value) {
+      try { list = JSON.parse(currData.value); } catch (e) {}
+    }
+    const newTestimoni = {
+      id: Date.now(),
+      timestamp: new Date().toISOString(),
+      nama,
+      lembaga,
+      fitur,
+      testimoni,
+      rating
+    };
+    list.push(newTestimoni);
+
+    const { error } = await supabase.from('pengaturan').upsert({
+      key: 'testimoni_list',
+      value: JSON.stringify(list)
+    });
+    if (error) return res.status(500).json({ success: false, message: error.message });
+    res.json({ success: true, message: 'Testimoni berhasil disimpan' });
+  });
+
+  app.get('/api/helpdesk-config', async (req, res) => {
+    const { data, error } = await supabase.from('pengaturan').select('*').eq('key', 'helpdesk_config').maybeSingle();
+    if (error) return res.status(500).json({ success: false, message: error.message });
+    let configObj = null;
+    if (data && data.value) {
+      try { configObj = JSON.parse(data.value); } catch (e) {}
+    }
+    res.json({ success: true, data: configObj });
+  });
+
+  app.post('/api/helpdesk-config', async (req, res) => {
+    const configData = req.body;
+    const { error } = await supabase.from('pengaturan').upsert({
+      key: 'helpdesk_config',
+      value: JSON.stringify(configData)
+    });
+    if (error) return res.status(500).json({ success: false, message: error.message });
+    res.json({ success: true, message: 'Config berhasil disimpan' });
+  });
+
   app.post('/api/login', async (req, res) => {
     const { nip, password, role } = req.body;
     
