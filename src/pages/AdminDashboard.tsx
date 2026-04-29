@@ -3435,7 +3435,7 @@ function HelpDeskConfigView({ showToast }: { showToast: (msg: string, type?: 'su
 
   const [config, setConfig] = useState({
     wa_number: '6285743524766',
-    wa_message: 'hallo mohon bantuan dalam akses BISMA dengan kendala ........',
+    wa_message: 'hallo mohon bantuan dalam akses BISMA dengan kendala ',
     email: 'akhmadnasor@gmail.com',
     disclaimer: 'Keamanan dan Privasi Anak adalah prioritas utama kami di SDN Baujeng I Beji. Aplikasi BISMA mematuhi standar perlindungan data anak, memastikan informasi pribadi, nilai, dan lokasi tidak dibagikan kepada pihak ketiga manapun tanpa izin eksplisit dari orang tua/wali materi.',
     youtube_url: 'https://youtube.com/',

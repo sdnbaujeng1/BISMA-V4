@@ -8,7 +8,7 @@ export default function HelpDeskFloat() {
   
   const [config, setConfig] = useState({
     wa_number: '6285743524766',
-    wa_message: 'hallo mohon bantuan dalam akses BISMA dengan kendala ........',
+    wa_message: 'hallo mohon bantuan dalam akses BISMA dengan kendala ',
     email: 'akhmadnasor@gmail.com',
     disclaimer: 'Keamanan dan Privasi Anak adalah prioritas utama kami di SDN Baujeng I Beji. Aplikasi BISMA mematuhi standar perlindungan data anak, memastikan informasi pribadi, nilai, dan lokasi tidak dibagikan kepada pihak ketiga manapun tanpa izin eksplisit dari orang tua/wali materi.',
     youtube_url: 'https://youtube.com/',
@@ -138,7 +138,7 @@ export default function HelpDeskFloat() {
                   </div>
                 </a>
 
-                <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(config.email)}&su=${encodeURIComponent('Konfirmasi BISMA')}`} target="_blank" rel="noopener noreferrer" className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-left group">
+                <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(config.email)}&su=${encodeURIComponent('Konfirmasi BISMA')}`} target="_top" rel="noopener noreferrer" className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-left group">
                   <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                     <Mail className="w-5 h-5" />
                   </div>
