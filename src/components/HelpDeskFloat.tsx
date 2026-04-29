@@ -76,18 +76,14 @@ export default function HelpDeskFloat() {
 
   const submitWAForm = (e: React.FormEvent) => {
     e.preventDefault();
-    const num = config.wa_number.startsWith('0') ? '62' + config.wa_number.substring(1) : config.wa_number;
+    let num = config.wa_number.replace(/\D/g, '');
+    if (num.startsWith('0')) {
+      num = '62' + num.substring(1);
+    }
     const message = `${config.wa_message}\n\nNama: ${waFormData.nama}\nKendala:\n${waFormData.kendala}`;
     const url = `https://wa.me/${num}?text=${encodeURIComponent(message)}`;
     
-    // Create an invisible link to navigate securely out of iframe constraints if needed
-    const a = document.createElement('a');
-    a.href = url;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    window.open(url, '_blank', 'noopener,noreferrer');
     
     setActiveModal(null);
     setWaFormData({ nama: '', kendala: '' });
