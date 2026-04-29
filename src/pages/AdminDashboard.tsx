@@ -3238,6 +3238,8 @@ function VisitorConfigView({ showToast }: { showToast: (msg: string, type?: 'suc
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...currentHelpdesk,
+          base_visitor_count: config.base_visitor_count,
+          enable_fake_visitor: config.enable_fake_visitor,
           monthly_stats: config.monthly_stats,
           pie_data: config.pie_data,
           word_cloud: config.word_cloud,

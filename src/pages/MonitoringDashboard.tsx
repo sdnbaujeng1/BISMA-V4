@@ -52,32 +52,6 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
   const [testimonials, setTestimonials] = useState<any[]>([]);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('visitor_config');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.monthly_stats) {
-          setVisitorStats(parsed.monthly_stats);
-        } else {
-          setVisitorStats([
-            { month: 'Jun 24', visitors: 300 },
-            { month: 'Jul 24', visitors: 400 },
-            { month: 'Ags 24', visitors: 520 },
-            { month: 'Sep 24', visitors: 650 },
-            { month: 'Okt 24', visitors: 780 },
-            { month: 'Nov 24', visitors: 850 },
-            { month: 'Des 24', visitors: 860 },
-            { month: 'Jan 25', visitors: 890 },
-            { month: 'Feb 25', visitors: 920 },
-            { month: 'Mar 25', visitors: 960 },
-            { month: 'Apr 25', visitors: 990 },
-            { month: 'Mei 25', visitors: 28000 },
-            { month: 'Jun 25', visitors: 30000 },
-          ]);
-        }
-      }
-    } catch (e) {}
-
     const fetchHelpdeskData = async () => {
         try {
           let testmonialsFromConfig: any[] = [];
@@ -600,7 +574,7 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
               <div key={i} className="p-4 bg-slate-50 dark:bg-slate-700/30 border border-slate-100 dark:border-slate-700 rounded-2xl">
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <h4 className="font-bold text-slate-800 dark:text-white text-sm">{t.name}</h4>
+                    <h4 className="font-bold text-slate-800 dark:text-white text-sm">{t.name || t.nama}</h4>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400">{t.lembaga}</p>
                   </div>
                   <div className="flex text-yellow-400">

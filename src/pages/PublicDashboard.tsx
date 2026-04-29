@@ -18,27 +18,38 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
 
     // Visitor effect
     let visitorInterval: ReturnType<typeof setInterval>;
-    const updateVisitor = () => {
-      const configStr = localStorage.getItem('visitor_config');
-      if (configStr) {
-        try {
-          const config = JSON.parse(configStr);
-          if (config.enable_fake_visitor) {
-            // Randomly increase/decrease by a small amount
-            setFakeVisitor(prev => {
-              if (prev === 0) return config.base_visitor_count + Math.floor(Math.random() * 5);
-              const change = Math.random() > 0.5 ? 1 : -1;
-              return Math.max(config.base_visitor_count, prev + change);
-            });
-          } else {
-            setFakeVisitor(0);
-          }
-        } catch (e) {}
-      }
-    };
     
-    updateVisitor();
-    visitorInterval = setInterval(updateVisitor, 3000); // update every 3s
+    const initVisitor = async () => {
+      try {
+        let baseCount = 324;
+        let enableFake = true;
+        
+        const configRes = await fetch('/api/helpdesk-config');
+        if (configRes.ok) {
+           const configData = await configRes.json();
+           if (configData.success && configData.data) {
+              if (configData.data.base_visitor_count !== undefined) baseCount = parseInt(configData.data.base_visitor_count);
+              if (configData.data.enable_fake_visitor !== undefined) enableFake = configData.data.enable_fake_visitor;
+           }
+        }
+        
+        const updateVisitor = () => {
+           if (enableFake) {
+             setFakeVisitor(prev => {
+                if (prev === 0) return baseCount + Math.floor(Math.random() * 5);
+                const change = Math.random() > 0.5 ? 1 : -1;
+                return Math.max(baseCount, prev + change);
+             });
+           } else {
+             setFakeVisitor(0);
+           }
+        }
+        updateVisitor();
+        visitorInterval = setInterval(updateVisitor, 3000);
+      } catch (e) {}
+    }
+    
+    initVisitor();
     
     // Load Public Dashboard Data
     const loadPublicData = () => {
