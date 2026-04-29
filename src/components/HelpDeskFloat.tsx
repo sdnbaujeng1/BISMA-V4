@@ -72,7 +72,7 @@ export default function HelpDeskFloat() {
   const handleWA = () => {
     // Format number assuming it might have 0 in front
     const num = config.wa_number.startsWith('0') ? '62' + config.wa_number.substring(1) : config.wa_number;
-    const url = `https://api.whatsapp.com/send?phone=${num}&text=${encodeURIComponent(config.wa_message)}`;
+    const url = `https://wa.me/${num}?text=${encodeURIComponent(config.wa_message)}`;
     
     // Create an invisible link to navigate securely out of iframe constraints if needed
     const a = document.createElement('a');
@@ -128,7 +128,7 @@ export default function HelpDeskFloat() {
                 <p className="text-teal-50 text-xs">Pilih layanan yang Anda butuhkan</p>
               </div>
               <div className="p-2 space-y-1">
-                <a href={`https://api.whatsapp.com/send?phone=${config.wa_number.startsWith('0') ? '62' + config.wa_number.substring(1) : config.wa_number}&text=${encodeURIComponent(config.wa_message)}`} target="_blank" rel="noopener noreferrer" className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-left group">
+                <a href={`https://wa.me/${config.wa_number.startsWith('0') ? '62' + config.wa_number.substring(1) : config.wa_number}?text=${encodeURIComponent(config.wa_message)}`} target="_blank" rel="noopener noreferrer" className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-left group">
                   <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center shrink-0">
                     <MessageCircle className="w-5 h-5" />
                   </div>
