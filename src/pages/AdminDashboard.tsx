@@ -891,20 +891,20 @@ function ProfileView({ showToast, onHiddenConfig }: { showToast: (msg: string, t
   const [clickCount, setClickCount] = useState(0);
 
   const handleSecretClick = () => {
-    setClickCount((prev) => {
-      const newCount = prev + 1;
-      if (newCount >= 5) {
-        if (onHiddenConfig) onHiddenConfig();
-        return 0; // Reset after triggering
-      }
-      return newCount;
-    });
-
-    // Reset if they stop clicking
-    setTimeout(() => {
-      setClickCount(0);
-    }, 1500);
+    setClickCount((prev) => prev + 1);
   };
+
+  useEffect(() => {
+    if (clickCount >= 5) {
+      if (onHiddenConfig) onHiddenConfig();
+      setClickCount(0);
+    } else if (clickCount > 0) {
+      const timer = setTimeout(() => {
+        setClickCount(0);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [clickCount, onHiddenConfig]);
 
   const handlePasswordChange = (e: React.FormEvent) => {
     e.preventDefault();
