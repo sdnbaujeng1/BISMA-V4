@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 
 export default function HelpDeskFloat() {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeModal, setActiveModal] = useState<'disclaimer' | 'testimoni' | 'testimoniSuccess' | 'location' | null>(null);
+  const [activeModal, setActiveModal] = useState<'disclaimer' | 'testimoni' | 'testimoniSuccess' | 'location' | 'waForm' | null>(null);
   
   const [config, setConfig] = useState({
     wa_number: '6285743524766',
@@ -25,6 +25,11 @@ export default function HelpDeskFloat() {
     fitur: 'Dashboard Publik',
     testimoni: '',
     rating: 5
+  });
+
+  const [waFormData, setWaFormData] = useState({
+    nama: '',
+    kendala: ''
   });
 
   useEffect(() => {
@@ -69,10 +74,11 @@ export default function HelpDeskFloat() {
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  const handleWA = () => {
-    // Format number assuming it might have 0 in front
+  const submitWAForm = (e: React.FormEvent) => {
+    e.preventDefault();
     const num = config.wa_number.startsWith('0') ? '62' + config.wa_number.substring(1) : config.wa_number;
-    const url = `https://wa.me/${num}?text=${encodeURIComponent(config.wa_message)}`;
+    const message = `${config.wa_message}\n\nNama: ${waFormData.nama}\nKendala:\n${waFormData.kendala}`;
+    const url = `https://wa.me/${num}?text=${encodeURIComponent(message)}`;
     
     // Create an invisible link to navigate securely out of iframe constraints if needed
     const a = document.createElement('a');
@@ -82,16 +88,9 @@ export default function HelpDeskFloat() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-  };
-
-  const handleEmail = () => {
-    const url = `mailto:${config.email}?subject=Konfirmasi BISMA`;
-    const a = document.createElement('a');
-    a.href = url;
-    a.target = '_top';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    
+    setActiveModal(null);
+    setWaFormData({ nama: '', kendala: '' });
   };
 
   const submitTestimoni = async (e: React.FormEvent) => {
@@ -128,7 +127,7 @@ export default function HelpDeskFloat() {
                 <p className="text-teal-50 text-xs">Pilih layanan yang Anda butuhkan</p>
               </div>
               <div className="p-2 space-y-1">
-                <a href={`https://wa.me/${config.wa_number.startsWith('0') ? '62' + config.wa_number.substring(1) : config.wa_number}?text=${encodeURIComponent(config.wa_message)}`} target="_blank" rel="noopener noreferrer" className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-left group">
+                <button onClick={() => { setActiveModal('waForm'); setIsOpen(false); }} className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-left group">
                   <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center shrink-0">
                     <MessageCircle className="w-5 h-5" />
                   </div>
@@ -136,7 +135,7 @@ export default function HelpDeskFloat() {
                     <div className="font-bold text-slate-700 dark:text-slate-200 text-sm group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">Bantuan WhatsApp</div>
                     <div className="text-xs text-slate-500">Hubungi admin via chat</div>
                   </div>
-                </a>
+                </button>
 
                 <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(config.email)}&su=${encodeURIComponent('Konfirmasi BISMA')}`} target="_top" rel="noopener noreferrer" className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition-colors text-left group">
                   <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
@@ -378,6 +377,44 @@ export default function HelpDeskFloat() {
             <button onClick={() => { setActiveModal(null); setTestimoniData({...testimoniData, testimoni: ''}); }} className="w-full bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition-all">
               Tutup
             </button>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Modal Form WhatsApp */}
+      {activeModal === 'waForm' && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-lg p-6 relative">
+            <button onClick={() => setActiveModal(null)} className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-full transition-colors">
+              <X className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+            </button>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
+                <MessageCircle className="text-green-500 w-8 h-8" />
+                Bantuan WhatsApp
+              </h2>
+              <p className="text-slate-500 dark:text-slate-400 mt-2">Silakan isi detail berikut untuk menghubungi admin kami.</p>
+            </div>
+            
+            <form onSubmit={submitWAForm} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Lengkap</label>
+                <input required type="text" value={waFormData.nama} onChange={e => setWaFormData({...waFormData, nama: e.target.value})} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-slate-800 dark:text-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">Kendala / Pesan</label>
+                <textarea required rows={4} value={waFormData.kendala} onChange={e => setWaFormData({...waFormData, kendala: e.target.value})} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-slate-800 dark:text-white resize-none"></textarea>
+              </div>
+              
+              <div className="pt-4 flex gap-3">
+                <button type="button" onClick={() => setActiveModal(null)} className="flex-1 px-6 py-3 rounded-xl font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 transition-colors">
+                  Batal
+                </button>
+                <button type="submit" className="flex-1 px-6 py-3 rounded-xl font-bold bg-green-500 hover:bg-green-600 text-white transition-colors flex items-center justify-center gap-2">
+                  <MessageCircle className="w-5 h-5" /> Kirim ke WA
+                </button>
+              </div>
+            </form>
           </motion.div>
         </div>
       )}
