@@ -512,8 +512,8 @@ app.get('/api/admin/stats', async (req, res) => {
     const { nip, password, role } = req.body;
     
     if (role === 'monitoring') {
-      if (nip === '1' && password === '1') {
-        return res.json({ success: true, user: { role: 'monitoring', Username: '1', Nama: 'Monitoring Account' } });
+      if (nip === '123' && password === '123') {
+        return res.json({ success: true, user: { role: 'monitoring', Username: '123', Nama: 'Monitoring Account' } });
       }
       return res.status(401).json({ success: false, message: 'ID atau Password salah' });
     }

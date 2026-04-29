@@ -89,6 +89,9 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
               if (parsed.pie_data && parsed.pie_data.length > 0) setPieData(parsed.pie_data);
               if (parsed.word_cloud && parsed.word_cloud.length > 0) setWordCloud(parsed.word_cloud);
               if (parsed.testimonials) testmonialsFromConfig = parsed.testimonials;
+              if (parsed.monthly_stats && parsed.monthly_stats.length > 0) {
+                setVisitorStats(parsed.monthly_stats);
+              }
             }
           }
           
