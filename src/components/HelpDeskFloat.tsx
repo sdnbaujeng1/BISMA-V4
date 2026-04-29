@@ -29,6 +29,7 @@ export default function HelpDeskFloat() {
 
   const [waFormData, setWaFormData] = useState({
     nama: '',
+    no_wa: '',
     kendala: ''
   });
 
@@ -74,25 +75,35 @@ export default function HelpDeskFloat() {
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  const submitWAForm = (e: React.FormEvent) => {
+  const [isSendingWA, setIsSendingWA] = useState(false);
+
+  const submitWAForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    let num = config.wa_number.replace(/\D/g, '');
-    if (num.startsWith('0')) {
-      num = '62' + num.substring(1);
+    setIsSendingWA(true);
+    try {
+      const response = await fetch('/api/send-helpdesk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nama: waFormData.nama,
+          no_wa: waFormData.no_wa,
+          kendala: waFormData.kendala,
+          targetPhone: config.wa_number
+        })
+      });
+      const result = await response.json();
+      if (result.success) {
+        alert('Pesan berhasil terkirim ke Admin!');
+        setActiveModal(null);
+        setWaFormData({ nama: '', no_wa: '', kendala: '' });
+      } else {
+        alert('Gagal mengirim pesan: ' + result.message);
+      }
+    } catch (error: any) {
+      alert('Terjadi kesalahan saat mengirim pesan.');
+    } finally {
+      setIsSendingWA(false);
     }
-    const message = `${config.wa_message}\n\nNama: ${waFormData.nama}\nKendala:\n${waFormData.kendala}`;
-    const url = `https://api.whatsapp.com/send?phone=${num}&text=${encodeURIComponent(message)}`;
-    
-    // Using target _top to escape the iframe sandbox restrictions for custom protocols
-    const a = document.createElement('a');
-    a.href = url;
-    a.target = '_top';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    
-    setActiveModal(null);
-    setWaFormData({ nama: '', kendala: '' });
   };
 
   const submitTestimoni = async (e: React.FormEvent) => {
@@ -404,6 +415,10 @@ export default function HelpDeskFloat() {
                 <input required type="text" value={waFormData.nama} onChange={e => setWaFormData({...waFormData, nama: e.target.value})} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-slate-800 dark:text-white" />
               </div>
               <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">No. WhatsApp Anda</label>
+                <input required type="text" value={waFormData.no_wa} onChange={e => setWaFormData({...waFormData, no_wa: e.target.value})} placeholder="Contoh: 0812..." className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-slate-800 dark:text-white" />
+              </div>
+              <div>
                 <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">Kendala / Pesan</label>
                 <textarea required rows={4} value={waFormData.kendala} onChange={e => setWaFormData({...waFormData, kendala: e.target.value})} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-slate-800 dark:text-white resize-none"></textarea>
               </div>
@@ -412,8 +427,8 @@ export default function HelpDeskFloat() {
                 <button type="button" onClick={() => setActiveModal(null)} className="flex-1 px-6 py-3 rounded-xl font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 transition-colors">
                   Batal
                 </button>
-                <button type="submit" className="flex-1 px-6 py-3 rounded-xl font-bold bg-green-500 hover:bg-green-600 text-white transition-colors flex items-center justify-center gap-2">
-                  <MessageCircle className="w-5 h-5" /> Kirim ke WA
+                <button type="submit" disabled={isSendingWA} className="flex-1 px-6 py-3 rounded-xl font-bold bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white transition-colors flex items-center justify-center gap-2">
+                  <MessageCircle className="w-5 h-5" /> {isSendingWA ? 'Mengirim...' : 'Kirim ke WA'}
                 </button>
               </div>
             </form>

@@ -2406,6 +2406,49 @@ app.get('/api/admin/stats', async (req, res) => {
     }
   });
 
+  app.post('/api/send-helpdesk', async (req, res) => {
+    try {
+      const { nama, kendala, targetPhone, no_wa } = req.body;
+      
+      const { data: settingsData } = await supabase.from('pengaturan').select('key, value');
+      const fonnteToken = settingsData?.find((s: any) => s.key === 'whatsapp_api_key')?.value;
+      const waTemplate = settingsData?.find((s: any) => s.key === 'wa_message_template')?.value || "Bantuan HelpDesk BISMA";
+      
+      if (!fonnteToken) {
+        return res.status(400).json({ success: false, message: 'WhatsApp API Key (Fonnte) belum dikonfigurasi di Pengaturan.' });
+      }
+
+      let num = targetPhone.replace(/\D/g, '');
+      if (num.startsWith('0')) {
+        num = '62' + num.substring(1);
+      }
+
+      const message = `${waTemplate}\n\nPengirim: ${nama}\nNo. WA: ${no_wa}\nKendala:\n${kendala}`;
+
+      const response = await fetch('https://api.fonnte.com/send', {
+        method: 'POST',
+        headers: {
+          'Authorization': fonnteToken
+        },
+        body: new URLSearchParams({
+          target: num,
+          message: message,
+          countryCode: '62'
+        })
+      });
+
+      const result = await response.json();
+      if (result.status) {
+        res.json({ success: true, message: 'Pesan berhasil dikirim ke Admin' });
+      } else {
+        res.status(500).json({ success: false, message: result.reason || 'Gagal mengirim pesan via Fonnte' });
+      }
+
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
   app.get('/api/bank-sampah/stats', async (req, res) => {
     try {
       const { data: transactions } = await supabase.from('tabungan_sampah').select('kelas, nilai, berat');
