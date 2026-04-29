@@ -81,9 +81,15 @@ export default function HelpDeskFloat() {
       num = '62' + num.substring(1);
     }
     const message = `${config.wa_message}\n\nNama: ${waFormData.nama}\nKendala:\n${waFormData.kendala}`;
-    const url = `https://wa.me/${num}?text=${encodeURIComponent(message)}`;
+    const url = `https://api.whatsapp.com/send?phone=${num}&text=${encodeURIComponent(message)}`;
     
-    window.open(url, '_blank', 'noopener,noreferrer');
+    // Using target _top to escape the iframe sandbox restrictions for custom protocols
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_top';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     
     setActiveModal(null);
     setWaFormData({ nama: '', kendala: '' });

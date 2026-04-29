@@ -487,7 +487,7 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
                     </div>
                     <div>
                       <p className="text-xs text-slate-400 uppercase font-bold">Kontak WhatsApp</p>
-                      <a href="https://wa.me/6285749662221" target="_blank" rel="noopener noreferrer" className={`font-semibold ${currentTheme.text} hover:underline`}>
+                      <a href="https://api.whatsapp.com/send?phone=6285749662221" target="_top" rel="noopener noreferrer" className={`font-semibold ${currentTheme.text} hover:underline`}>
                         085749662221
                       </a>
                     </div>
