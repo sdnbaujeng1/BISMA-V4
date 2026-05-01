@@ -111,7 +111,6 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
     { id: 'geofencing', icon: MapPin, label: 'Geofencing' },
     { id: 'color_config', icon: Palette, label: 'Konfigurasi Warna' },
     { id: 'api_config', icon: Key, label: 'Konfigurasi API' },
-    { id: 'visitor_config', icon: Users, label: 'Konfigurasi Visitor' },
   ];
 
   const adminCards = [
