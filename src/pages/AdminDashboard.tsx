@@ -38,7 +38,8 @@ import {
   Menu,
   Heart,
   HelpCircle,
-  Activity
+  Activity,
+  Target
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -111,7 +112,7 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
     { id: 'kasih_ibu', icon: Heart, label: 'Kasih Ibu' },
     { id: 'kalender_akademik', icon: Calendar, label: 'Kalender Akademik' },
     { id: 'geofencing', icon: MapPin, label: 'Geofencing' },
-    { id: 'ekskul_mapping', icon: Activity, label: 'Mapping Ekstrakurikuler' },
+    { id: 'ekskul_mapping', icon: Target, label: 'Mapping Ekstrakurikuler' },
     { id: 'color_config', icon: Palette, label: 'Konfigurasi Warna' },
     { id: 'api_config', icon: Key, label: 'Konfigurasi API' },
   ];
@@ -152,6 +153,15 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
       color: 'bg-blue-600', 
       shadow: 'shadow-blue-200 dark:shadow-blue-900/20',
       action: () => setActiveView('geofencing')
+    },
+    { 
+      id: 'ekskul_mapping_card', 
+      title: 'Mapping Ekskul', 
+      subtitle: 'AKTIVITAS', 
+      icon: Target, 
+      color: 'bg-fuchsia-600', 
+      shadow: 'shadow-fuchsia-200 dark:shadow-fuchsia-900/20',
+      action: () => setActiveView('ekskul_mapping')
     },
     { 
       id: 'import_master', 
