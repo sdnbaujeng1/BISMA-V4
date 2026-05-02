@@ -50,6 +50,7 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
   const [pieData, setPieData] = useState([{ name: 'SD/MI', value: 45 }, { name: 'SMP/MTs', value: 25 }, { name: 'SMA/SMK/MA', value: 15 }, { name: 'Lainnya', value: 15 }]);
   const [wordCloud, setWordCloud] = useState([{ text: 'Inovatif', count: 120 }, { text: 'Aman', count: 90 }, { text: 'Keren', count: 85 }]);
   const [testimonials, setTestimonials] = useState<any[]>([]);
+  const [showAllTestimonials, setShowAllTestimonials] = useState(false);
 
   useEffect(() => {
     const fetchHelpdeskData = async () => {
@@ -563,11 +564,17 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
 
         {/* Testimonials */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col items-stretch lg:col-span-1 overflow-hidden">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded-lg">
-              <Star className="w-5 h-5" />
+          <div 
+            className="flex items-center justify-between mb-4 cursor-pointer group"
+            onClick={() => setShowAllTestimonials(true)}
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded-lg group-hover:bg-yellow-200 transition-colors">
+                <Star className="w-5 h-5" />
+              </div>
+              <h2 className="text-lg font-bold group-hover:text-yellow-600 transition-colors">Testimoni</h2>
             </div>
-            <h2 className="text-lg font-bold">Testimoni</h2>
+            <div className="text-xs text-blue-500 font-medium group-hover:underline">Lihat Semua</div>
           </div>
           <div className="flex-1 overflow-y-auto space-y-4 pr-2 md:max-h-[300px]">
             {testimonials.map((t, i) => (
@@ -1002,6 +1009,52 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
         </div>
       )}
       
+      {showAllTestimonials && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-white">
+                <Star className="text-yellow-500" /> Semua Testimoni Pengguna
+              </h2>
+              <button 
+                onClick={() => setShowAllTestimonials(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {testimonials.map((t, i) => (
+                  <div key={i} className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col h-full">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h4 className="font-bold text-slate-800 dark:text-white">{t.name || t.nama}</h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{t.lembaga}</p>
+                      </div>
+                      <div className="flex text-yellow-400">
+                        {[...Array(5)].map((_, starIndex) => (
+                          <Star key={starIndex} className={`w-3 h-3 ${starIndex < (t.rating || 5) ? 'fill-current' : 'text-slate-200 dark:text-slate-700'}`} />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 italic flex-1 mb-4">"{t.testimoni}"</p>
+                    <div className="mt-auto">
+                      <span className="inline-block px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-[10px] font-bold border border-blue-100 dark:border-blue-800 whitespace-nowrap overflow-hidden text-ellipsis max-w-full">
+                        {t.fitur}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {testimonials.length === 0 && (
+                <div className="text-center py-20 text-slate-500 font-medium">Belum ada testimoni.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes marquee {
           0% { transform: translateX(100%); }

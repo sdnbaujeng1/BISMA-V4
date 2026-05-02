@@ -781,6 +781,30 @@ app.get('/api/admin/stats', async (req, res) => {
     });
   });
 
+  app.get('/api/ekskul-mapping', async (req, res) => {
+    try {
+      const { data, error } = await supabase.from('pengaturan').select('value').eq('key', 'ekskul_mapping').maybeSingle();
+      if (error) return res.status(500).json({ success: false, message: error.message });
+      res.json({ success: true, data: data?.value || {} });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
+  app.post('/api/ekskul-mapping', async (req, res) => {
+    try {
+      const { mapping } = req.body;
+      const { error } = await supabase.from('pengaturan').upsert({
+        key: 'ekskul_mapping',
+        value: mapping
+      });
+      if (error) return res.status(500).json({ success: false, message: error.message });
+      res.json({ success: true, message: 'Mapping updated' });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
   app.get('/api/murid', async (req, res) => {
     const { data: murid, error } = await supabase.from('murid').select('*');
     if (error) return res.status(500).json({ success: false, message: error.message });

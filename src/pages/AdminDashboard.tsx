@@ -3,6 +3,7 @@ import TabunganSampahAdmin from './TabunganSampahAdmin';
 import KalenderAkademik from './KalenderAkademik';
 import GeofencingAdmin from './GeofencingAdmin';
 import KasihIbuAdmin from './KasihIbuAdmin';
+import EkskulMappingView from './EkskulMappingView';
 import { 
   Palette,
   Recycle,
@@ -36,7 +37,8 @@ import {
   MapPin,
   Menu,
   Heart,
-  HelpCircle
+  HelpCircle,
+  Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -109,6 +111,7 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
     { id: 'kasih_ibu', icon: Heart, label: 'Kasih Ibu' },
     { id: 'kalender_akademik', icon: Calendar, label: 'Kalender Akademik' },
     { id: 'geofencing', icon: MapPin, label: 'Geofencing' },
+    { id: 'ekskul_mapping', icon: Activity, label: 'Mapping Ekstrakurikuler' },
     { id: 'color_config', icon: Palette, label: 'Konfigurasi Warna' },
     { id: 'api_config', icon: Key, label: 'Konfigurasi API' },
   ];
@@ -342,6 +345,8 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
         return <KasihIbuAdmin showToast={showToast} />;
       case 'kalender_akademik':
         return <KalenderAkademik onBack={() => setActiveView('dashboard')} />;
+      case 'ekskul_mapping':
+        return <EkskulMappingView showToast={showToast} />;
       case 'geofencing':
         return <GeofencingAdmin showToast={showToast} />;
       case 'color_config':
