@@ -6,23 +6,45 @@ export default function IframePage({ title, src, onNavigate, backTo = 'main' }: 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen().catch(err => {
-        console.error(`Error attempting to enable fullscreen: ${err.message}`);
-      });
+    if (!isFullscreen) {
+      setIsFullscreen(true);
+      if (containerRef.current && containerRef.current.requestFullscreen) {
+        containerRef.current.requestFullscreen().catch(err => {
+          console.error(`Error attempting to enable fullscreen: ${err.message}`);
+        });
+      }
+      try {
+        if (window.screen.orientation && (window.screen.orientation as any).lock) {
+          (window.screen.orientation as any).lock('landscape').catch((e: any) => console.log('Orientation lock failed', e));
+        }
+      } catch (e) {}
     } else {
-      document.exitFullscreen();
+      setIsFullscreen(false);
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(err => console.error(err));
+      }
+      try {
+        if (window.screen.orientation && window.screen.orientation.unlock) {
+          window.screen.orientation.unlock();
+        }
+      } catch (e) {}
     }
   };
 
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-      if (document.fullscreenElement && window.screen.orientation && window.screen.orientation.lock) {
-        window.screen.orientation.lock('landscape').catch(e => console.log('Orientation lock failed', e));
-      } else if (!document.fullscreenElement && window.screen.orientation && window.screen.orientation.unlock) {
-        window.screen.orientation.unlock();
-      }
+      setIsFullscreen(prev => {
+        const isNativeFullscreen = !!document.fullscreenElement;
+        if (!isNativeFullscreen) {
+          try {
+            if (window.screen.orientation && window.screen.orientation.unlock) {
+              window.screen.orientation.unlock();
+            }
+          } catch(e) {}
+          return false;
+        }
+        return true;
+      });
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
