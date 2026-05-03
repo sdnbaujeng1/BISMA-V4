@@ -44,12 +44,18 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
   ];
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-green-50 dark:bg-slate-900 transition-colors">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-green-50 dark:bg-slate-900 transition-colors relative overflow-hidden">
+      {/* Background Image Overlay */}
+      <div 
+        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-20 dark:opacity-10 mix-blend-multiply dark:mix-blend-overlay pointer-events-none"
+        style={{ backgroundImage: `url('https://lh3.googleusercontent.com/d/144IjGRLPpyDoioIQK5oC03UKKYzf0NJe')` }}
+      ></div>
+
       <motion.main 
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="w-full max-w-xl z-10"
+        className="w-full max-w-xl z-10 relative"
       >
         <div className="text-center mb-6">
           <img src={schoolIdentity.schoolLogo} alt="Logo" className="mx-auto h-28 w-auto mb-4 drop-shadow-xl hover:scale-105 transition-transform duration-300" />
@@ -120,7 +126,7 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
           </button>
         </div>
       </motion.main>
-      <footer className="mt-8 text-center text-xs text-slate-500 dark:text-slate-400 z-10">© Tim IT {schoolIdentity.schoolName}</footer>
+      <footer className="mt-8 text-center text-xs text-slate-500 dark:text-slate-400 z-10 relative">© Tim IT {schoolIdentity.schoolName}</footer>
       <HelpDeskFloat />
     </div>
   );
