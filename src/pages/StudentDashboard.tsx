@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   LayoutDashboard, 
   Calendar, 
@@ -23,6 +23,8 @@ import {
   Clock,
   Save,
   FileSpreadsheet,
+  Maximize2,
+  Minimize2,
   Gamepad,
   FileText,
   Send
@@ -34,20 +36,62 @@ import NilaiSiswa from './NilaiSiswa';
 import { supabase } from '../lib/supabase';
 
 function Edugame({ onBack }: { onBack: () => void }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+      if (document.fullscreenElement && window.screen.orientation && window.screen.orientation.lock) {
+        window.screen.orientation.lock('landscape').catch(e => console.log('Orientation lock failed', e));
+      } else if (!document.fullscreenElement && window.screen.orientation && window.screen.orientation.unlock) {
+        window.screen.orientation.unlock();
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-[100] bg-white dark:bg-slate-900 flex flex-col">
-      <header className="flex items-center gap-4 p-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-        <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-          <X className="w-6 h-6 text-slate-500" />
-        </button>
-        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Edugame</h2>
-      </header>
-      <div className="flex-grow overflow-hidden">
+    <div ref={containerRef} className={`fixed inset-0 bg-white dark:bg-slate-900 flex flex-col ${isFullscreen ? 'z-[200]' : 'z-[100]'}`}>
+      {!isFullscreen && (
+        <header className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <div className="flex items-center gap-4">
+            <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+              <X className="w-6 h-6 text-slate-500" />
+            </button>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Edugame</h2>
+          </div>
+          <button onClick={toggleFullscreen} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+            <Maximize2 className="w-6 h-6 text-slate-500 dark:text-slate-400" />
+          </button>
+        </header>
+      )}
+      <div className="flex-grow overflow-hidden relative">
         <iframe 
           src="https://edugamev2.netlify.app/" 
           className="w-full h-full border-0"
           title="Edugame"
+          allow="fullscreen; orientation"
         ></iframe>
+        {isFullscreen && (
+          <button 
+            onClick={toggleFullscreen} 
+            className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors z-[210]"
+          >
+            <Minimize2 className="w-6 h-6" />
+          </button>
+        )}
       </div>
     </div>
   );

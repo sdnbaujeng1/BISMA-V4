@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Camera, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Camera, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
@@ -12,6 +12,103 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
   const [rekap, setRekap] = useState<any[]>([]);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Geofencing states
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [isLocationChecking, setIsLocationChecking] = useState(true);
+  const [isGeofenceValid, setIsGeofenceValid] = useState(false);
+
+  useEffect(() => {
+    const checkGeofencing = async () => {
+      try {
+        const res = await fetch('/api/pengaturan?keys=geofence_lat,geofence_lng,geofence_radius,geofence_roles');
+        const data = await res.json();
+        
+        if (data.success && data.data) {
+          let roles: string[] = [];
+          try {
+             roles = data.data.geofence_roles ? JSON.parse(data.data.geofence_roles) : [];
+          } catch (e) {}
+
+          const userRole = (user?.role || '').toLowerCase();
+          const targetRoles = roles.map(r => r.toLowerCase());
+
+          if (targetRoles.includes(userRole)) {
+            // Geofencing applies to this user
+            const lat = parseFloat(data.data.geofence_lat);
+            const lng = parseFloat(data.data.geofence_lng);
+            const radius = parseInt(data.data.geofence_radius);
+
+            if (isNaN(lat) || isNaN(lng) || isNaN(radius)) {
+              // Invalid config, allow bypass
+              setIsGeofenceValid(true);
+              setIsLocationChecking(false);
+              return;
+            }
+
+            if (!navigator.geolocation) {
+              setLocationError("Browser Anda tidak mendukung geolokasi.");
+              setIsLocationChecking(false);
+              return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                const userLat = position.coords.latitude;
+                const userLng = position.coords.longitude;
+                
+                // Haversine formula
+                const R = 6371e3; // metres
+                const p1 = lat * Math.PI/180;
+                const p2 = userLat * Math.PI/180;
+                const dp = (userLat-lat) * Math.PI/180;
+                const dl = (userLng-lng) * Math.PI/180;
+
+                const a = Math.sin(dp/2) * Math.sin(dp/2) +
+                          Math.cos(p1) * Math.cos(p2) *
+                          Math.sin(dl/2) * Math.sin(dl/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                const d = R * c;
+
+                if (d <= radius) {
+                  setIsGeofenceValid(true);
+                } else {
+                  setLocationError(`Anda berada di luar jangkauan area absensi. Jarak Anda: ${Math.round(d)} meter (Maksimal: ${radius}m).`);
+                }
+                setIsLocationChecking(false);
+              },
+              (error) => {
+                console.error("Geolocation error:", error);
+                if (error.code === error.PERMISSION_DENIED) {
+                  setLocationError("Izin lokasi ditolak. Tolong izinkan akses lokasi untuk melakukan absensi.");
+                } else {
+                  setLocationError("Tidak dapat mengambil lokasi Anda saat ini. Pastikan GPS aktif.");
+                }
+                setIsLocationChecking(false);
+              },
+              { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+
+          } else {
+            // Role not targeted by geofencing, bypass
+            setIsGeofenceValid(true);
+            setIsLocationChecking(false);
+          }
+        } else {
+           // No settings found, bypass
+           setIsGeofenceValid(true);
+           setIsLocationChecking(false);
+        }
+      } catch (err) {
+        console.error("Error fetching geofencing settings:", err);
+        // On error, let them proceed but warn
+        setIsGeofenceValid(true);
+        setIsLocationChecking(false);
+      }
+    };
+
+    checkGeofencing();
+  }, [user]);
 
   const handleScanResult = async (detectedCodes: any[]) => {
     if (detectedCodes && detectedCodes.length > 0) {
@@ -97,10 +194,29 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
       
       <main className="flex-grow p-4 md:p-6 mt-4">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Jenis Presensi</label>
+          {isLocationChecking ? (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700 text-center flex flex-col items-center justify-center min-h-[300px]">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mb-4"></div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white">Memeriksa Lokasi...</h3>
+              <p className="text-slate-500 mt-2">Mohon tunggu, memastikan Anda berada di dalam area presensi.</p>
+            </div>
+          ) : locationError ? (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700 text-center flex flex-col items-center justify-center min-h-[300px]">
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full flex items-center justify-center mb-4">
+                <AlertTriangle className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Terkendala Lokasi</h3>
+              <p className="text-slate-600 dark:text-slate-400 max-w-md mx-auto">{locationError}</p>
+              <button onClick={() => window.location.reload()} className="mt-6 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold py-2 px-6 rounded-xl transition-colors">
+                Coba Lagi
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Jenis Presensi</label>
                 <select 
                   value={jenisPresensi} 
                   onChange={e => setJenisPresensi(e.target.value)}
@@ -242,6 +358,8 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
                 </div>
               </div>
             </motion.div>
+          )}
+          </>
           )}
         </div>
       </main>

@@ -64,7 +64,7 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-100 dark:bg-slate-900 transition-colors relative overflow-hidden">
       {/* Background Image Overlay */}
       <div 
-        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-100 dark:opacity-80 pointer-events-none"
+        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-60 dark:opacity-30 pointer-events-none"
         style={{ backgroundImage: `url('${loginBgUrl}')` }}
       ></div>
 
