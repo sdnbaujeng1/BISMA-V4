@@ -980,6 +980,7 @@ function ProfileView({ showToast, onHiddenConfig }: { showToast: (msg: string, t
 
 function ColorConfigView({ showToast }: { showToast: (msg: string, type?: 'success' | 'error') => void }) {
   const [selectedColor, setSelectedColor] = useState('blue');
+  const [loginBgUrl, setLoginBgUrl] = useState('');
   const [loading, setLoading] = useState(false);
 
   const colors = [
@@ -999,6 +1000,22 @@ function ColorConfigView({ showToast }: { showToast: (msg: string, type?: 'succe
     if (storedColor) {
       setSelectedColor(storedColor);
     }
+    
+    // Load config from API
+    const fetchConfig = async () => {
+      try {
+        const res = await fetch('/api/pengaturan');
+        const result = await res.json();
+        if (result.success && result.data.login_background_url) {
+          setLoginBgUrl(result.data.login_background_url);
+        } else {
+          setLoginBgUrl('https://lh3.googleusercontent.com/d/144IjGRLPpyDoioIQK5oC03UKKYzf0NJe'); // Default
+        }
+      } catch (e) {
+        console.error('Failed to load settings', e);
+      }
+    };
+    fetchConfig();
   }, []);
 
   const handleColorSelect = async (colorId: string) => {
@@ -1028,53 +1045,108 @@ function ColorConfigView({ showToast }: { showToast: (msg: string, type?: 'succe
     }
   };
 
+  const handleSaveBackground = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/pengaturan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ login_background_url: loginBgUrl })
+      });
+      const result = await res.json();
+      if (result.success) {
+        showToast('Background Login berhasil disimpan', 'success');
+      } else {
+        showToast('Gagal menyimpan background', 'error');
+      }
+    } catch (e) {
+      showToast('Terjadi kesalahan jaringan', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="max-w-4xl mx-auto">
-      <header className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Konfigurasi Warna</h1>
-        <p className="text-slate-500 dark:text-slate-400">Atur tema warna aplikasi untuk menu Guru dan Siswa</p>
+    <div className="max-w-4xl mx-auto space-y-8">
+      <header>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Konfigurasi Tampilan</h1>
+        <p className="text-slate-500 dark:text-slate-400">Atur tema warna aplikasi dan gambar background</p>
       </header>
 
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {colors.map((color) => (
-            <button
-              key={color.id}
-              onClick={() => handleColorSelect(color.id)}
-              className={`relative group p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${
-                selectedColor === color.id 
-                  ? 'border-slate-800 dark:border-white bg-slate-50 dark:bg-slate-700' 
-                  : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-700/50'
-              }`}
-            >
-              <div className={`w-16 h-16 rounded-full ${color.class} shadow-lg flex items-center justify-center transition-transform group-hover:scale-110`}>
-                {selectedColor === color.id && (
-                  <CheckCircle className="w-8 h-8 text-white drop-shadow-md" />
-                )}
-              </div>
-              <span className={`font-bold ${selectedColor === color.id ? 'text-slate-800 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
-                {color.name}
-              </span>
-              {selectedColor === color.id && (
-                <span className="absolute top-2 right-2 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 flex flex-col space-y-8">
+        <div>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Tema Warna Aplikasi</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {colors.map((color) => (
+              <button
+                key={color.id}
+                onClick={() => handleColorSelect(color.id)}
+                className={`relative group p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${
+                  selectedColor === color.id 
+                    ? 'border-slate-800 dark:border-white bg-slate-50 dark:bg-slate-700' 
+                    : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                }`}
+              >
+                <div className={`w-16 h-16 rounded-full ${color.class} shadow-lg flex items-center justify-center transition-transform group-hover:scale-110`}>
+                  {selectedColor === color.id && (
+                    <CheckCircle className="w-8 h-8 text-white drop-shadow-md" />
+                  )}
+                </div>
+                <span className={`font-bold ${selectedColor === color.id ? 'text-slate-800 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
+                  {color.name}
                 </span>
-              )}
-            </button>
-          ))}
+                {selectedColor === color.id && (
+                  <span className="absolute top-2 right-2 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          
+          <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800/30 flex items-start gap-3">
+            <div className="p-2 bg-blue-100 dark:bg-blue-800/50 rounded-lg text-blue-600 dark:text-blue-400">
+              <Palette className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-800 dark:text-white text-sm">Pratinjau Perubahan</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Perubahan warna akan diterapkan secara otomatis pada menu Guru dan Siswa. 
+                Warna yang dipilih akan menjadi warna dominan untuk header, tombol, dan aksen lainnya.
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800/30 flex items-start gap-3">
-          <div className="p-2 bg-blue-100 dark:bg-blue-800/50 rounded-lg text-blue-600 dark:text-blue-400">
-            <Palette className="w-5 h-5" />
-          </div>
-          <div>
-            <h4 className="font-bold text-slate-800 dark:text-white text-sm">Pratinjau Perubahan</h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Perubahan warna akan diterapkan secara otomatis pada menu Guru dan Siswa. 
-              Warna yang dipilih akan menjadi warna dominan untuk header, tombol, dan aksen lainnya.
-            </p>
+        <div className="pt-8 border-t border-slate-200 dark:border-slate-700">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Background Halaman Login</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">URL Gambar</label>
+              <div className="flex gap-4">
+                <input 
+                  type="text" 
+                  value={loginBgUrl}
+                  onChange={(e) => setLoginBgUrl(e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                  className="flex-1 px-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-800 dark:text-white"
+                />
+                <button 
+                  onClick={handleSaveBackground}
+                  disabled={loading}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-bold transition-colors disabled:opacity-50"
+                >
+                  Simpan Background
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 mt-2">Gambar ini akan digunakan sebagai overlay semi-transparan pada halaman Login.</p>
+            </div>
+            {loginBgUrl && (
+              <div className="mt-4 border border-slate-200 dark:border-slate-700 p-2 rounded-xl bg-slate-50 dark:bg-slate-900 inline-block">
+                <img src={loginBgUrl} alt="Preview Background" className="max-h-48 rounded-lg object-contain" />
+              </div>
+            )}
           </div>
         </div>
       </div>

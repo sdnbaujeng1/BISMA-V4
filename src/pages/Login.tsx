@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { User, Shield, GraduationCap, Briefcase, Monitor } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Shield, GraduationCap, Briefcase, Monitor, Eye, EyeOff } from 'lucide-react';
 import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
 import { motion } from 'motion/react';
 import HelpDeskFloat from '../components/HelpDeskFloat';
@@ -10,7 +10,24 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
   const [role, setRole] = useState('guru');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginBgUrl, setLoginBgUrl] = useState('https://lh3.googleusercontent.com/d/144IjGRLPpyDoioIQK5oC03UKKYzf0NJe');
   const schoolIdentity = useSchoolIdentity();
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const res = await fetch('/api/pengaturan');
+        const result = await res.json();
+        if (result.success && result.data.login_background_url) {
+          setLoginBgUrl(result.data.login_background_url);
+        }
+      } catch (e) {
+        console.error('Failed to load settings', e);
+      }
+    };
+    fetchConfig();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,12 +61,15 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
   ];
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-green-50 dark:bg-slate-900 transition-colors relative overflow-hidden">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-100 dark:bg-slate-900 transition-colors relative overflow-hidden">
       {/* Background Image Overlay */}
       <div 
-        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-20 dark:opacity-10 mix-blend-multiply dark:mix-blend-overlay pointer-events-none"
-        style={{ backgroundImage: `url('https://lh3.googleusercontent.com/d/144IjGRLPpyDoioIQK5oC03UKKYzf0NJe')` }}
+        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-100 dark:opacity-80 pointer-events-none"
+        style={{ backgroundImage: `url('${loginBgUrl}')` }}
       ></div>
+
+      {/* Dark overlay for better text readability */}
+      <div className="absolute inset-0 z-0 bg-slate-900/10 dark:bg-slate-900/60 pointer-events-none"></div>
 
       <motion.main 
         initial={{ opacity: 0, scale: 0.8 }}
@@ -58,13 +78,20 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
         className="w-full max-w-xl z-10 relative"
       >
         <div className="text-center mb-6">
-          <img src={schoolIdentity.schoolLogo} alt="Logo" className="mx-auto h-28 w-auto mb-4 drop-shadow-xl hover:scale-105 transition-transform duration-300" />
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">LOGIN BISMA</h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">{schoolIdentity.schoolName}</p>
+          <motion.img 
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            src={schoolIdentity.schoolLogo} 
+            alt="Logo" 
+            className="mx-auto h-28 w-auto mb-4 drop-shadow-2xl hover:scale-105 transition-transform duration-300" 
+          />
+          <h1 className="text-3xl font-bold text-slate-800 dark:text-white drop-shadow-md">LOGIN BISMA</h1>
+          <p className="text-slate-800 font-medium dark:text-slate-200 mt-1 drop-shadow">{schoolIdentity.schoolName}</p>
         </div>
         
-        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur rounded-2xl p-8 shadow-xl border border-green-100 dark:border-slate-700">
-          <div className="grid grid-cols-5 gap-2 mb-6">
+        <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/50 dark:border-slate-700/50">
+          <div className="grid grid-cols-5 gap-2 mb-6 bg-white/40 dark:bg-slate-900/40 p-1.5 rounded-2xl backdrop-blur-sm border border-white/50 dark:border-slate-700/50">
             {roles.map(r => (
               <button
                 key={r.id}
@@ -94,20 +121,29 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
                 value={nip}
                 onChange={e => setNip(e.target.value)}
                 placeholder={`Masukkan ${role === 'admin' || role === 'monitoring' ? 'Username' : role === 'siswa' ? 'NIS' : 'NIP'}`} 
-                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-slate-700 dark:text-white transition-colors" 
+                className="w-full border border-white/60 dark:border-slate-600/60 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 bg-white/70 dark:bg-slate-800/70 dark:text-white transition-all backdrop-blur-sm shadow-sm" 
                 required 
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password</label>
-              <input 
-                type="password" 
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Masukkan Password" 
-                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-slate-700 dark:text-white transition-colors" 
-                required 
-              />
+              <div className="relative">
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Masukkan Password" 
+                  className="w-full border border-white/60 dark:border-slate-600/60 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 bg-white/70 dark:bg-slate-800/70 dark:text-white transition-all backdrop-blur-sm shadow-sm pr-12" 
+                  required 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-1"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
             {error && <div className="text-red-500 text-sm text-center bg-red-50 dark:bg-red-900/30 p-2 rounded-lg">{error}</div>}
             <button 
