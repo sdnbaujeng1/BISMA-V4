@@ -201,7 +201,7 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
                     {data.announcementTitle || 'Sistem Online'}
                   </div>
                   {data.pengumuman && data.pengumuman !== 'Tidak ada pengumuman' && (
-                    <p className="mt-3 text-xs md:text-sm text-blue-50 line-clamp-3 opacity-90">
+                    <p className="mt-3 text-xs md:text-sm text-blue-50 line-clamp-3 opacity-90 whitespace-pre-wrap">
                       {data.pengumuman}
                     </p>
                   )}

@@ -200,6 +200,63 @@ export default function NilaiGuru({ user, onNavigate }: { user: any, onNavigate:
     return Math.round(na);
   };
 
+  const handlePaste = (e: any, startStudentIdx: number, startColType: 'harian' | 'sts' | 'asas', startColIdx: number = 0) => {
+    e.preventDefault();
+    const pasteData = e.clipboardData?.getData('text');
+    if (!pasteData) return;
+
+    const rows = pasteData.split(/\r?\n/).filter((row: string) => row.trim() !== '');
+    
+    setNilaiData((prev: any) => {
+      const nextData = { ...prev };
+      const harianType = semester === '1' ? 'harian1' : 'harian2';
+
+      rows.forEach((row: string, rowOffset: number) => {
+        const studentIdx = startStudentIdx + rowOffset;
+        if (studentIdx >= students.length) return;
+
+        const student = students[studentIdx];
+        const studentData = nextData[student.NISN] ? { ...nextData[student.NISN] } : { harian1: [], sts: '', harian2: [], asas: '' };
+        
+        const cols = row.split('\t');
+        
+        let currentColType = startColType;
+        let currentColIdx = startColIdx;
+
+        cols.forEach((colData: string) => {
+           let val: number | string = colData.replace(',', '.').trim();
+           if (val !== '') {
+             const mVal = Number(val);
+             if (!isNaN(mVal)) val = mVal;
+             else val = '';
+           }
+
+           if (currentColType === 'harian') {
+             const newHarian = [...(studentData[harianType] || [])];
+             newHarian[currentColIdx] = val;
+             studentData[harianType] = newHarian;
+             
+             currentColIdx++;
+             if (currentColIdx >= jumlahUlangan) {
+               currentColType = 'sts';
+               currentColIdx = 0;
+             }
+           } else if (currentColType === 'sts') {
+             studentData.sts = val;
+             currentColType = 'asas';
+           } else if (currentColType === 'asas') {
+             studentData.asas = val;
+             currentColType = 'done' as any;
+           }
+        });
+        
+        nextData[student.NISN] = studentData;
+      });
+
+      return nextData;
+    });
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -358,6 +415,7 @@ export default function NilaiGuru({ user, onNavigate }: { user: any, onNavigate:
                               min="0" max="100"
                               value={nilaiData[student.NISN]?.[harianType]?.[i] ?? ''}
                               onChange={(e) => handleNilaiChange(student.NISN, harianType, i, e.target.value)}
+                              onPaste={(e) => handlePaste(e, idx, 'harian', i)}
                               className="w-full px-2 py-1.5 text-center bg-transparent border-none focus:ring-2 focus:ring-fuchsia-500 rounded outline-none dark:text-white"
                             />
                           </td>
@@ -369,6 +427,7 @@ export default function NilaiGuru({ user, onNavigate }: { user: any, onNavigate:
                             min="0" max="100"
                             value={nilaiData[student.NISN]?.sts ?? ''}
                             onChange={(e) => handleNilaiChange(student.NISN, 'sts', null, e.target.value)}
+                            onPaste={(e) => handlePaste(e, idx, 'sts', 0)}
                             className="w-full px-2 py-1.5 text-center bg-transparent border-none focus:ring-2 focus:ring-fuchsia-500 rounded outline-none font-medium text-fuchsia-700 dark:text-fuchsia-300"
                           />
                         </td>
@@ -379,6 +438,7 @@ export default function NilaiGuru({ user, onNavigate }: { user: any, onNavigate:
                             min="0" max="100"
                             value={nilaiData[student.NISN]?.asas ?? ''}
                             onChange={(e) => handleNilaiChange(student.NISN, 'asas', null, e.target.value)}
+                            onPaste={(e) => handlePaste(e, idx, 'asas', 0)}
                             className="w-full px-2 py-1.5 text-center bg-transparent border-none focus:ring-2 focus:ring-fuchsia-500 rounded outline-none font-medium text-fuchsia-700 dark:text-fuchsia-300"
                           />
                         </td>
