@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LogOut, CalendarCheck, BarChart2, FilePenLine, Printer, UserCheck, ClipboardCheck, ShieldAlert, QrCode, NotebookPen, HeartHandshake, GalleryThumbnails, Check, X, LayoutDashboard, Settings, BookOpen, Sun, Moon, Trash2, ArrowLeft, User, Info, MessageSquare, XCircle, Send, FileSpreadsheet, Gamepad, Gamepad2, Globe } from 'lucide-react';
+import { Bell, LogOut, CalendarCheck, BarChart2, FilePenLine, Printer, UserCheck, ClipboardCheck, ShieldAlert, QrCode, NotebookPen, HeartHandshake, GalleryThumbnails, Check, X, LayoutDashboard, Settings, BookOpen, Sun, Moon, Trash2, ArrowLeft, User, Info, MessageSquare, XCircle, Send, FileSpreadsheet, Gamepad, Gamepad2, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import UnifiedAnnouncementCard from '../components/UnifiedAnnouncementCard';
 
@@ -111,7 +111,7 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
     { id: 'tugas_guru', icon: ClipboardCheck, label: 'Tugas', gradient: 'from-blue-400 to-blue-600', shadow: 'shadow-blue-500/40', roles: ['guru'] },
     { id: 'nilai_guru', icon: FileSpreadsheet, label: 'Nilai', gradient: 'from-fuchsia-400 to-fuchsia-600', shadow: 'shadow-fuchsia-500/40', roles: ['guru'] },
     { id: 'jadwal_mengajar', icon: CalendarCheck, label: 'Jadwal', gradient: 'from-cyan-400 to-cyan-600', shadow: 'shadow-cyan-500/40', roles: ['guru'] },
-    { id: 'kasih_ibu_guru', icon: HeartHandshake, label: 'Kasih Ibu', gradient: 'from-pink-400 to-pink-600', shadow: 'shadow-pink-500/40', roles: ['walikelas', 'guru', 'tendik'] },
+    { id: 'kasih_ibu_guru', icon: HeartHandshake, label: schoolIdentity.kasihIbuLabel || 'Kasih Ibu', gradient: 'from-pink-400 to-pink-600', shadow: 'shadow-pink-500/40', roles: ['walikelas', 'guru', 'tendik'] },
     { id: 'rekap_absensi', icon: UserCheck, label: 'Kehadiran', gradient: 'from-orange-400 to-orange-600', shadow: 'shadow-orange-500/40', roles: ['guru', 'tendik'] },
     { id: 'kedisiplinan', icon: ShieldAlert, label: 'Kedisiplinan', gradient: 'from-red-400 to-red-600', shadow: 'shadow-red-500/40', roles: ['guru', 'tendik'] },
     { id: 'bank_sampah_guru', icon: Trash2, label: 'Bank Sampah', gradient: 'from-emerald-400 to-emerald-600', shadow: 'shadow-emerald-500/40', roles: ['guru', 'tendik'] },
@@ -159,6 +159,18 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {user?.role !== "tendik" && stats?.todaysScheduleBoxes?.some((sch: any) => !sch.status) && (
+              <div className="relative group cursor-pointer">
+                <button onClick={() => onNavigate("jurnal")} className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors relative">
+                  <Bell className="w-5 h-5 animate-pulse" />
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
+                </button>
+                <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs rounded-lg shadow-xl p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                  <p className="font-bold mb-1 text-red-500">Pemberitahuan</p>
+                  <p>Anda memiliki jadwal hari ini yang jurnalnya belum diisi.</p>
+                </div>
+              </div>
+            )}
             <button onClick={toggleDarkMode} className="hidden md:block bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors">
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>

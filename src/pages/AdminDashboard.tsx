@@ -1,22 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
-import TabunganSampahAdmin from './TabunganSampahAdmin';
-import KalenderAkademik from './KalenderAkademik';
-import GeofencingAdmin from './GeofencingAdmin';
-import KasihIbuAdmin from './KasihIbuAdmin';
-import EkskulMappingView from './EkskulMappingView';
-import { 
+import React, { useState, useEffect, useRef } from "react";
+import TabunganSampahAdmin from "./TabunganSampahAdmin";
+import KalenderAkademik from "./KalenderAkademik";
+import GeofencingAdmin from "./GeofencingAdmin";
+import KasihIbuAdmin from "./KasihIbuAdmin";
+import EkskulMappingView from "./EkskulMappingView";
+import {
   Palette,
   Recycle,
-  LayoutDashboard, 
-  Users, 
-  Moon, 
-  Sun, 
-  LogOut, 
-  Database, 
-  Keyboard, 
-  Calendar, 
-  UserCog, 
-  GraduationCap, 
+  LayoutDashboard,
+  Users,
+  Moon,
+  Sun,
+  LogOut,
+  Database,
+  Keyboard,
+  Calendar,
+  UserCog,
+  GraduationCap,
   Settings,
   User,
   X,
@@ -39,9 +39,10 @@ import {
   Heart,
   HelpCircle,
   Activity,
-  Target
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+  Target,
+} from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { useSchoolIdentity } from "../hooks/useSchoolIdentity";
 
 interface AdminDashboardProps {
   user: any;
@@ -50,17 +51,28 @@ interface AdminDashboardProps {
   toggleDarkMode: () => void;
 }
 
-export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMode }: AdminDashboardProps) {
-  const [activeView, setActiveView] = useState('dashboard'); // 'monitoring', 'dashboard', 'input_guru', 'profile', 'color_config'
+export default function AdminDashboard({
+  user,
+  onLogout,
+  darkMode,
+  toggleDarkMode,
+}: AdminDashboardProps) {
+  const schoolIdentity = useSchoolIdentity();
+  const [activeView, setActiveView] = useState("dashboard"); // 'monitoring', 'dashboard', 'input_guru', 'profile', 'color_config'
   const [activeModal, setActiveModal] = useState<string | null>(null);
-  const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
   const [stats, setStats] = useState<{
     studentCounts: Record<string, number>;
     totalStudents: number;
     totalJP: number;
   } | null>(null);
   const [latestAnnouncement, setLatestAnnouncement] = useState<any>(null);
-  const [isSidebarVisible, setIsSidebarVisible] = useState(window.innerWidth >= 1024);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(
+    window.innerWidth >= 1024,
+  );
 
   useEffect(() => {
     const handleResize = () => {
@@ -71,13 +83,13 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
       }
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const fetchStats = async () => {
     try {
-      const res = await fetch('/api/admin/stats');
+      const res = await fetch("/api/admin/stats");
       const data = await res.json();
       if (data.success) {
         setStats(data.data);
@@ -89,178 +101,190 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
 
   useEffect(() => {
     fetchStats();
-    fetch('/api/pengumuman')
-      .then(res => res.json())
-      .then(res => {
+    fetch("/api/pengumuman")
+      .then((res) => res.json())
+      .then((res) => {
         if (res.success && res.data && res.data.length > 0) {
           setLatestAnnouncement(res.data[0]);
         }
       })
-      .catch(err => console.error("Failed to fetch announcements", err));
+      .catch((err) => console.error("Failed to fetch announcements", err));
   }, []);
 
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+  const showToast = (
+    message: string,
+    type: "success" | "error" = "success",
+  ) => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
   const menuItems = [
-    { id: 'monitoring', icon: Table, label: 'KBM Hari Ini' },
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { id: 'input_guru', icon: UserPlus, label: 'Input Guru Baru' },
-    { id: 'tabungan_sampah', icon: Trash2, label: 'Tabungan Sampah' },
-    { id: 'kasih_ibu', icon: Heart, label: 'Kasih Ibu' },
-    { id: 'kalender_akademik', icon: Calendar, label: 'Kalender Akademik' },
-    { id: 'geofencing', icon: MapPin, label: 'Geofencing' },
-    { id: 'ekskul_mapping', icon: Target, label: 'Mapping Ekstrakurikuler' },
-    { id: 'color_config', icon: Palette, label: 'Konfigurasi Warna' },
-    { id: 'api_config', icon: Key, label: 'Konfigurasi API' },
+    { id: "monitoring", icon: Table, label: "KBM Hari Ini" },
+    { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { id: "input_guru", icon: UserPlus, label: "Input Guru Baru" },
+    { id: "tabungan_sampah", icon: Trash2, label: "Tabungan Sampah" },
+    { id: "kasih_ibu", icon: Heart, label: schoolIdentity.kasihIbuLabel || "Kasih Ibu" },
+    { id: "kalender_akademik", icon: Calendar, label: "Kalender Akademik" },
+    { id: "geofencing", icon: MapPin, label: "Geofencing" },
+    { id: "ekskul_mapping", icon: Target, label: "Mapping Ekstrakurikuler" },
+    { id: "color_config", icon: Palette, label: "Konfigurasi Warna" },
+    { id: "api_config", icon: Key, label: "Konfigurasi API" },
   ];
 
   const adminCards = [
-    { 
-      id: 'tabungan_sampah_card', 
-      title: 'Tabungan Sampah', 
-      subtitle: 'RECYCLE', 
-      icon: Recycle, 
-      color: 'bg-green-600', 
-      shadow: 'shadow-green-200 dark:shadow-green-900/20',
-      action: () => setActiveView('tabungan_sampah')
+    {
+      id: "tabungan_sampah_card",
+      title: "Tabungan Sampah",
+      subtitle: "RECYCLE",
+      icon: Recycle,
+      color: "bg-green-600",
+      shadow: "shadow-green-200 dark:shadow-green-900/20",
+      action: () => setActiveView("tabungan_sampah"),
     },
-    { 
-      id: 'kasih_ibu_card', 
-      title: 'Kasih Ibu', 
-      subtitle: 'REWARD', 
-      icon: Heart, 
-      color: 'bg-pink-600', 
-      shadow: 'shadow-pink-200 dark:shadow-pink-900/20',
-      action: () => setActiveView('kasih_ibu')
+    {
+      id: "kasih_ibu_card",
+      title: schoolIdentity.kasihIbuLabel || "Kasih Ibu",
+      subtitle: "REWARD",
+      icon: Heart,
+      color: "bg-pink-600",
+      shadow: "shadow-pink-200 dark:shadow-pink-900/20",
+      action: () => setActiveView("kasih_ibu"),
     },
-    { 
-      id: 'kalender_akademik_card', 
-      title: 'Kalender Akademik', 
-      subtitle: 'HARI EFEKTIF', 
-      icon: Calendar, 
-      color: 'bg-indigo-600', 
-      shadow: 'shadow-indigo-200 dark:shadow-indigo-900/20',
-      action: () => setActiveView('kalender_akademik')
+    {
+      id: "kalender_akademik_card",
+      title: "Kalender Akademik",
+      subtitle: "HARI EFEKTIF",
+      icon: Calendar,
+      color: "bg-indigo-600",
+      shadow: "shadow-indigo-200 dark:shadow-indigo-900/20",
+      action: () => setActiveView("kalender_akademik"),
     },
-    { 
-      id: 'geofencing_card', 
-      title: 'Geofencing', 
-      subtitle: 'LOKASI', 
-      icon: MapPin, 
-      color: 'bg-blue-600', 
-      shadow: 'shadow-blue-200 dark:shadow-blue-900/20',
-      action: () => setActiveView('geofencing')
+    {
+      id: "geofencing_card",
+      title: "Geofencing",
+      subtitle: "LOKASI",
+      icon: MapPin,
+      color: "bg-blue-600",
+      shadow: "shadow-blue-200 dark:shadow-blue-900/20",
+      action: () => setActiveView("geofencing"),
     },
-    { 
-      id: 'ekskul_mapping_card', 
-      title: 'Mapping Ekskul', 
-      subtitle: 'AKTIVITAS', 
-      icon: Target, 
-      color: 'bg-fuchsia-600', 
-      shadow: 'shadow-fuchsia-200 dark:shadow-fuchsia-900/20',
-      action: () => setActiveView('ekskul_mapping')
+    {
+      id: "ekskul_mapping_card",
+      title: "Mapping Ekskul",
+      subtitle: "AKTIVITAS",
+      icon: Target,
+      color: "bg-fuchsia-600",
+      shadow: "shadow-fuchsia-200 dark:shadow-fuchsia-900/20",
+      action: () => setActiveView("ekskul_mapping"),
     },
-    { 
-      id: 'import_master', 
-      title: 'Import Master', 
-      subtitle: 'DATABASE CSV', 
-      icon: Database, 
-      color: 'bg-red-500', 
-      shadow: 'shadow-red-200 dark:shadow-red-900/20',
-      action: () => setActiveModal('import_master')
+    {
+      id: "import_master",
+      title: "Import Master",
+      subtitle: "DATABASE CSV",
+      icon: Database,
+      color: "bg-red-500",
+      shadow: "shadow-red-200 dark:shadow-red-900/20",
+      action: () => setActiveModal("import_master"),
     },
-    { 
-      id: 'input_manual', 
-      title: 'Input Manual', 
-      subtitle: 'INPUT MASSAL CSV', 
-      icon: Keyboard, 
-      color: 'bg-purple-500', 
-      shadow: 'shadow-purple-200 dark:shadow-purple-900/20',
-      action: () => setActiveModal('input_manual')
+    {
+      id: "input_manual",
+      title: "Input Manual",
+      subtitle: "INPUT MASSAL CSV",
+      icon: Keyboard,
+      color: "bg-purple-500",
+      shadow: "shadow-purple-200 dark:shadow-purple-900/20",
+      action: () => setActiveModal("input_manual"),
     },
-    { 
-      id: 'jadwal', 
-      title: 'Jadwal Pelajaran', 
-      subtitle: 'SETUP JADWAL', 
-      icon: Calendar, 
-      color: 'bg-fuchsia-500', 
-      shadow: 'shadow-fuchsia-200 dark:shadow-fuchsia-900/20',
-      action: () => setActiveModal('jadwal')
+    {
+      id: "jadwal",
+      title: "Jadwal Pelajaran",
+      subtitle: "SETUP JADWAL",
+      icon: Calendar,
+      color: "bg-fuchsia-500",
+      shadow: "shadow-fuchsia-200 dark:shadow-fuchsia-900/20",
+      action: () => setActiveModal("jadwal"),
     },
-    { 
-      id: 'manajemen_user', 
-      title: 'Manajemen User', 
-      subtitle: 'AKUN GURU', 
-      icon: UserCog, 
-      color: 'bg-emerald-500', 
-      shadow: 'shadow-emerald-200 dark:shadow-emerald-900/20',
-      action: () => setActiveModal('manajemen_user')
+    {
+      id: "manajemen_user",
+      title: "Manajemen User",
+      subtitle: "AKUN GURU",
+      icon: UserCog,
+      color: "bg-emerald-500",
+      shadow: "shadow-emerald-200 dark:shadow-emerald-900/20",
+      action: () => setActiveModal("manajemen_user"),
     },
-    { 
-      id: 'data_murid', 
-      title: 'Data Murid', 
-      subtitle: 'SISWA & MUTASI', 
-      icon: GraduationCap, 
-      color: 'bg-sky-500', 
-      shadow: 'shadow-sky-200 dark:shadow-sky-900/20',
-      action: () => setActiveModal('data_murid')
+    {
+      id: "data_murid",
+      title: "Data Murid",
+      subtitle: "SISWA & MUTASI",
+      icon: GraduationCap,
+      color: "bg-sky-500",
+      shadow: "shadow-sky-200 dark:shadow-sky-900/20",
+      action: () => setActiveModal("data_murid"),
     },
-    { 
-      id: 'pengumuman', 
-      title: 'Pengumuman', 
-      subtitle: 'INFO PUBLIK', 
-      icon: Megaphone, 
-      color: 'bg-orange-500', 
-      shadow: 'shadow-orange-200 dark:shadow-orange-900/20',
-      action: () => setActiveModal('pengumuman')
+    {
+      id: "pengumuman",
+      title: "Pengumuman",
+      subtitle: "INFO PUBLIK",
+      icon: Megaphone,
+      color: "bg-orange-500",
+      shadow: "shadow-orange-200 dark:shadow-orange-900/20",
+      action: () => setActiveModal("pengumuman"),
     },
-    { 
-      id: 'api_config_card', 
-      title: 'Konfigurasi API', 
-      subtitle: 'CHATBOT & INTEGRASI', 
-      icon: Key, 
-      color: 'bg-indigo-500', 
-      shadow: 'shadow-indigo-200 dark:shadow-indigo-900/20',
-      action: () => setActiveView('api_config')
+    {
+      id: "api_config_card",
+      title: "Konfigurasi API",
+      subtitle: "CHATBOT & INTEGRASI",
+      icon: Key,
+      color: "bg-indigo-500",
+      shadow: "shadow-indigo-200 dark:shadow-indigo-900/20",
+      action: () => setActiveView("api_config"),
     },
-    { 
-      id: 'helpdesk_config', 
-      title: 'Pusat Bantuan', 
-      subtitle: 'INFO & KONTAK', 
-      icon: HelpCircle, 
-      color: 'bg-indigo-500', 
-      shadow: 'shadow-indigo-200 dark:shadow-indigo-900/20',
-      action: () => setActiveView('helpdesk_config')
+    {
+      id: "helpdesk_config",
+      title: "Pusat Bantuan",
+      subtitle: "INFO & KONTAK",
+      icon: HelpCircle,
+      color: "bg-indigo-500",
+      shadow: "shadow-indigo-200 dark:shadow-indigo-900/20",
+      action: () => setActiveView("helpdesk_config"),
     },
-    { 
-      id: 'pengaturan', 
-      title: 'Pengaturan', 
-      subtitle: 'KONFIGURASI UMUM', 
-      icon: Settings, 
-      color: 'bg-slate-600', 
-      shadow: 'shadow-slate-200 dark:shadow-slate-900/20',
-      action: () => setActiveModal('pengaturan')
+    {
+      id: "pengaturan",
+      title: "Pengaturan",
+      subtitle: "KONFIGURASI UMUM",
+      icon: Settings,
+      color: "bg-slate-600",
+      shadow: "shadow-slate-200 dark:shadow-slate-900/20",
+      action: () => setActiveModal("pengaturan"),
     },
   ];
 
   const renderContent = () => {
     switch (activeView) {
-      case 'monitoring':
+      case "monitoring":
         return <MonitoringKBMView showToast={showToast} />;
-      case 'dashboard':
+      case "dashboard":
         return (
           <div className="max-w-7xl mx-auto">
             <header className="mb-8 flex justify-between items-end">
               <div>
-                <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Admin Dashboard</h1>
-                <p className="text-slate-500 dark:text-slate-400">Selamat datang kembali, Administrator</p>
+                <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
+                  Admin Dashboard
+                </h1>
+                <p className="text-slate-500 dark:text-slate-400">
+                  Selamat datang kembali, Administrator
+                </p>
               </div>
               <div className="text-right hidden md:block">
                 <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                  {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                  {new Date().toLocaleDateString("id-ID", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
                 </p>
               </div>
             </header>
@@ -273,14 +297,23 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
                     <Users className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Total Siswa</p>
-                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">{stats?.totalStudents || 0}</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                      Total Siswa
+                    </p>
+                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">
+                      {stats?.totalStudents || 0}
+                    </h3>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-xs">
-                  {['1', '2', '3', '4', '5', '6'].map(cls => (
-                    <div key={cls} className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-lg text-center">
-                      <span className="block text-slate-400 font-bold mb-1">Kls {cls}</span>
+                  {["1", "2", "3", "4", "5", "6"].map((cls) => (
+                    <div
+                      key={cls}
+                      className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-lg text-center"
+                    >
+                      <span className="block text-slate-400 font-bold mb-1">
+                        Kls {cls}
+                      </span>
                       <span className="font-bold text-slate-700 dark:text-slate-200">
                         {stats?.studentCounts?.[`Kelas ${cls}`] || 0}
                       </span>
@@ -295,22 +328,40 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
                     <Calendar className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Total Jam Pelajaran (JP)</p>
-                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">{stats?.totalJP || 0} JP</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                      Total Jam Pelajaran (JP)
+                    </p>
+                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">
+                      {stats?.totalJP || 0} JP
+                    </h3>
                   </div>
                 </div>
                 <p className="text-xs text-slate-400 mt-2">
-                  Total akumulasi JP dari seluruh jadwal yang telah diinput ke sistem.
+                  Total akumulasi JP dari seluruh jadwal yang telah diinput ke
+                  sistem.
                 </p>
               </div>
-              
+
               <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 rounded-3xl shadow-lg shadow-blue-200 dark:shadow-none text-white relative overflow-hidden group hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                 <div className="relative z-10">
-                  <h3 className="text-lg font-bold mb-1 drop-shadow-md">Informasi Terkini</h3>
-                  <p className="text-blue-100 text-sm mb-4 font-medium">{new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  <h3 className="text-lg font-bold mb-1 drop-shadow-md">
+                    Informasi Terkini
+                  </h3>
+                  <p className="text-blue-100 text-sm mb-4 font-medium">
+                    {new Date().toLocaleDateString("id-ID", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
                   <div className="flex items-center gap-2 text-xs font-bold bg-white/20 w-fit px-3 py-1 rounded-full backdrop-blur-sm shadow-inner border border-white/10">
-                    <div className={`w-2 h-2 rounded-full animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.8)] ${latestAnnouncement?.type === 'important' ? 'bg-orange-400' : 'bg-green-400'}`}></div>
-                    {latestAnnouncement ? latestAnnouncement.judul : 'Sistem Online'}
+                    <div
+                      className={`w-2 h-2 rounded-full animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.8)] ${latestAnnouncement?.type === "important" ? "bg-orange-400" : "bg-green-400"}`}
+                    ></div>
+                    {latestAnnouncement
+                      ? latestAnnouncement.judul
+                      : "Sistem Online"}
                   </div>
                   {latestAnnouncement && (
                     <p className="mt-3 text-xs text-blue-50 line-clamp-2 opacity-90">
@@ -337,38 +388,49 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
                   transition={{ delay: index * 0.05 }}
                   className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all border border-slate-100 dark:border-slate-700 flex flex-col items-center text-center group h-full"
                 >
-                  <div className={`${card.color} w-16 h-16 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg ${card.shadow} group-hover:scale-110 transition-transform duration-300`}>
+                  <div
+                    className={`${card.color} w-16 h-16 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg ${card.shadow} group-hover:scale-110 transition-transform duration-300`}
+                  >
                     <card.icon className="w-8 h-8" />
                   </div>
-                  <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">{card.title}</h3>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{card.subtitle}</p>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">
+                    {card.title}
+                  </h3>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    {card.subtitle}
+                  </p>
                 </motion.button>
               ))}
             </div>
           </div>
         );
-      case 'input_guru':
+      case "input_guru":
         return <InputGuruBaruView showToast={showToast} />;
-      case 'tabungan_sampah':
+      case "tabungan_sampah":
         return <TabunganSampahAdmin showToast={showToast} />;
-      case 'kasih_ibu':
-        return <KasihIbuAdmin showToast={showToast} />;
-      case 'kalender_akademik':
-        return <KalenderAkademik onBack={() => setActiveView('dashboard')} />;
-      case 'ekskul_mapping':
+      case "kasih_ibu":
+        return <KasihIbuAdmin />;
+      case "kalender_akademik":
+        return <KalenderAkademik onBack={() => setActiveView("dashboard")} />;
+      case "ekskul_mapping":
         return <EkskulMappingView showToast={showToast} />;
-      case 'geofencing':
+      case "geofencing":
         return <GeofencingAdmin showToast={showToast} />;
-      case 'color_config':
+      case "color_config":
         return <ColorConfigView showToast={showToast} />;
-      case 'api_config':
+      case "api_config":
         return <ApiConfigView showToast={showToast} />;
-      case 'visitor_config':
+      case "visitor_config":
         return <VisitorConfigView showToast={showToast} />;
-      case 'helpdesk_config':
+      case "helpdesk_config":
         return <HelpDeskConfigView showToast={showToast} />;
-      case 'profile':
-        return <ProfileView showToast={showToast} onHiddenConfig={() => setActiveView('visitor_config')} />;
+      case "profile":
+        return (
+          <ProfileView
+            showToast={showToast}
+            onHiddenConfig={() => setActiveView("visitor_config")}
+          />
+        );
       default:
         return null;
     }
@@ -376,20 +438,55 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
 
   const renderModalContent = () => {
     switch (activeModal) {
-      case 'import_master':
-        return <ImportMasterModal onClose={() => setActiveModal(null)} showToast={showToast} />;
-      case 'input_manual':
-        return <InputManualModal onClose={() => setActiveModal(null)} showToast={showToast} />;
-      case 'jadwal':
-        return <JadwalModal onClose={() => setActiveModal(null)} showToast={showToast} />;
-      case 'manajemen_user':
-        return <UserManagementModal onClose={() => setActiveModal(null)} showToast={showToast} />;
-      case 'data_murid':
-        return <DataMuridModal onClose={() => setActiveModal(null)} showToast={showToast} />;
-      case 'pengumuman':
-        return <PengumumanModal onClose={() => setActiveModal(null)} showToast={showToast} />;
-      case 'pengaturan':
-        return <PengaturanModal onClose={() => setActiveModal(null)} showToast={showToast} />;
+      case "import_master":
+        return (
+          <ImportMasterModal
+            onClose={() => setActiveModal(null)}
+            showToast={showToast}
+          />
+        );
+      case "input_manual":
+        return (
+          <InputManualModal
+            onClose={() => setActiveModal(null)}
+            showToast={showToast}
+          />
+        );
+      case "jadwal":
+        return (
+          <JadwalModal
+            onClose={() => setActiveModal(null)}
+            showToast={showToast}
+          />
+        );
+      case "manajemen_user":
+        return (
+          <UserManagementModal
+            onClose={() => setActiveModal(null)}
+            showToast={showToast}
+          />
+        );
+      case "data_murid":
+        return (
+          <DataMuridModal
+            onClose={() => setActiveModal(null)}
+            showToast={showToast}
+          />
+        );
+      case "pengumuman":
+        return (
+          <PengumumanModal
+            onClose={() => setActiveModal(null)}
+            showToast={showToast}
+          />
+        );
+      case "pengaturan":
+        return (
+          <PengaturanModal
+            onClose={() => setActiveModal(null)}
+            showToast={showToast}
+          />
+        );
       default:
         return null;
     }
@@ -400,15 +497,21 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
       {/* Toast Notification */}
       <AnimatePresence>
         {toast && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -50 }}
             className={`fixed top-4 right-4 z-[60] px-6 py-3 rounded-xl shadow-xl flex items-center gap-3 ${
-              toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+              toast.type === "success"
+                ? "bg-green-500 text-white"
+                : "bg-red-500 text-white"
             }`}
           >
-            {toast.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+            {toast.type === "success" ? (
+              <CheckCircle className="w-5 h-5" />
+            ) : (
+              <AlertCircle className="w-5 h-5" />
+            )}
             <span className="font-medium">{toast.message}</span>
           </motion.div>
         )}
@@ -430,9 +533,11 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
       </AnimatePresence>
 
       {/* Sidebar */}
-      <aside 
+      <aside
         className={`w-20 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col items-center py-6 z-40 shadow-sm transition-transform duration-300 fixed lg:relative h-full ${
-          isSidebarVisible ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          isSidebarVisible
+            ? "translate-x-0"
+            : "-translate-x-full lg:translate-x-0"
         }`}
       >
         <div className="mb-8">
@@ -450,9 +555,9 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
                 if (window.innerWidth < 1024) setIsSidebarVisible(false);
               }}
               className={`p-3 rounded-xl flex justify-center transition-all group relative ${
-                activeView === item.id 
-                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' 
-                  : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-600 dark:hover:text-slate-300'
+                activeView === item.id
+                  ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                  : "text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-600 dark:hover:text-slate-300"
               }`}
             >
               <item.icon className="w-6 h-6" />
@@ -468,20 +573,24 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
             onClick={toggleDarkMode}
             className="hidden md:flex p-3 rounded-xl justify-center text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-600 dark:hover:text-slate-300 transition-all group relative"
           >
-            {darkMode ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
+            {darkMode ? (
+              <Sun className="w-6 h-6" />
+            ) : (
+              <Moon className="w-6 h-6" />
+            )}
             <span className="absolute left-16 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-              {darkMode ? 'Mode Terang' : 'Mode Gelap'}
+              {darkMode ? "Mode Terang" : "Mode Gelap"}
             </span>
           </button>
-          <button 
+          <button
             onClick={() => {
-              setActiveView('profile');
+              setActiveView("profile");
               if (window.innerWidth < 1024) setIsSidebarVisible(false);
             }}
             className={`p-3 rounded-xl flex justify-center transition-all group relative ${
-              activeView === 'profile'
-                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-600 dark:hover:text-slate-300'
+              activeView === "profile"
+                ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                : "text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-600 dark:hover:text-slate-300"
             }`}
           >
             <User className="w-6 h-6" />
@@ -506,22 +615,22 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
         {/* Mobile Header */}
         <div className="lg:hidden bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-4 flex items-center justify-between sticky top-0 z-20">
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={() => setIsSidebarVisible(true)}
               className="p-2 -ml-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
             >
               <Menu className="w-6 h-6" />
             </button>
-            <h1 className="font-bold text-slate-800 dark:text-white">Admin BISMA</h1>
+            <h1 className="font-bold text-slate-800 dark:text-white">
+              Admin BISMA
+            </h1>
           </div>
           <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm">
             A
           </div>
         </div>
-        
-        <div className="p-4 md:p-8">
-          {renderContent()}
-        </div>
+
+        <div className="p-4 md:p-8">{renderContent()}</div>
       </main>
 
       {/* Modals */}
@@ -545,11 +654,20 @@ export default function AdminDashboard({ user, onLogout, darkMode, toggleDarkMod
 
 // --- Views ---
 
-function MonitoringKBMView({ showToast }: { showToast: (msg: string, type?: 'success' | 'error') => void }) {
+function MonitoringKBMView({
+  showToast,
+}: {
+  showToast: (msg: string, type?: "success" | "error") => void;
+}) {
   const [time, setTime] = useState(new Date());
   const [matrixData, setMatrixData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [waProgress, setWaProgress] = useState<{ isRunning: boolean, total: number, sent: number, failed: number } | null>(null);
+  const [waProgress, setWaProgress] = useState<{
+    isRunning: boolean;
+    total: number;
+    sent: number;
+    failed: number;
+  } | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -559,7 +677,7 @@ function MonitoringKBMView({ showToast }: { showToast: (msg: string, type?: 'suc
   useEffect(() => {
     const fetchMatrix = async () => {
       try {
-        const res = await fetch('/api/monitoring/matrix');
+        const res = await fetch("/api/monitoring/matrix");
         const data = await res.json();
         if (data.success) {
           setMatrixData(data.data);
@@ -587,24 +705,36 @@ function MonitoringKBMView({ showToast }: { showToast: (msg: string, type?: 'suc
             </h1>
             <p className="text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
               <Calendar className="w-4 h-4" />
-              {time.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              {time.toLocaleDateString("id-ID", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
             </p>
           </div>
           <div className="flex flex-col items-end gap-3 w-full md:w-auto">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
-              <button 
+              <button
                 disabled={waProgress?.isRunning}
                 onClick={async () => {
                   try {
                     showToast("Memulai pengiriman notifikasi WA...", "success");
-                    const res = await fetch('/api/admin/send-wa-reminder', { method: 'POST' });
+                    const res = await fetch("/api/admin/send-wa-reminder", {
+                      method: "POST",
+                    });
                     const data = await res.json();
                     if (data.success) {
-                      setWaProgress({ isRunning: true, total: 0, sent: 0, failed: 0 });
+                      setWaProgress({
+                        isRunning: true,
+                        total: 0,
+                        sent: 0,
+                        failed: 0,
+                      });
                       // Start polling progress
                       const interval = setInterval(async () => {
                         try {
-                          const progRes = await fetch('/api/admin/wa-progress');
+                          const progRes = await fetch("/api/admin/wa-progress");
                           const progData = await progRes.json();
                           if (progData.success) {
                             const prog = progData.data;
@@ -612,31 +742,50 @@ function MonitoringKBMView({ showToast }: { showToast: (msg: string, type?: 'suc
                             if (!prog.isRunning) {
                               clearInterval(interval);
                               setTimeout(() => {
-                                showToast(`Pengiriman selesai. Terkirim: ${prog.sent}, Gagal: ${prog.failed}`, "success");
+                                showToast(
+                                  `Pengiriman selesai. Terkirim: ${prog.sent}, Gagal: ${prog.failed}`,
+                                  "success",
+                                );
                                 setWaProgress(null);
                               }, 3000);
                             }
                           }
                         } catch (err) {
-                          console.error('Failed to fetch WA progress', err);
+                          console.error("Failed to fetch WA progress", err);
                         }
                       }, 3000);
                     } else {
                       showToast(`Gagal: ${data.message}`, "error");
                     }
                   } catch (e) {
-                    showToast('Terjadi kesalahan saat mengirim pesan.', "error");
+                    showToast(
+                      "Terjadi kesalahan saat mengirim pesan.",
+                      "error",
+                    );
                   }
                 }}
-                className={`${waProgress?.isRunning ? 'bg-slate-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'} text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm w-full sm:w-auto`}
+                className={`${waProgress?.isRunning ? "bg-slate-400 cursor-not-allowed" : "bg-green-500 hover:bg-green-600"} text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm w-full sm:w-auto`}
               >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+                <svg
+                  className="w-4 h-4"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                </svg>
                 Kirim Notifikasi WA
               </button>
               <div className="bg-white dark:bg-slate-800 px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center gap-3 w-full sm:w-auto">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                 <span className="font-mono font-bold text-xl text-slate-700 dark:text-slate-300 tracking-widest">
-                  {time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':')}
+                  {time
+                    .toLocaleTimeString("id-ID", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    })
+                    .replace(/\./g, ":")}
                 </span>
               </div>
             </div>
@@ -651,14 +800,20 @@ function MonitoringKBMView({ showToast }: { showToast: (msg: string, type?: 'suc
                 ) : (
                   <CheckCircle className="w-4 h-4 text-green-500" />
                 )}
-                <span>{waProgress.isRunning ? 'Mengirim WA...' : 'Selesai'}</span>
+                <span>
+                  {waProgress.isRunning ? "Mengirim WA..." : "Selesai"}
+                </span>
               </div>
-              <span>{waProgress.sent} / {waProgress.total}</span>
+              <span>
+                {waProgress.sent} / {waProgress.total}
+              </span>
             </div>
             <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2 overflow-hidden">
-              <div 
-                className={`${waProgress.isRunning ? 'bg-blue-600' : 'bg-green-500'} h-2 rounded-full transition-all duration-500`}
-                style={{ width: `${waProgress.total > 0 ? (waProgress.sent / waProgress.total) * 100 : (waProgress.isRunning ? 0 : 100)}%` }}
+              <div
+                className={`${waProgress.isRunning ? "bg-blue-600" : "bg-green-500"} h-2 rounded-full transition-all duration-500`}
+                style={{
+                  width: `${waProgress.total > 0 ? (waProgress.sent / waProgress.total) * 100 : waProgress.isRunning ? 0 : 100}%`,
+                }}
               ></div>
             </div>
           </div>
@@ -682,11 +837,15 @@ function MonitoringKBMView({ showToast }: { showToast: (msg: string, type?: 'suc
                 <tr>
                   <th className="px-6 py-5 w-16 text-center">No</th>
                   <th className="px-6 py-5 min-w-[200px]">Nama Guru</th>
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                     <th key={i} className="px-4 py-5 text-center min-w-[120px]">
                       <div className="flex flex-col items-center gap-1">
-                        <span className="text-[10px] text-slate-400">Jam Ke</span>
-                        <span className="text-lg font-black text-slate-800 dark:text-white">{i}</span>
+                        <span className="text-[10px] text-slate-400">
+                          Jam Ke
+                        </span>
+                        <span className="text-lg font-black text-slate-800 dark:text-white">
+                          {i}
+                        </span>
                       </div>
                     </th>
                   ))}
@@ -694,27 +853,40 @@ function MonitoringKBMView({ showToast }: { showToast: (msg: string, type?: 'suc
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                 {matrixData.map((teacher, index) => (
-                  <tr key={teacher.nip || index} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group">
+                  <tr
+                    key={teacher.nip || index}
+                    className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group"
+                  >
                     <td className="px-6 py-4 text-center font-medium text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300">
                       {index + 1}
                     </td>
                     <td className="px-6 py-4 font-semibold text-slate-800 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors whitespace-nowrap">
                       {teacher.nama_guru}
                     </td>
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map(jam => {
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((jam) => {
                       const schedule = teacher.schedule[jam];
                       return (
-                        <td key={jam} className="px-2 py-2 text-center align-middle">
+                        <td
+                          key={jam}
+                          className="px-2 py-2 text-center align-middle"
+                        >
                           {schedule ? (
-                            <div className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded border group-hover:shadow-sm transition-all whitespace-nowrap ${schedule.isFilled ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/30 group-hover:bg-green-100 dark:group-hover:bg-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/30 group-hover:bg-red-100 dark:group-hover:bg-red-800'}`}>
-                              <span className={`font-bold text-xs ${schedule.isFilled ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            <div
+                              className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded border group-hover:shadow-sm transition-all whitespace-nowrap ${schedule.isFilled ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/30 group-hover:bg-green-100 dark:group-hover:bg-green-800" : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/30 group-hover:bg-red-100 dark:group-hover:bg-red-800"}`}
+                            >
+                              <span
+                                className={`font-bold text-xs ${schedule.isFilled ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                              >
                                 {schedule.kelas}
                               </span>
-                              <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-tight max-w-[70px] truncate" title={schedule.mapel}>
+                              <span
+                                className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-tight max-w-[70px] truncate"
+                                title={schedule.mapel}
+                              >
                                 {schedule.mapel}
                               </span>
                               <span className="text-[10px] ml-1">
-                                {schedule.isFilled ? '✅' : '❌'}
+                                {schedule.isFilled ? "✅" : "❌"}
                               </span>
                             </div>
                           ) : (
@@ -736,7 +908,11 @@ function MonitoringKBMView({ showToast }: { showToast: (msg: string, type?: 'suc
   );
 }
 
-function InputGuruBaruView({ showToast }: { showToast: (msg: string, type?: 'success' | 'error') => void }) {
+function InputGuruBaruView({
+  showToast,
+}: {
+  showToast: (msg: string, type?: "success" | "error") => void;
+}) {
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [extraName, setExtraName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -751,22 +927,22 @@ function InputGuruBaruView({ showToast }: { showToast: (msg: string, type?: 'suc
     "Seni dan Budaya",
     "BTQ",
     "Bahasa Jawa",
-    "PJOK"
+    "PJOK",
   ];
 
   const handleSubjectChange = (subject: string) => {
-    setSelectedSubjects(prev => 
-      prev.includes(subject) 
-        ? prev.filter(s => s !== subject)
-        : [...prev, subject]
+    setSelectedSubjects((prev) =>
+      prev.includes(subject)
+        ? prev.filter((s) => s !== subject)
+        : [...prev, subject],
     );
   };
 
   const handleExtraChange = () => {
-    setSelectedSubjects(prev => 
+    setSelectedSubjects((prev) =>
       prev.includes("Ekstrakurikuler")
-        ? prev.filter(s => s !== "Ekstrakurikuler")
-        : [...prev, "Ekstrakurikuler"]
+        ? prev.filter((s) => s !== "Ekstrakurikuler")
+        : [...prev, "Ekstrakurikuler"],
     );
   };
 
@@ -774,21 +950,21 @@ function InputGuruBaruView({ showToast }: { showToast: (msg: string, type?: 'suc
     e.preventDefault();
     setLoading(true);
     const formData = new FormData(e.target as HTMLFormElement);
-    
+
     const data = {
-      nip: formData.get('nip'),
-      nama: formData.get('nama'),
-      waliKelas: formData.get('waliKelas'),
+      nip: formData.get("nip"),
+      nama: formData.get("nama"),
+      waliKelas: formData.get("waliKelas"),
       mapel: selectedSubjects,
       isExtra: selectedSubjects.includes("Ekstrakurikuler"),
-      extraName: extraName
+      extraName: extraName,
     };
 
     try {
-      const res = await fetch('/api/guru', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+      const res = await fetch("/api/guru", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
       });
       const result = await res.json();
       if (result.success) {
@@ -810,67 +986,100 @@ function InputGuruBaruView({ showToast }: { showToast: (msg: string, type?: 'suc
   return (
     <div className="max-w-3xl mx-auto">
       <header className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Input Guru Baru</h1>
-        <p className="text-slate-500 dark:text-slate-400">Tambahkan data pengajar baru ke dalam sistem</p>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
+          Input Guru Baru
+        </h1>
+        <p className="text-slate-500 dark:text-slate-400">
+          Tambahkan data pengajar baru ke dalam sistem
+        </p>
       </header>
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-8">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="flex flex-col items-center mb-6">
             <div className="w-24 h-24 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-2 relative group cursor-pointer overflow-hidden">
-               <User className="w-10 h-10 text-slate-400" />
-               <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                 <Upload className="w-6 h-6 text-white" />
-               </div>
+              <User className="w-10 h-10 text-slate-400" />
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Upload className="w-6 h-6 text-white" />
+              </div>
             </div>
-            <span className="text-sm text-slate-500">Upload Foto (Max 500KB)</span>
+            <span className="text-sm text-slate-500">
+              Upload Foto (Max 500KB)
+            </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">NIP (User ID)</label>
-              <input type="text" name="nip" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Contoh: 1985xxxx" required />
+              <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
+                NIP (User ID)
+              </label>
+              <input
+                type="text"
+                name="nip"
+                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="Contoh: 1985xxxx"
+                required
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Nama Lengkap</label>
-              <input type="text" name="nama" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nama Lengkap dengan Gelar" required />
+              <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
+                Nama Lengkap
+              </label>
+              <input
+                type="text"
+                name="nama"
+                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="Nama Lengkap dengan Gelar"
+                required
+              />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Mata Pelajaran Diampu</label>
+            <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
+              Mata Pelajaran Diampu
+            </label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border border-slate-300 dark:border-slate-600 rounded-xl p-4 bg-slate-50 dark:bg-slate-700/50">
               {subjectsList.map((subject) => (
-                <label key={subject} className="flex items-center space-x-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 p-2 rounded-lg transition-colors">
-                  <input 
-                    type="checkbox" 
+                <label
+                  key={subject}
+                  className="flex items-center space-x-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 p-2 rounded-lg transition-colors"
+                >
+                  <input
+                    type="checkbox"
                     checked={selectedSubjects.includes(subject)}
                     onChange={() => handleSubjectChange(subject)}
-                    className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 border-slate-300" 
+                    className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
                   />
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{subject}</span>
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                    {subject}
+                  </span>
                 </label>
               ))}
               <label className="flex items-center space-x-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 p-2 rounded-lg transition-colors">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   checked={selectedSubjects.includes("Ekstrakurikuler")}
                   onChange={handleExtraChange}
-                  className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 border-slate-300" 
+                  className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
                 />
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Ekstrakurikuler</span>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  Ekstrakurikuler
+                </span>
               </label>
             </div>
-            
+
             {selectedSubjects.includes("Ekstrakurikuler") && (
               <div className="mt-4 pl-4 border-l-4 border-blue-500">
-                <label className="block text-xs font-bold text-blue-600 dark:text-blue-400 mb-1 uppercase">Nama Ekstrakurikuler</label>
-                <input 
-                  type="text" 
+                <label className="block text-xs font-bold text-blue-600 dark:text-blue-400 mb-1 uppercase">
+                  Nama Ekstrakurikuler
+                </label>
+                <input
+                  type="text"
                   value={extraName}
                   onChange={(e) => setExtraName(e.target.value)}
-                  className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" 
-                  placeholder="Contoh: Pramuka, Tari, Futsal" 
+                  className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Contoh: Pramuka, Tari, Futsal"
                   required
                 />
               </div>
@@ -878,8 +1087,13 @@ function InputGuruBaruView({ showToast }: { showToast: (msg: string, type?: 'suc
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Wali Kelas</label>
-            <select name="waliKelas" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+            <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
+              Wali Kelas
+            </label>
+            <select
+              name="waliKelas"
+              className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+            >
               <option value="">-- Bukan Wali Kelas --</option>
               <option value="Kelas 1">Kelas 1</option>
               <option value="Kelas 2">Kelas 2</option>
@@ -891,8 +1105,13 @@ function InputGuruBaruView({ showToast }: { showToast: (msg: string, type?: 'suc
           </div>
 
           <div className="pt-4 flex justify-end">
-            <button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 dark:shadow-none transition-all flex items-center gap-2 disabled:opacity-50">
-              <Save className="w-5 h-5" /> {loading ? 'Menyimpan...' : 'Simpan Data Guru'}
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 dark:shadow-none transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              <Save className="w-5 h-5" />{" "}
+              {loading ? "Menyimpan..." : "Simpan Data Guru"}
             </button>
           </div>
         </form>
@@ -901,7 +1120,13 @@ function InputGuruBaruView({ showToast }: { showToast: (msg: string, type?: 'suc
   );
 }
 
-function ProfileView({ showToast, onHiddenConfig }: { showToast: (msg: string, type?: 'success' | 'error') => void, onHiddenConfig?: () => void }) {
+function ProfileView({
+  showToast,
+  onHiddenConfig,
+}: {
+  showToast: (msg: string, type?: "success" | "error") => void;
+  onHiddenConfig?: () => void;
+}) {
   const [clickCount, setClickCount] = useState(0);
 
   const handleSecretClick = () => {
@@ -928,8 +1153,12 @@ function ProfileView({ showToast, onHiddenConfig }: { showToast: (msg: string, t
   return (
     <div className="max-w-3xl mx-auto">
       <header className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Profil Admin</h1>
-        <p className="text-slate-500 dark:text-slate-400">Kelola akun administrator</p>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
+          Profil Admin
+        </h1>
+        <p className="text-slate-500 dark:text-slate-400">
+          Kelola akun administrator
+        </p>
       </header>
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 mb-8">
@@ -938,14 +1167,16 @@ function ProfileView({ showToast, onHiddenConfig }: { showToast: (msg: string, t
             <User className="w-10 h-10 text-slate-500" />
           </div>
           <div>
-            <h2 
+            <h2
               className="text-xl font-bold text-slate-800 dark:text-white cursor-default select-none"
               onClick={handleSecretClick}
             >
               Administrator
             </h2>
             <p className="text-slate-500">admin@sdnbaujeng1.sch.id</p>
-            <span className="inline-block mt-2 px-3 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-full text-xs font-bold">Super Admin</span>
+            <span className="inline-block mt-2 px-3 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-full text-xs font-bold">
+              Super Admin
+            </span>
           </div>
         </div>
       </div>
@@ -956,19 +1187,40 @@ function ProfileView({ showToast, onHiddenConfig }: { showToast: (msg: string, t
         </h3>
         <form onSubmit={handlePasswordChange} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Password Lama</label>
-            <input type="password" required className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+            <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
+              Password Lama
+            </label>
+            <input
+              type="password"
+              required
+              className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+            />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Password Baru</label>
-            <input type="password" required className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+            <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
+              Password Baru
+            </label>
+            <input
+              type="password"
+              required
+              className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+            />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Konfirmasi Password Baru</label>
-            <input type="password" required className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+            <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
+              Konfirmasi Password Baru
+            </label>
+            <input
+              type="password"
+              required
+              className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+            />
           </div>
           <div className="pt-4 flex justify-end">
-            <button type="submit" className="bg-slate-800 hover:bg-slate-900 text-white px-6 py-3 rounded-xl font-bold transition-all">
+            <button
+              type="submit"
+              className="bg-slate-800 hover:bg-slate-900 text-white px-6 py-3 rounded-xl font-bold transition-all"
+            >
               Update Password
             </button>
           </div>
@@ -978,41 +1230,52 @@ function ProfileView({ showToast, onHiddenConfig }: { showToast: (msg: string, t
   );
 }
 
-function ColorConfigView({ showToast }: { showToast: (msg: string, type?: 'success' | 'error') => void }) {
-  const [selectedColor, setSelectedColor] = useState('blue');
-  const [loginBgUrl, setLoginBgUrl] = useState('');
+function ColorConfigView({
+  showToast,
+}: {
+  showToast: (msg: string, type?: "success" | "error") => void;
+}) {
+  const [selectedColor, setSelectedColor] = useState("blue");
+  const [loginBgUrl, setLoginBgUrl] = useState("");
   const [loading, setLoading] = useState(false);
 
   const colors = [
-    { id: 'blue', name: 'Biru (Default)', class: 'bg-blue-600', value: '#2563eb' },
-    { id: 'red', name: 'Merah', class: 'bg-red-600', value: '#dc2626' },
-    { id: 'green', name: 'Hijau', class: 'bg-green-600', value: '#16a34a' },
-    { id: 'purple', name: 'Ungu', class: 'bg-purple-600', value: '#9333ea' },
-    { id: 'orange', name: 'Oranye', class: 'bg-orange-600', value: '#ea580c' },
-    { id: 'teal', name: 'Teal', class: 'bg-teal-600', value: '#0d9488' },
-    { id: 'cyan', name: 'Cyan', class: 'bg-cyan-600', value: '#0891b2' },
-    { id: 'pink', name: 'Pink', class: 'bg-pink-600', value: '#db2777' },
+    {
+      id: "blue",
+      name: "Biru (Default)",
+      class: "bg-blue-600",
+      value: "#2563eb",
+    },
+    { id: "red", name: "Merah", class: "bg-red-600", value: "#dc2626" },
+    { id: "green", name: "Hijau", class: "bg-green-600", value: "#16a34a" },
+    { id: "purple", name: "Ungu", class: "bg-purple-600", value: "#9333ea" },
+    { id: "orange", name: "Oranye", class: "bg-orange-600", value: "#ea580c" },
+    { id: "teal", name: "Teal", class: "bg-teal-600", value: "#0d9488" },
+    { id: "cyan", name: "Cyan", class: "bg-cyan-600", value: "#0891b2" },
+    { id: "pink", name: "Pink", class: "bg-pink-600", value: "#db2777" },
   ];
 
   useEffect(() => {
     // Load current color
-    const storedColor = localStorage.getItem('app_theme_color');
+    const storedColor = localStorage.getItem("app_theme_color");
     if (storedColor) {
       setSelectedColor(storedColor);
     }
-    
+
     // Load config from API
     const fetchConfig = async () => {
       try {
-        const res = await fetch('/api/pengaturan');
+        const res = await fetch("/api/pengaturan");
         const result = await res.json();
         if (result.success && result.data.login_background_url) {
           setLoginBgUrl(result.data.login_background_url);
         } else {
-          setLoginBgUrl('https://lh3.googleusercontent.com/d/144IjGRLPpyDoioIQK5oC03UKKYzf0NJe'); // Default
+          setLoginBgUrl(
+            "https://lh3.googleusercontent.com/d/144IjGRLPpyDoioIQK5oC03UKKYzf0NJe",
+          ); // Default
         }
       } catch (e) {
-        console.error('Failed to load settings', e);
+        console.error("Failed to load settings", e);
       }
     };
     fetchConfig();
@@ -1021,21 +1284,23 @@ function ColorConfigView({ showToast }: { showToast: (msg: string, type?: 'succe
   const handleColorSelect = async (colorId: string) => {
     setSelectedColor(colorId);
     setLoading(true);
-    
+
     // Save to localStorage
-    localStorage.setItem('app_theme_color', colorId);
-    
+    localStorage.setItem("app_theme_color", colorId);
+
     // Dispatch event for real-time updates in same window
-    window.dispatchEvent(new Event('theme-color-change'));
+    window.dispatchEvent(new Event("theme-color-change"));
 
     // Save to DB (optional but good for persistence across devices)
     try {
-      await fetch('/api/pengaturan/theme', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ themeColor: colorId })
+      await fetch("/api/pengaturan/theme", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ themeColor: colorId }),
       });
-      showToast(`Tema warna berhasil diubah ke ${colors.find(c => c.id === colorId)?.name}`);
+      showToast(
+        `Tema warna berhasil diubah ke ${colors.find((c) => c.id === colorId)?.name}`,
+      );
     } catch (e) {
       console.error("Failed to save theme to DB", e);
       // Still show success as it works locally
@@ -1048,19 +1313,19 @@ function ColorConfigView({ showToast }: { showToast: (msg: string, type?: 'succe
   const handleSaveBackground = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/pengaturan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ login_background_url: loginBgUrl })
+      const res = await fetch("/api/pengaturan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login_background_url: loginBgUrl }),
       });
       const result = await res.json();
       if (result.success) {
-        showToast('Background Login berhasil disimpan', 'success');
+        showToast("Background Login berhasil disimpan", "success");
       } else {
-        showToast('Gagal menyimpan background', 'error');
+        showToast("Gagal menyimpan background", "error");
       }
     } catch (e) {
-      showToast('Terjadi kesalahan jaringan', 'error');
+      showToast("Terjadi kesalahan jaringan", "error");
     } finally {
       setLoading(false);
     }
@@ -1069,30 +1334,40 @@ function ColorConfigView({ showToast }: { showToast: (msg: string, type?: 'succe
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <header>
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Konfigurasi Tampilan</h1>
-        <p className="text-slate-500 dark:text-slate-400">Atur tema warna aplikasi dan gambar background</p>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
+          Konfigurasi Tampilan
+        </h1>
+        <p className="text-slate-500 dark:text-slate-400">
+          Atur tema warna aplikasi dan gambar background
+        </p>
       </header>
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 flex flex-col space-y-8">
         <div>
-          <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Tema Warna Aplikasi</h2>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4">
+            Tema Warna Aplikasi
+          </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {colors.map((color) => (
               <button
                 key={color.id}
                 onClick={() => handleColorSelect(color.id)}
                 className={`relative group p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${
-                  selectedColor === color.id 
-                    ? 'border-slate-800 dark:border-white bg-slate-50 dark:bg-slate-700' 
-                    : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                  selectedColor === color.id
+                    ? "border-slate-800 dark:border-white bg-slate-50 dark:bg-slate-700"
+                    : "border-transparent hover:bg-slate-50 dark:hover:bg-slate-700/50"
                 }`}
               >
-                <div className={`w-16 h-16 rounded-full ${color.class} shadow-lg flex items-center justify-center transition-transform group-hover:scale-110`}>
+                <div
+                  className={`w-16 h-16 rounded-full ${color.class} shadow-lg flex items-center justify-center transition-transform group-hover:scale-110`}
+                >
                   {selectedColor === color.id && (
                     <CheckCircle className="w-8 h-8 text-white drop-shadow-md" />
                   )}
                 </div>
-                <span className={`font-bold ${selectedColor === color.id ? 'text-slate-800 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
+                <span
+                  className={`font-bold ${selectedColor === color.id ? "text-slate-800 dark:text-white" : "text-slate-500 dark:text-slate-400"}`}
+                >
                   {color.name}
                 </span>
                 {selectedColor === color.id && (
@@ -1104,47 +1379,61 @@ function ColorConfigView({ showToast }: { showToast: (msg: string, type?: 'succe
               </button>
             ))}
           </div>
-          
+
           <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800/30 flex items-start gap-3">
             <div className="p-2 bg-blue-100 dark:bg-blue-800/50 rounded-lg text-blue-600 dark:text-blue-400">
               <Palette className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-bold text-slate-800 dark:text-white text-sm">Pratinjau Perubahan</h4>
+              <h4 className="font-bold text-slate-800 dark:text-white text-sm">
+                Pratinjau Perubahan
+              </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Perubahan warna akan diterapkan secara otomatis pada menu Guru dan Siswa. 
-                Warna yang dipilih akan menjadi warna dominan untuk header, tombol, dan aksen lainnya.
+                Perubahan warna akan diterapkan secara otomatis pada menu Guru
+                dan Siswa. Warna yang dipilih akan menjadi warna dominan untuk
+                header, tombol, dan aksen lainnya.
               </p>
             </div>
           </div>
         </div>
 
         <div className="pt-8 border-t border-slate-200 dark:border-slate-700">
-          <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Background Halaman Login</h2>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4">
+            Background Halaman Login
+          </h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">URL Gambar</label>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
+                URL Gambar
+              </label>
               <div className="flex gap-4">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={loginBgUrl}
                   onChange={(e) => setLoginBgUrl(e.target.value)}
-                  placeholder="https://example.com/image.jpg"
-                  className="flex-1 px-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-800 dark:text-white"
+                  placeholder="https://..."
+                  className="flex-1 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                 />
-                <button 
+                <button
                   onClick={handleSaveBackground}
                   disabled={loading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-bold transition-colors disabled:opacity-50"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center gap-2"
                 >
-                  Simpan Background
+                  <Save className="w-4 h-4" /> Simpan
                 </button>
               </div>
-              <p className="text-xs text-slate-500 mt-2">Gambar ini akan digunakan sebagai overlay semi-transparan pada halaman Login.</p>
+              <p className="text-xs text-slate-500 mt-2">
+                Gambar ini akan digunakan sebagai overlay semi-transparan pada
+                halaman Login.
+              </p>
             </div>
             {loginBgUrl && (
               <div className="mt-4 border border-slate-200 dark:border-slate-700 p-2 rounded-xl bg-slate-50 dark:bg-slate-900 inline-block">
-                <img src={loginBgUrl} alt="Preview Background" className="max-h-48 rounded-lg object-contain" />
+                <img
+                  src={loginBgUrl}
+                  alt="Preview Background"
+                  className="max-h-48 rounded-lg object-contain"
+                />
               </div>
             )}
           </div>
@@ -1156,18 +1445,35 @@ function ColorConfigView({ showToast }: { showToast: (msg: string, type?: 'succe
 
 // --- Modals ---
 
-function ModalHeader({ title, onClose }: { title: string, onClose: () => void }) {
+function ModalHeader({
+  title,
+  onClose,
+}: {
+  title: string;
+  onClose: () => void;
+}) {
   return (
     <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-700">
-      <h2 className="text-xl font-bold text-slate-800 dark:text-white">{title}</h2>
-      <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors">
+      <h2 className="text-xl font-bold text-slate-800 dark:text-white">
+        {title}
+      </h2>
+      <button
+        onClick={onClose}
+        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+      >
         <X className="w-5 h-5 text-slate-500" />
       </button>
     </div>
   );
 }
 
-function ImportMasterModal({ onClose, showToast }: { onClose: () => void, showToast: (msg: string, type?: 'success' | 'error') => void }) {
+function ImportMasterModal({
+  onClose,
+  showToast,
+}: {
+  onClose: () => void;
+  showToast: (msg: string, type?: "success" | "error") => void;
+}) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1176,25 +1482,28 @@ function ImportMasterModal({ onClose, showToast }: { onClose: () => void, showTo
     let filename = "";
 
     switch (type) {
-      case 'Guru':
-        content = "NIP;Nama Lengkap;Mata Pelajaran (Pisahkan dengan koma jika > 1);Wali Kelas (Opsional);Password\n198xxxx;Guru A;Matematika,IPA;Kelas 5;baujeng@1\n199xxxx;Guru B;Bahasa Indonesia;;baujeng@1";
+      case "Guru":
+        content =
+          "NIP;Nama Lengkap;Mata Pelajaran (Pisahkan dengan koma jika > 1);Wali Kelas (Opsional);Password\n198xxxx;Guru A;Matematika,IPA;Kelas 5;baujeng@1\n199xxxx;Guru B;Bahasa Indonesia;;baujeng@1";
         filename = "template_guru.csv";
         break;
-      case 'Tendik':
-        content = "NIP;Nama Lengkap;Jabatan;Password\n198xxxx;Tendik A;Tata Usaha;baujeng@1\n199xxxx;Tendik B;Perpustakaan;baujeng@1";
+      case "Tendik":
+        content =
+          "NIP;Nama Lengkap;Jabatan;Password\n198xxxx;Tendik A;Tata Usaha;baujeng@1\n199xxxx;Tendik B;Perpustakaan;baujeng@1";
         filename = "template_tendik.csv";
         break;
-      case 'Siswa':
-        content = "NISN;NIS;Nama Lengkap;Kelas;Jenis Kelamin (L/P);Tanggal Lahir (YYYY-MM-DD);Password (Default: baujeng(kelas))\n1234567890;1001;Siswa A;Kelas 1;L;2017-05-20;baujeng1\n0987654321;1002;Siswa B;Kelas 1;P;2017-08-15;baujeng1";
+      case "Siswa":
+        content =
+          "NISN;NIS;Nama Lengkap;Kelas;Jenis Kelamin (L/P);Tanggal Lahir (YYYY-MM-DD);Password (Default: baujeng(kelas))\n1234567890;1001;Siswa A;Kelas 1;L;2017-05-20;baujeng1\n0987654321;1002;Siswa B;Kelas 1;P;2017-08-15;baujeng1";
         filename = "template_siswa.csv";
         break;
     }
 
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.setAttribute('download', filename);
+    link.setAttribute("download", filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1212,22 +1521,22 @@ function ImportMasterModal({ onClose, showToast }: { onClose: () => void, showTo
       showToast("Pilih file terlebih dahulu", "error");
       return;
     }
-    
+
     const reader = new FileReader();
     reader.onload = async (e) => {
       const text = e.target?.result;
-      if (typeof text === 'string') {
-        let type = '';
-        if (text.includes('Mata Pelajaran')) type = 'Guru';
-        else if (text.includes('Jabatan')) type = 'Tendik';
-        else if (text.includes('NISN')) type = 'Siswa';
-        
+      if (typeof text === "string") {
+        let type = "";
+        if (text.includes("Mata Pelajaran")) type = "Guru";
+        else if (text.includes("Jabatan")) type = "Tendik";
+        else if (text.includes("NISN")) type = "Siswa";
+
         if (type) {
           try {
-            const res = await fetch('/api/import-master', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ type, data: text })
+            const res = await fetch("/api/import-master", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ type, data: text }),
             });
             const result = await res.json();
             if (result.success) {
@@ -1252,10 +1561,15 @@ function ImportMasterModal({ onClose, showToast }: { onClose: () => void, showTo
       <ModalHeader title="Import Master Database" onClose={onClose} />
       <div className="p-6 overflow-y-auto">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {['Guru', 'Tendik', 'Siswa'].map((type) => (
-            <div key={type} className="border border-slate-200 dark:border-slate-700 p-4 rounded-xl text-center hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-              <h4 className="font-bold text-slate-800 dark:text-white mb-2">Data {type}</h4>
-              <button 
+          {["Guru", "Tendik", "Siswa"].map((type) => (
+            <div
+              key={type}
+              className="border border-slate-200 dark:border-slate-700 p-4 rounded-xl text-center hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+            >
+              <h4 className="font-bold text-slate-800 dark:text-white mb-2">
+                Data {type}
+              </h4>
+              <button
                 onClick={() => downloadTemplate(type)}
                 className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-3 py-1 rounded-full font-bold flex items-center justify-center gap-1 mx-auto hover:bg-blue-200 transition-colors"
               >
@@ -1264,32 +1578,41 @@ function ImportMasterModal({ onClose, showToast }: { onClose: () => void, showTo
             </div>
           ))}
         </div>
-        
-        <input 
-          type="file" 
-          accept=".csv,.xlsx" 
-          className="hidden" 
-          ref={fileInputRef} 
-          onChange={handleFileChange} 
+
+        <input
+          type="file"
+          accept=".csv,.xlsx"
+          className="hidden"
+          ref={fileInputRef}
+          onChange={handleFileChange}
         />
-        
-        <div 
+
+        <div
           onClick={() => fileInputRef.current?.click()}
           className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-12 text-center hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
         >
           <Upload className="w-12 h-12 mx-auto mb-4 text-slate-400" />
           {selectedFile ? (
-            <p className="text-green-600 dark:text-green-400 font-bold">{selectedFile.name}</p>
+            <p className="text-green-600 dark:text-green-400 font-bold">
+              {selectedFile.name}
+            </p>
           ) : (
             <>
-              <p className="text-slate-600 dark:text-slate-300 font-medium">Klik atau drag file CSV ke sini</p>
-              <p className="text-sm text-slate-400 mt-2">Format yang didukung: .csv, .xlsx</p>
+              <p className="text-slate-600 dark:text-slate-300 font-medium">
+                Klik atau drag file CSV ke sini
+              </p>
+              <p className="text-sm text-slate-400 mt-2">
+                Format yang didukung: .csv, .xlsx
+              </p>
             </>
           )}
         </div>
-        
+
         <div className="mt-6 flex justify-end">
-          <button onClick={handleUpload} className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors">
+          <button
+            onClick={handleUpload}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+          >
             Upload Database
           </button>
         </div>
@@ -1298,17 +1621,24 @@ function ImportMasterModal({ onClose, showToast }: { onClose: () => void, showTo
   );
 }
 
-function InputManualModal({ onClose, showToast }: { onClose: () => void, showToast: (msg: string, type?: 'success' | 'error') => void }) {
+function InputManualModal({
+  onClose,
+  showToast,
+}: {
+  onClose: () => void;
+  showToast: (msg: string, type?: "success" | "error") => void;
+}) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const downloadUniversalTemplate = () => {
-    const content = "Tanggal;NIP;Nama Guru;Mata Pelajaran;Kelas;Jam Ke;Kegiatan;Keterangan\n2024-10-14;198xxxx;Guru A;Matematika;Kelas 5;1;Membahas Bab 1;Siswa antusias\n2024-10-14;199xxxx;Guru B;Bahasa Indonesia;Kelas 3;2;Membaca Puisi;";
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const content =
+      "Tanggal;NIP;Nama Guru;Mata Pelajaran;Kelas;Jam Ke;Kegiatan;Keterangan\n2024-10-14;198xxxx;Guru A;Matematika;Kelas 5;1;Membahas Bab 1;Siswa antusias\n2024-10-14;199xxxx;Guru B;Bahasa Indonesia;Kelas 3;2;Membaca Puisi;";
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.setAttribute('download', "template_jurnal_universal.csv");
+    link.setAttribute("download", "template_jurnal_universal.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1326,17 +1656,17 @@ function InputManualModal({ onClose, showToast }: { onClose: () => void, showToa
       showToast("Pilih file terlebih dahulu", "error");
       return;
     }
-    
+
     const reader = new FileReader();
     reader.onload = async (e) => {
       const text = e.target?.result;
-      if (typeof text === 'string') {
-        if (text.includes('Tanggal') && text.includes('NIP')) {
+      if (typeof text === "string") {
+        if (text.includes("Tanggal") && text.includes("NIP")) {
           try {
-            const res = await fetch('/api/import-jurnal', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ data: text })
+            const res = await fetch("/api/import-jurnal", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ data: text }),
             });
             const result = await res.json();
             if (result.success) {
@@ -1349,7 +1679,10 @@ function InputManualModal({ onClose, showToast }: { onClose: () => void, showToa
             showToast("Terjadi kesalahan saat mengimport data", "error");
           }
         } else {
-          showToast("Format file tidak sesuai dengan template universal", "error");
+          showToast(
+            "Format file tidak sesuai dengan template universal",
+            "error",
+          );
         }
       }
     };
@@ -1366,10 +1699,12 @@ function InputManualModal({ onClose, showToast }: { onClose: () => void, showToa
           </h3>
           <ul className="list-disc list-inside text-sm text-blue-700 dark:text-blue-400 space-y-1 ml-1">
             <li>Satu baris = Satu kejadian.</li>
-            <li>Sistem otomatis menggabungkan baris dengan Jurnal yang sama.</li>
+            <li>
+              Sistem otomatis menggabungkan baris dengan Jurnal yang sama.
+            </li>
             <li>Format Tanggal: YYYY-MM-DD. Pemisah CSV: Titik Koma (;).</li>
           </ul>
-          <button 
+          <button
             onClick={downloadUniversalTemplate}
             className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2"
           >
@@ -1377,40 +1712,55 @@ function InputManualModal({ onClose, showToast }: { onClose: () => void, showToa
           </button>
         </div>
 
-        <input 
-          type="file" 
-          accept=".csv,.xlsx" 
-          className="hidden" 
-          ref={fileInputRef} 
-          onChange={handleFileChange} 
+        <input
+          type="file"
+          accept=".csv,.xlsx"
+          className="hidden"
+          ref={fileInputRef}
+          onChange={handleFileChange}
         />
 
-        <div 
+        <div
           onClick={() => fileInputRef.current?.click()}
           className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-12 text-center hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
         >
           <Upload className="w-12 h-12 mx-auto mb-4 text-slate-400" />
           {selectedFile ? (
-            <p className="text-green-600 dark:text-green-400 font-bold">{selectedFile.name}</p>
+            <p className="text-green-600 dark:text-green-400 font-bold">
+              {selectedFile.name}
+            </p>
           ) : (
             <>
-              <p className="text-slate-600 dark:text-slate-300 font-medium">Klik untuk Upload CSV</p>
-              <p className="text-sm text-slate-400 mt-2">Mendukung format .csv universal</p>
+              <p className="text-slate-600 dark:text-slate-300 font-medium">
+                Klik untuk Upload CSV
+              </p>
+              <p className="text-sm text-slate-400 mt-2">
+                Mendukung format .csv universal
+              </p>
             </>
           )}
         </div>
-        
+
         <div className="mt-6 flex justify-end">
-           <button onClick={handleUpload} className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-bold transition-colors flex items-center gap-2">
-             <Database className="w-4 h-4" /> Migrasi Data Jurnal
-           </button>
+          <button
+            onClick={handleUpload}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-bold transition-colors flex items-center gap-2"
+          >
+            <Database className="w-4 h-4" /> Migrasi Data Jurnal
+          </button>
         </div>
       </div>
     </>
   );
 }
 
-function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (msg: string, type?: 'success' | 'error') => void }) {
+function JadwalModal({
+  onClose,
+  showToast,
+}: {
+  onClose: () => void;
+  showToast: (msg: string, type?: "success" | "error") => void;
+}) {
   const [isAdding, setIsAdding] = useState(false);
   const [selectedClass, setSelectedClass] = useState("Kelas 1");
   const [selectedDay, setSelectedDay] = useState("Senin");
@@ -1422,7 +1772,7 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
   useEffect(() => {
     const fetchTeachers = async () => {
       try {
-        const res = await fetch('/api/guru');
+        const res = await fetch("/api/guru");
         const data = await res.json();
         if (data.success) setTeachers(data.data);
       } catch (error) {
@@ -1431,7 +1781,7 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
     };
     fetchTeachers();
   }, []);
-  
+
   // Form State
   const [formHari, setFormHari] = useState("Senin");
   const [formKelas, setFormKelas] = useState("Kelas 1");
@@ -1439,6 +1789,136 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
   const [formJam, setFormJam] = useState<number[]>([]);
   const [formMapel, setFormMapel] = useState("");
   const [formExtra, setFormExtra] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExportData = () => {
+
+    const header = "hari;kelas;guru;jam;mapel";
+
+    const rows = scheduleData.map(s => `${s.hari || ""};${s.kelas || ""};${s.guru || ""};${s.jam || ""};${s.mapel || ""}`);
+
+    const content = [header, ...rows].join("\n");
+
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+
+    link.href = url;
+
+    link.setAttribute("download", "data_jadwal_pelajaran.csv");
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    showToast("Data Jadwal berhasil diexport");
+
+  };
+  const handleExportTemplate = () => {
+    const csvContent =
+      "hari;kelas;guru;jam;mapel;peran\nSenin;Kelas 1;Nama Guru;1;Pendidikan Agama dan Budi Pekerti;Guru Mapel";
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "template_jadwal_pelajaran.csv");
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target?.result as string;
+        const lines = text.split(/\r?\n/).filter((line) => line.trim() !== "");
+
+        if (lines.length <= 1) {
+          showToast("File CSV kosong atau tidak valid", "error");
+          return;
+        }
+
+        const headers = lines[0].toLowerCase().split(";");
+        const expectedHeaders = [
+          "hari",
+          "kelas",
+          "guru",
+          "jam",
+          "mapel",
+          "peran",
+        ];
+        const isValid = expectedHeaders.every((h) => headers.includes(h));
+
+        if (!isValid) {
+          showToast(
+            "Format header CSV tidak valid. Gunakan template yang disediakan.",
+            "error",
+          );
+          return;
+        }
+
+        const dataRows = lines.slice(1);
+        let successCount = 0;
+        let failCount = 0;
+
+        showToast("Memproses impor data...", "success");
+
+        for (const row of dataRows) {
+          const values = row.split(";");
+          const payload = {
+            hari: values[headers.indexOf("hari")],
+            kelas: values[headers.indexOf("kelas")],
+            guru: values[headers.indexOf("guru")],
+            jam: parseInt(values[headers.indexOf("jam")] || "0"),
+            mapel: values[headers.indexOf("mapel")],
+            peran: values[headers.indexOf("peran")] || "Guru Mapel",
+          };
+
+          if (
+            !payload.hari ||
+            !payload.kelas ||
+            !payload.guru ||
+            !payload.jam ||
+            !payload.mapel
+          ) {
+            failCount++;
+            continue;
+          }
+
+          const res = await fetch("/api/jadwal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          if (res.ok) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        }
+
+        showToast(
+          `Impor selesai. Berhasil: ${successCount}, Gagal: ${failCount}`,
+          successCount > 0 ? "success" : "error",
+        );
+        fetchSchedule();
+      } catch (error) {
+        showToast("Terjadi kesalahan saat mengimpor", "error");
+      }
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const subjectsList = [
     "Pendidikan Agama dan Budi Pekerti",
@@ -1450,7 +1930,7 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
     "Seni dan Budaya",
     "BTQ",
     "Bahasa Jawa",
-    "PJOK"
+    "PJOK",
   ];
 
   const fetchSchedule = async () => {
@@ -1458,7 +1938,7 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
       let url = `/api/jadwal?hari=${selectedDay}`;
       if (selectedClass !== "(-)") url += `&kelas=${selectedClass}`;
       if (selectedGuru !== "Semua Guru") url += `&guru=${selectedGuru}`;
-      
+
       const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
@@ -1476,7 +1956,7 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
   const handleDelete = async (id: string) => {
     if (!confirm("Hapus jadwal ini?")) return;
     try {
-      const res = await fetch(`/api/jadwal/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/jadwal/${id}`, { method: "DELETE" });
       const result = await res.json();
       if (result.success) {
         showToast("Jadwal dihapus");
@@ -1495,7 +1975,7 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
     setFormKelas(item.kelas);
     setFormGuru(item.guru);
     setFormJam([item.jam]);
-    
+
     if (subjectsList.includes(item.mapel)) {
       setFormMapel(item.mapel);
       setFormExtra("");
@@ -1503,7 +1983,7 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
       setFormMapel("Ekstrakurikuler");
       setFormExtra(item.mapel);
     }
-    
+
     setIsAdding(true);
   };
 
@@ -1511,7 +1991,9 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
     setEditingId(null);
     setFormHari(selectedDay);
     setFormKelas(selectedClass !== "(-)" ? selectedClass : "Kelas 1");
-    setFormGuru(selectedGuru !== "Semua Guru" ? selectedGuru : (teachers[0]?.nama || ""));
+    setFormGuru(
+      selectedGuru !== "Semua Guru" ? selectedGuru : teachers[0]?.nama || "",
+    );
     setFormJam([jam]);
     setFormMapel(subjectsList[0]);
     setFormExtra("");
@@ -1524,7 +2006,7 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
       showToast("Pilih jam pelajaran terlebih dahulu", "error");
       return;
     }
-    
+
     const finalMapel = formMapel === "Ekstrakurikuler" ? formExtra : formMapel;
 
     try {
@@ -1535,15 +2017,15 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
           guru: formGuru,
           jam: formJam[0],
           mapel: finalMapel,
-          peran: 'Guru Mapel'
+          peran: "Guru Mapel",
         };
 
         const res = await fetch(`/api/jadwal/${editingId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         });
-        
+
         const result = await res.json();
         if (result.success) {
           showToast("Jadwal diupdate", "success");
@@ -1555,26 +2037,26 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
         }
       } else {
         // Create multiple entries
-        const promises = formJam.map(jam => {
+        const promises = formJam.map((jam) => {
           const payload = {
             hari: formHari,
             kelas: formKelas,
             guru: formGuru,
             jam: jam,
             mapel: finalMapel,
-            peran: 'Guru Mapel'
+            peran: "Guru Mapel",
           };
-          
-          return fetch('/api/jadwal', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          }).then(res => res.json());
+
+          return fetch("/api/jadwal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }).then((res) => res.json());
         });
 
         const results = await Promise.all(promises);
-        const failures = results.filter(r => !r.success);
-        
+        const failures = results.filter((r) => !r.success);
+
         if (failures.length === 0) {
           showToast(`Berhasil menyimpan ${formJam.length} jadwal`, "success");
           setIsAdding(false);
@@ -1595,28 +2077,65 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
       <div className="p-6 overflow-y-auto">
         {!isAdding ? (
           <>
-            <div className="flex justify-end mb-4">
-              <button onClick={() => { setEditingId(null); setIsAdding(true); }} className="bg-fuchsia-500 hover:bg-fuchsia-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 font-bold shadow-lg shadow-fuchsia-200 dark:shadow-none transition-all">
+            <div className="flex justify-end gap-2 mb-4">
+              <input
+                type="file"
+                accept=".csv"
+                ref={fileInputRef}
+                onChange={handleImport}
+                className="hidden"
+              />
+              <button
+                onClick={handleExportTemplate}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold shadow-sm transition-all text-sm"
+              >
+                <Download className="w-4 h-4" /> Template
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold shadow-sm transition-all text-sm"
+              >
+                <Upload className="w-4 h-4" /> Import CSV
+              </button>
+              <button
+                onClick={handleExportData}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold shadow-sm transition-all text-sm"
+              >
+                <Download className="w-4 h-4" /> Export Data
+              </button>
+              <button
+                onClick={() => {
+                  setEditingId(null);
+                  setIsAdding(true);
+                }}
+                className="bg-fuchsia-500 hover:bg-fuchsia-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 font-bold shadow-lg shadow-fuchsia-200 dark:shadow-none transition-all"
+              >
                 <Plus className="w-4 h-4" /> Setup Jadwal
               </button>
             </div>
             <div className="flex flex-wrap gap-4 mb-6 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
               <div className="flex-1 min-w-[150px]">
-                <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Nama Guru</label>
-                <select 
+                <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">
+                  Nama Guru
+                </label>
+                <select
                   value={selectedGuru}
                   onChange={(e) => setSelectedGuru(e.target.value)}
                   className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-fuchsia-500 outline-none"
                 >
                   <option value="Semua Guru">Semua Guru</option>
                   {teachers.map((t) => (
-                    <option key={t.nip} value={t.nama_guru}>{t.nama_guru}</option>
+                    <option key={t.nip} value={t.nama_guru}>
+                      {t.nama_guru}
+                    </option>
                   ))}
                 </select>
               </div>
               <div className="flex-1 min-w-[150px]">
-                <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Kelas</label>
-                <select 
+                <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">
+                  Kelas
+                </label>
+                <select
                   value={selectedClass}
                   onChange={(e) => setSelectedClass(e.target.value)}
                   className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-fuchsia-500 outline-none"
@@ -1631,8 +2150,10 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
                 </select>
               </div>
               <div className="flex-1 min-w-[150px]">
-                <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Hari</label>
-                <select 
+                <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">
+                  Hari
+                </label>
+                <select
                   value={selectedDay}
                   onChange={(e) => setSelectedDay(e.target.value)}
                   className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-fuchsia-500 outline-none"
@@ -1646,12 +2167,15 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
                 </select>
               </div>
               <div className="flex items-end">
-                <button onClick={fetchSchedule} className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 font-bold shadow-lg shadow-blue-200 dark:shadow-none transition-all">
+                <button
+                  onClick={fetchSchedule}
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 font-bold shadow-lg shadow-blue-200 dark:shadow-none transition-all"
+                >
                   Tampilkan
                 </button>
               </div>
             </div>
-            
+
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
               <table className="w-full text-sm text-left text-slate-600 dark:text-slate-300">
                 <thead className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 uppercase font-bold text-xs">
@@ -1665,71 +2189,128 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {selectedClass !== "(-)" || selectedGuru !== "Semua Guru" ? (
-                    [1, 2, 3, 4, 5, 6, 7, 8].map(jam => {
-                      const items = scheduleData.filter(s => s.jam === jam);
+                    [1, 2, 3, 4, 5, 6, 7, 8].map((jam) => {
+                      const items = scheduleData.filter((s) => Number(s.jam) === jam);
                       if (items.length === 0) {
                         return (
-                          <tr key={`empty-${jam}`} onClick={() => handleAddForJam(jam)} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer group">
-                            <td className="px-6 py-4 font-bold text-slate-400">#{jam}</td>
-                            <td className="px-6 py-4 font-medium text-slate-400 dark:text-slate-500 italic">-</td>
-                            <td className="px-6 py-4 text-slate-400 dark:text-slate-500 italic">-</td>
+                          <tr
+                            key={`empty-${jam}`}
+                            onClick={() => handleAddForJam(jam)}
+                            className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer group"
+                          >
+                            <td className="px-6 py-4 font-bold text-slate-400">
+                              #{jam}
+                            </td>
+                            <td className="px-6 py-4 font-medium text-slate-400 dark:text-slate-500 italic">
+                              -
+                            </td>
+                            <td className="px-6 py-4 text-slate-400 dark:text-slate-500 italic">
+                              -
+                            </td>
                             <td className="px-6 py-4"></td>
                             <td className="px-6 py-4 text-right">
                               <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <span className="text-xs text-fuchsia-500 font-medium px-2 py-1 bg-fuchsia-50 dark:bg-fuchsia-900/20 rounded">Klik untuk tambah</span>
+                                <span className="text-xs text-fuchsia-500 font-medium px-2 py-1 bg-fuchsia-50 dark:bg-fuchsia-900/20 rounded">
+                                  Klik untuk tambah
+                                </span>
                               </div>
                             </td>
                           </tr>
                         );
                       }
                       return items.map((item, idx) => (
-                        <tr key={item.id || `${jam}-${idx}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                          <td className="px-6 py-4 font-bold text-slate-400">#{item.jam}</td>
+                        <tr
+                          key={item.id || `${jam}-${idx}`}
+                          className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                        >
+                          <td className="px-6 py-4 font-bold text-slate-400">
+                            #{item.jam}
+                          </td>
                           <td className="px-6 py-4 font-medium text-slate-800 dark:text-white">
                             {item.mapel}
-                            {selectedClass === "(-)" && <span className="ml-2 text-xs bg-slate-200 dark:bg-slate-600 px-2 py-1 rounded">{item.kelas}</span>}
+                            {selectedClass === "(-)" && (
+                              <span className="ml-2 text-xs bg-slate-200 dark:bg-slate-600 px-2 py-1 rounded">
+                                {item.kelas}
+                              </span>
+                            )}
                           </td>
                           <td className="px-6 py-4">{item.guru}</td>
                           <td className="px-6 py-4">
-                            <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs px-2 py-1 rounded-full font-bold">{item.peran}</span>
+                            <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs px-2 py-1 rounded-full font-bold">
+                              {item.peran}
+                            </span>
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex justify-end gap-2">
-                              <button onClick={() => handleEdit(item)} className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
-                              <button onClick={() => handleDelete(item.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                              <button
+                                onClick={() => handleEdit(item)}
+                                className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(item.id)}
+                                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </div>
                           </td>
                         </tr>
                       ));
                     })
-                  ) : (
-                    scheduleData.length > 0 ? (
-                      scheduleData.sort((a, b) => a.jam - b.jam).map((item, idx) => (
-                        <tr key={item.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                          <td className="px-6 py-4 font-bold text-slate-400">#{item.jam}</td>
+                  ) : scheduleData.length > 0 ? (
+                    scheduleData
+                      .sort((a, b) => a.jam - b.jam)
+                      .map((item, idx) => (
+                        <tr
+                          key={item.id || idx}
+                          className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                        >
+                          <td className="px-6 py-4 font-bold text-slate-400">
+                            #{item.jam}
+                          </td>
                           <td className="px-6 py-4 font-medium text-slate-800 dark:text-white">
                             {item.mapel}
-                            {selectedClass === "(-)" && <span className="ml-2 text-xs bg-slate-200 dark:bg-slate-600 px-2 py-1 rounded">{item.kelas}</span>}
+                            {selectedClass === "(-)" && (
+                              <span className="ml-2 text-xs bg-slate-200 dark:bg-slate-600 px-2 py-1 rounded">
+                                {item.kelas}
+                              </span>
+                            )}
                           </td>
                           <td className="px-6 py-4">{item.guru}</td>
                           <td className="px-6 py-4">
-                            <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs px-2 py-1 rounded-full font-bold">{item.peran}</span>
+                            <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs px-2 py-1 rounded-full font-bold">
+                              {item.peran}
+                            </span>
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex justify-end gap-2">
-                              <button onClick={() => handleEdit(item)} className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
-                              <button onClick={() => handleDelete(item.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                              <button
+                                onClick={() => handleEdit(item)}
+                                className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(item.id)}
+                                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </div>
                           </td>
                         </tr>
                       ))
-                    ) : (
-                      <tr>
-                        <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
-                          Tidak ada jadwal ditemukan.
-                        </td>
-                      </tr>
-                    )
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="px-6 py-8 text-center text-slate-500"
+                      >
+                        Tidak ada jadwal ditemukan.
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>
@@ -1737,134 +2318,165 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
           </>
         ) : (
           <form onSubmit={handleSave} className="space-y-6">
-             <div className="bg-fuchsia-50 dark:bg-fuchsia-900/10 p-6 rounded-xl border border-fuchsia-100 dark:border-fuchsia-800/30">
-               <h3 className="font-bold text-fuchsia-800 dark:text-fuchsia-300 mb-4 flex items-center gap-2">
-                 <Calendar className="w-5 h-5" /> Konfigurasi Jadwal
-               </h3>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Hari</label>
-                    <select 
-                      value={formHari}
-                      onChange={(e) => setFormHari(e.target.value)}
-                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-fuchsia-500 outline-none"
-                    >
-                      <option>Senin</option>
-                      <option>Selasa</option>
-                      <option>Rabu</option>
-                      <option>Kamis</option>
-                      <option>Jumat</option>
-                      <option>Sabtu</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Kelas</label>
-                    <select 
-                      value={formKelas}
-                      onChange={(e) => setFormKelas(e.target.value)}
-                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-fuchsia-500 outline-none"
-                    >
-                      <option value="(-)">(-)</option>
-                      <option value="Kelas 1">Kelas 1</option>
-                      <option value="Kelas 2">Kelas 2</option>
-                      <option value="Kelas 3">Kelas 3</option>
-                      <option value="Kelas 4">Kelas 4</option>
-                      <option value="Kelas 5">Kelas 5</option>
-                      <option value="Kelas 6">Kelas 6</option>
-                    </select>
-                  </div>
-               </div>
-             </div>
-
-             <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Nama Guru</label>
-                <select 
-                  value={formGuru}
-                  onChange={(e) => setFormGuru(e.target.value)}
-                  className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-fuchsia-500 outline-none"
-                >
-                  <option value="">-- Pilih Guru --</option>
-                  {teachers.map((t) => (
-                    <option key={t.nip} value={t.nama_guru}>{t.nama_guru}</option>
-                  ))}
-                </select>
-             </div>
-             
-             <div>
-               <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Pilih Jam Pelajaran</label>
-               <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
-                 {[1, 2, 3, 4, 5, 6, 7, 8].map(j => (
-                   <button 
-                     key={j} 
-                     type="button" 
-                     onClick={() => {
-                       setFormJam(prev => {
-                         if (prev.includes(j)) return prev.filter(h => h !== j);
-                         return [...prev, j];
-                       });
-                     }}
-                     className={`border p-3 rounded-xl transition-all font-bold ${
-                       formJam.includes(j)
-                         ? 'bg-fuchsia-500 text-white border-fuchsia-600' 
-                         : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-900/20'
-                     }`}
-                   >
-                     Jam {j}
-                   </button>
-                 ))}
-               </div>
-             </div>
-
-             <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Mata Pelajaran</label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border border-slate-300 dark:border-slate-600 rounded-xl p-4 bg-slate-50 dark:bg-slate-700/50">
-                  {subjectsList.map((subject) => (
-                    <label key={subject} className="flex items-center space-x-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 p-2 rounded-lg transition-colors">
-                      <input 
-                        type="radio" 
-                        name="mapel"
-                        value={subject}
-                        checked={formMapel === subject}
-                        onChange={(e) => setFormMapel(e.target.value)}
-                        className="w-5 h-5 text-fuchsia-600 focus:ring-fuchsia-500 border-slate-300" 
-                      />
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{subject}</span>
-                    </label>
-                  ))}
-                  <label className="flex items-center space-x-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 p-2 rounded-lg transition-colors">
-                    <input 
-                      type="radio" 
-                      name="mapel"
-                      value="Ekstrakurikuler"
-                      checked={formMapel === "Ekstrakurikuler"}
-                      onChange={(e) => setFormMapel(e.target.value)}
-                      className="w-5 h-5 text-fuchsia-600 focus:ring-fuchsia-500 border-slate-300" 
-                    />
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Ekstrakurikuler</span>
+            <div className="bg-fuchsia-50 dark:bg-fuchsia-900/10 p-6 rounded-xl border border-fuchsia-100 dark:border-fuchsia-800/30">
+              <h3 className="font-bold text-fuchsia-800 dark:text-fuchsia-300 mb-4 flex items-center gap-2">
+                <Calendar className="w-5 h-5" /> Konfigurasi Jadwal
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
+                    Hari
                   </label>
+                  <select
+                    value={formHari}
+                    onChange={(e) => setFormHari(e.target.value)}
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-fuchsia-500 outline-none"
+                  >
+                    <option>Senin</option>
+                    <option>Selasa</option>
+                    <option>Rabu</option>
+                    <option>Kamis</option>
+                    <option>Jumat</option>
+                    <option>Sabtu</option>
+                  </select>
                 </div>
-                
-                {formMapel === "Ekstrakurikuler" && (
-                  <div className="mt-4 pl-4 border-l-4 border-fuchsia-500">
-                    <label className="block text-xs font-bold text-fuchsia-600 dark:text-fuchsia-400 mb-1 uppercase">Nama Ekstrakurikuler</label>
-                    <input 
-                      type="text" 
-                      value={formExtra}
-                      onChange={(e) => setFormExtra(e.target.value)}
-                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-fuchsia-500 outline-none" 
-                      placeholder="Contoh: Pramuka, Tari, Futsal" 
-                      required
-                    />
-                  </div>
-                )}
-             </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
+                    Kelas
+                  </label>
+                  <select
+                    value={formKelas}
+                    onChange={(e) => setFormKelas(e.target.value)}
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-fuchsia-500 outline-none"
+                  >
+                    <option value="(-)">(-)</option>
+                    <option value="Kelas 1">Kelas 1</option>
+                    <option value="Kelas 2">Kelas 2</option>
+                    <option value="Kelas 3">Kelas 3</option>
+                    <option value="Kelas 4">Kelas 4</option>
+                    <option value="Kelas 5">Kelas 5</option>
+                    <option value="Kelas 6">Kelas 6</option>
+                  </select>
+                </div>
+              </div>
+            </div>
 
-             <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 dark:border-slate-700">
-               <button type="button" onClick={() => setIsAdding(false)} className="px-6 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium transition-colors">Batal</button>
-               <button type="submit" className="bg-fuchsia-500 hover:bg-fuchsia-600 text-white px-8 py-2 rounded-xl font-bold shadow-lg shadow-fuchsia-200 dark:shadow-none transition-all flex items-center gap-2">
-                 <Save className="w-4 h-4" /> Simpan Jadwal
-               </button>
-             </div>
+            <div>
+              <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
+                Nama Guru
+              </label>
+              <select
+                value={formGuru}
+                onChange={(e) => setFormGuru(e.target.value)}
+                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-fuchsia-500 outline-none"
+              >
+                <option value="">-- Pilih Guru --</option>
+                {teachers.map((t) => (
+                  <option key={t.nip} value={t.nama_guru}>
+                    {t.nama_guru}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
+                Pilih Jam Pelajaran
+              </label>
+              <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((j) => (
+                  <button
+                    key={j}
+                    type="button"
+                    onClick={() => {
+                      setFormJam((prev) => {
+                        if (prev.includes(j))
+                          return prev.filter((h) => h !== j);
+                        return [...prev, j];
+                      });
+                    }}
+                    className={`border p-3 rounded-xl transition-all font-bold ${
+                      formJam.includes(j)
+                        ? "bg-fuchsia-500 text-white border-fuchsia-600"
+                        : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-900/20"
+                    }`}
+                  >
+                    Jam {j}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
+                Mata Pelajaran
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border border-slate-300 dark:border-slate-600 rounded-xl p-4 bg-slate-50 dark:bg-slate-700/50">
+                {subjectsList.map((subject) => (
+                  <label
+                    key={subject}
+                    className="flex items-center space-x-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 p-2 rounded-lg transition-colors"
+                  >
+                    <input
+                      type="radio"
+                      name="mapel"
+                      value={subject}
+                      checked={formMapel === subject}
+                      onChange={(e) => setFormMapel(e.target.value)}
+                      className="w-5 h-5 text-fuchsia-600 focus:ring-fuchsia-500 border-slate-300"
+                    />
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                      {subject}
+                    </span>
+                  </label>
+                ))}
+                <label className="flex items-center space-x-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 p-2 rounded-lg transition-colors">
+                  <input
+                    type="radio"
+                    name="mapel"
+                    value="Ekstrakurikuler"
+                    checked={formMapel === "Ekstrakurikuler"}
+                    onChange={(e) => setFormMapel(e.target.value)}
+                    className="w-5 h-5 text-fuchsia-600 focus:ring-fuchsia-500 border-slate-300"
+                  />
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                    Ekstrakurikuler
+                  </span>
+                </label>
+              </div>
+
+              {formMapel === "Ekstrakurikuler" && (
+                <div className="mt-4 pl-4 border-l-4 border-fuchsia-500">
+                  <label className="block text-xs font-bold text-fuchsia-600 dark:text-fuchsia-400 mb-1 uppercase">
+                    Nama Ekstrakurikuler
+                  </label>
+                  <input
+                    type="text"
+                    value={formExtra}
+                    onChange={(e) => setFormExtra(e.target.value)}
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-fuchsia-500 outline-none"
+                    placeholder="Contoh: Pramuka, Tari, Futsal"
+                    required
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setIsAdding(false)}
+                className="px-6 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                className="bg-fuchsia-500 hover:bg-fuchsia-600 text-white px-8 py-2 rounded-xl font-bold shadow-lg shadow-fuchsia-200 dark:shadow-none transition-all flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" /> Simpan Jadwal
+              </button>
+            </div>
           </form>
         )}
       </div>
@@ -1872,22 +2484,134 @@ function JadwalModal({ onClose, showToast }: { onClose: () => void, showToast: (
   );
 }
 
-function UserManagementModal({ onClose, showToast }: { onClose: () => void, showToast: (msg: string, type?: 'success' | 'error') => void }) {
+function UserManagementModal({
+  onClose,
+  showToast,
+}: {
+  onClose: () => void;
+  showToast: (msg: string, type?: "success" | "error") => void;
+}) {
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editId, setEditId] = useState('');
-  const [roles, setRoles] = useState<string[]>(['Guru']);
-  const [password, setPassword] = useState('baujeng@1');
-  const [nip, setNip] = useState('');
-  const [nama, setNama] = useState('');
-  const [jabatan, setJabatan] = useState('');
-  const [waliKelas, setWaliKelas] = useState('');
+  const [editId, setEditId] = useState("");
+  const [roles, setRoles] = useState<string[]>(["Guru"]);
+  const [password, setPassword] = useState("baujeng@1");
+  const [nip, setNip] = useState("");
+  const [nama, setNama] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [jabatan, setJabatan] = useState("");
+  const [waliKelas, setWaliKelas] = useState("");
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
+  const handleExportTemplate = () => {
+
+    const content = "NIP;Nama Lengkap;Mata Pelajaran (Pisahkan dengan koma jika > 1);Wali Kelas (Opsional);Password\n198xxxx;Guru A;Matematika,IPA;Kelas 5;baujeng@1";
+
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+
+    link.href = url;
+
+    link.setAttribute("download", "template_guru.csv");
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    showToast("Template Guru berhasil didownload");
+
+  };
+
+  const handleExportData = () => {
+
+    const header = "NIP;Nama Lengkap;Role";
+
+    const rows = users.map(u => `${u.nip || ""};${u.nama || ""};${u.role || ""}`);
+
+    const content = [header, ...rows].join("\n");
+
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+
+    link.href = url;
+
+    link.setAttribute("download", "data_users.csv");
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    showToast("Data User berhasil diexport");
+
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+    if (e.target.files && e.target.files.length > 0) {
+
+      const reader = new FileReader();
+
+      reader.onload = async (ev) => {
+
+        const text = ev.target?.result;
+
+        if (typeof text === "string") {
+
+          try {
+
+            const res = await fetch("/api/import-master", {
+
+              method: "POST",
+
+              headers: { "Content-Type": "application/json" },
+
+              body: JSON.stringify({ type: "Guru", data: text }),
+
+            });
+
+            const result = await res.json();
+
+            if (result.success) {
+
+              showToast(result.message, "success");
+
+              fetchUsers();
+
+            } else {
+
+              showToast(result.message, "error");
+
+            }
+
+          } catch (err) {
+
+            showToast("Terjadi kesalahan saat mengimport data", "error");
+
+          }
+
+        }
+
+      };
+
+      reader.readAsText(e.target.files[0]);
+
+    }
+
+  };
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/users');
+      const res = await fetch("/api/users");
       const data = await res.json();
       if (data.success) setUsers(data.data);
     } catch (error) {
@@ -1902,7 +2626,7 @@ function UserManagementModal({ onClose, showToast }: { onClose: () => void, show
   const handleDeleteUser = async (id: string) => {
     if (!confirm("Hapus user ini?")) return;
     try {
-      const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
       const result = await res.json();
       if (result.success) {
         showToast("User dihapus");
@@ -1919,17 +2643,17 @@ function UserManagementModal({ onClose, showToast }: { onClose: () => void, show
     setEditId(user.id);
     setNip(user.nip);
     setNama(user.nama);
-    setRoles(user.roles || user.role.split(', '));
-    setPassword(''); // Leave empty to not change
-    setJabatan(user.jabatan || '');
-    setWaliKelas(user.wali_kelas || '');
+    setRoles(user.roles || user.role.split(", "));
+    setPassword(""); // Leave empty to not change
+    setJabatan(user.jabatan || "");
+    setWaliKelas(user.wali_kelas || "");
     setIsEditing(true);
     setIsAdding(true);
   };
 
   const handleRoleChange = (role: string) => {
-    setRoles(prev => 
-      prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]
+    setRoles((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
     );
   };
 
@@ -1941,25 +2665,41 @@ function UserManagementModal({ onClose, showToast }: { onClose: () => void, show
     }
     setLoading(true);
     try {
-      const url = isEditing ? `/api/users/${editId}` : '/api/users';
-      const method = isEditing ? 'PUT' : 'POST';
+      const url = isEditing ? `/api/users/${editId}` : "/api/users";
+      const method = isEditing ? "PUT" : "POST";
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nip, nama, roles, password, jabatan, wali_kelas: waliKelas })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nip,
+          nama,
+          roles,
+          password,
+          jabatan,
+          wali_kelas: waliKelas,
+        }),
       });
       const result = await res.json();
       if (result.success) {
-        showToast(`User berhasil ${isEditing ? 'diupdate' : 'ditambahkan'}`);
+        showToast(`User berhasil ${isEditing ? "diupdate" : "ditambahkan"}`);
         setIsAdding(false);
         setIsEditing(false);
-        setNip(''); setNama(''); setRoles(['Guru']); setPassword('baujeng@1'); setJabatan(''); setWaliKelas('');
+        setNip("");
+        setNama("");
+        setRoles(["Guru"]);
+        setPassword("baujeng@1");
+        setJabatan("");
+        setWaliKelas("");
         fetchUsers();
       } else {
-        showToast(`Gagal ${isEditing ? 'mengupdate' : 'menambahkan'} user: ` + result.message, 'error');
+        showToast(
+          `Gagal ${isEditing ? "mengupdate" : "menambahkan"} user: ` +
+            result.message,
+          "error",
+        );
       }
     } catch (error) {
-      showToast("Terjadi kesalahan jaringan", 'error');
+      showToast("Terjadi kesalahan jaringan", "error");
     } finally {
       setLoading(false);
     }
@@ -1971,15 +2711,33 @@ function UserManagementModal({ onClose, showToast }: { onClose: () => void, show
       <div className="p-6 overflow-y-auto">
         {!isAdding ? (
           <>
-            <div className="flex justify-between mb-4">
-              <input type="text" placeholder="Cari user..." className="border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white" />
-              <button onClick={() => {
-                setIsAdding(true);
-                setIsEditing(false);
-                setNip(''); setNama(''); setRoles(['Guru']); setPassword('baujeng@1'); setJabatan(''); setWaliKelas('');
-              }} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
-                <Plus className="w-4 h-4" /> Tambah User
-              </button>
+            <div className="flex flex-wrap gap-2 justify-between mb-4">
+              <input
+                type="text"
+                placeholder="Cari user..."
+                className="flex-1 min-w-[200px] border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white"
+              />
+              <div className="flex gap-2">
+                <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleImport} />
+                <button onClick={handleExportTemplate} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-sm transition-all"><Download className="w-4 h-4" /> Template</button>
+                <button onClick={() => fileInputRef.current?.click()} className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-sm transition-all"><Upload className="w-4 h-4" /> Import</button>
+                <button onClick={handleExportData} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-sm transition-all"><Download className="w-4 h-4" /> Export</button>
+                <button
+                  onClick={() => {
+                    setIsAdding(true);
+                    setIsEditing(false);
+                    setNip("");
+                    setNama("");
+                    setRoles(["Guru"]);
+                    setPassword("baujeng@1");
+                    setJabatan("");
+                    setWaliKelas("");
+                  }}
+                  className="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold shadow-sm transition-all"
+                >
+                  <Plus className="w-4 h-4" /> Tambah User
+                </button>
+              </div>
             </div>
             <table className="w-full text-sm text-left text-slate-600 dark:text-slate-300">
               <thead className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 uppercase font-bold">
@@ -1993,28 +2751,53 @@ function UserManagementModal({ onClose, showToast }: { onClose: () => void, show
               </thead>
               <tbody>
                 {users.map((user) => (
-                  <tr key={user.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-slate-800 dark:text-white">{user.nama}</td>
-                    <td className="px-4 py-3">{user.nip || '-'}</td>
+                  <tr
+                    key={user.id}
+                    className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                  >
+                    <td className="px-4 py-3 font-medium text-slate-800 dark:text-white">
+                      {user.nama}
+                    </td>
+                    <td className="px-4 py-3">{user.nip || "-"}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
-                        {(user.roles || user.role.split(', ')).map((r: string) => (
-                          <span key={r} className={`px-2 py-1 rounded-full text-xs font-bold ${r === 'Guru' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : r === 'Admin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
-                            {r}
-                          </span>
-                        ))}
+                        {(user.roles || user.role.split(", ")).map(
+                          (r: string) => (
+                            <span
+                              key={r}
+                              className={`px-2 py-1 rounded-full text-xs font-bold ${r === "Guru" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" : r === "Admin" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"}`}
+                            >
+                              {r}
+                            </span>
+                          ),
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-slate-400">••••••</td>
                     <td className="px-4 py-3 text-right">
-                      <button onClick={() => handleEditClick(user)} className="text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2 rounded-lg transition-colors mr-1"><Edit className="w-4 h-4" /></button>
-                      <button onClick={() => handleDeleteUser(user.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      <button
+                        onClick={() => handleEditClick(user)}
+                        className="text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2 rounded-lg transition-colors mr-1"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(user.id)}
+                        className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}
                 {users.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500">Belum ada data user</td>
+                    <td
+                      colSpan={5}
+                      className="px-4 py-8 text-center text-slate-500"
+                    >
+                      Belum ada data user
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -2028,36 +2811,46 @@ function UserManagementModal({ onClose, showToast }: { onClose: () => void, show
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium mb-1">NIP (User ID)</label>
-                  <input 
-                    type="text" 
-                    className="w-full border rounded px-3 py-2 text-sm" 
-                    placeholder="199xxx" 
+                  <label className="block text-xs font-medium mb-1">
+                    NIP (User ID)
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full border rounded px-3 py-2 text-sm"
+                    placeholder="199xxx"
                     value={nip}
                     onChange={(e) => setNip(e.target.value)}
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1">Password</label>
-                  <input 
-                    type="text" 
-                    className="w-full border rounded px-3 py-2 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white" 
-                    value={password} 
+                  <label className="block text-xs font-medium mb-1">
+                    Password
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full border rounded px-3 py-2 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                    value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={isEditing ? "Kosongkan jika tidak diubah" : ""}
                   />
-                  {!isEditing && <p className="text-[10px] text-slate-500 mt-1">Default: baujeng@1</p>}
+                  {!isEditing && (
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Default: baujeng@1
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Nama Lengkap</label>
-              <input 
-                type="text" 
-                className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600" 
-                placeholder="Nama Lengkap..." 
+              <label className="block text-sm font-medium mb-1">
+                Nama Lengkap
+              </label>
+              <input
+                type="text"
+                className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600"
+                placeholder="Nama Lengkap..."
                 value={nama}
                 onChange={(e) => setNama(e.target.value)}
                 required
@@ -2065,12 +2858,17 @@ function UserManagementModal({ onClose, showToast }: { onClose: () => void, show
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Role (Bisa pilih lebih dari satu)</label>
+              <label className="block text-sm font-medium mb-2">
+                Role (Bisa pilih lebih dari satu)
+              </label>
               <div className="flex gap-4">
-                {['Guru', 'Tendik', 'Admin'].map(r => (
-                  <label key={r} className="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="checkbox" 
+                {["Guru", "Tendik", "Admin"].map((r) => (
+                  <label
+                    key={r}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
                       className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500"
                       checked={roles.includes(r)}
                       onChange={() => handleRoleChange(r)}
@@ -2081,24 +2879,28 @@ function UserManagementModal({ onClose, showToast }: { onClose: () => void, show
               </div>
             </div>
 
-            {roles.includes('Tendik') && (
+            {roles.includes("Tendik") && (
               <div>
-                <label className="block text-sm font-medium mb-1">Jabatan</label>
-                <input 
-                  type="text" 
-                  className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600" 
-                  placeholder="Contoh: Tata Usaha, Pustakawan" 
+                <label className="block text-sm font-medium mb-1">
+                  Jabatan
+                </label>
+                <input
+                  type="text"
+                  className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600"
+                  placeholder="Contoh: Tata Usaha, Pustakawan"
                   value={jabatan}
                   onChange={(e) => setJabatan(e.target.value)}
                 />
               </div>
             )}
 
-            {roles.includes('Guru') && (
+            {roles.includes("Guru") && (
               <>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Wali Kelas</label>
-                  <select 
+                  <label className="block text-sm font-medium mb-1">
+                    Wali Kelas
+                  </label>
+                  <select
                     className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600"
                     value={waliKelas}
                     onChange={(e) => setWaliKelas(e.target.value)}
@@ -2117,11 +2919,29 @@ function UserManagementModal({ onClose, showToast }: { onClose: () => void, show
             )}
 
             <div className="flex justify-end gap-2 pt-4">
-               <button type="button" onClick={() => { setIsAdding(false); setIsEditing(false); }} className="px-4 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">Batal</button>
-               <button type="submit" disabled={loading} className="bg-emerald-500 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2 disabled:opacity-50">
-                 <Save className="w-4 h-4" /> {loading ? 'Menyimpan...' : (isEditing ? 'Update User' : 'Tambah User')}
-               </button>
-             </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAdding(false);
+                  setIsEditing(false);
+                }}
+                className="px-4 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-emerald-500 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2 disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />{" "}
+                {loading
+                  ? "Menyimpan..."
+                  : isEditing
+                    ? "Update User"
+                    : "Tambah User"}
+              </button>
+            </div>
           </form>
         )}
       </div>
@@ -2129,26 +2949,141 @@ function UserManagementModal({ onClose, showToast }: { onClose: () => void, show
   );
 }
 
-function DataMuridModal({ onClose, showToast }: { onClose: () => void, showToast: (msg: string, type?: 'success' | 'error') => void }) {
-  const [tab, setTab] = useState('data'); // 'data', 'mutasi'
-  const [viewState, setViewState] = useState<'list' | 'add' | 'edit' | 'mutasi_masuk' | 'mutasi_keluar'>('list');
+function DataMuridModal({
+  onClose,
+  showToast,
+}: {
+  onClose: () => void;
+  showToast: (msg: string, type?: "success" | "error") => void;
+}) {
+  const [tab, setTab] = useState("data"); // 'data', 'mutasi'
+  const [viewState, setViewState] = useState<
+    "list" | "add" | "edit" | "mutasi_masuk" | "mutasi_keluar"
+  >("list");
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [muridList, setMuridList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExportTemplate = () => {
+
+    const content = "NISN;NIS;Nama Lengkap;Kelas;Jenis Kelamin (L/P);Tanggal Lahir (YYYY-MM-DD);Password (Default: baujeng(kelas))\n1234567890;1001;Siswa A;Kelas 1;L;2017-05-20;baujeng1\n0987654321;1002;Siswa B;Kelas 1;P;2017-08-15;baujeng1";
+
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+
+    link.href = url;
+
+    link.setAttribute("download", "template_siswa.csv");
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    showToast("Template Siswa berhasil didownload");
+
+  };
+
+  const handleExportData = () => {
+
+    const header = "NISN;NIS;Nama Lengkap;Kelas;Jenis Kelamin (L/P);Tanggal Lahir (YYYY-MM-DD)";
+
+    const rows = muridList.map(m => `${m.NISN || ""};${m.NIS || ""};${m["Nama Lengkap"] || ""};${m.Kelas || ""};${m["Jenis Kelamin (L/P)"] || ""};${m["Tanggal Lahir (YYYY-MM-DD)"] || ""}`);
+
+    const content = [header, ...rows].join("\n");
+
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+
+    link.href = url;
+
+    link.setAttribute("download", "data_siswa.csv");
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    showToast("Data Siswa berhasil diexport");
+
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+    if (e.target.files && e.target.files.length > 0) {
+
+      const reader = new FileReader();
+
+      reader.onload = async (ev) => {
+
+        const text = ev.target?.result;
+
+        if (typeof text === "string") {
+
+          try {
+
+            const res = await fetch("/api/import-master", {
+
+              method: "POST",
+
+              headers: { "Content-Type": "application/json" },
+
+              body: JSON.stringify({ type: "Siswa", data: text }),
+
+            });
+
+            const result = await res.json();
+
+            if (result.success) {
+
+              showToast(result.message, "success");
+
+              fetchMurid();
+
+            } else {
+
+              showToast(result.message, "error");
+
+            }
+
+          } catch (err) {
+
+            showToast("Terjadi kesalahan saat mengimport data", "error");
+
+          }
+
+        }
+
+      };
+
+      reader.readAsText(e.target.files[0]);
+
+    }
+
+  };
 
   const fetchMurid = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/murid');
+      const res = await fetch("/api/murid");
       const data = await res.json();
       if (data.success) {
         setMuridList(data.data);
       } else {
-        showToast(data.message || 'Gagal mengambil data murid', 'error');
+        showToast(data.message || "Gagal mengambil data murid", "error");
       }
     } catch (error) {
-      showToast('Terjadi kesalahan jaringan', 'error');
+      showToast("Terjadi kesalahan jaringan", "error");
     } finally {
       setLoading(false);
     }
@@ -2162,150 +3097,194 @@ function DataMuridModal({ onClose, showToast }: { onClose: () => void, showToast
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     const data = {
-      NISN: formData.get('nisn'),
-      NamaLengkap: formData.get('nama'),
-      Kelas: formData.get('kelas'),
-      Password: formData.get('password'),
-      TanggalLahir: formData.get('tanggalLahir'),
-      JenisKelamin: formData.get('jenisKelamin'),
-      NIS: formData.get('nis')
+      NISN: formData.get("nisn"),
+      NamaLengkap: formData.get("nama"),
+      Kelas: formData.get("kelas"),
+      Password: formData.get("password"),
+      TanggalLahir: formData.get("tanggalLahir"),
+      JenisKelamin: formData.get("jenisKelamin"),
+      NIS: formData.get("nis"),
     };
 
     try {
       let res;
-      if (viewState === 'add') {
-        res = await fetch('/api/murid', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
+      if (viewState === "add") {
+        res = await fetch("/api/murid", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
         });
-      } else if (viewState === 'edit') {
+      } else if (viewState === "edit") {
         res = await fetch(`/api/murid/${selectedStudent.NISN}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
         });
       }
 
       if (res) {
         const result = await res.json();
         if (result.success) {
-          showToast(result.message, 'success');
-          setViewState('list');
+          showToast(result.message, "success");
+          setViewState("list");
           fetchMurid();
         } else {
-          showToast(result.message || 'Gagal menyimpan data', 'error');
+          showToast(result.message || "Gagal menyimpan data", "error");
         }
       }
     } catch (error) {
-      showToast('Terjadi kesalahan jaringan', 'error');
+      showToast("Terjadi kesalahan jaringan", "error");
     }
   };
 
   const handleDelete = async (nisn: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus data murid ini?')) return;
-    
+    if (!confirm("Apakah Anda yakin ingin menghapus data murid ini?")) return;
+
     try {
-      const res = await fetch(`/api/murid/${nisn}`, { method: 'DELETE' });
+      const res = await fetch(`/api/murid/${nisn}`, { method: "DELETE" });
       const result = await res.json();
       if (result.success) {
-        showToast(result.message, 'success');
+        showToast(result.message, "success");
         fetchMurid();
       } else {
-        showToast(result.message || 'Gagal menghapus data', 'error');
+        showToast(result.message || "Gagal menghapus data", "error");
       }
     } catch (error) {
-      showToast('Terjadi kesalahan jaringan', 'error');
+      showToast("Terjadi kesalahan jaringan", "error");
     }
   };
 
-  const filteredMurid = muridList.filter(m => 
-    (m['Nama Lengkap'] || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (m.NISN || '').includes(searchQuery) ||
-    (m.Kelas || '').toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredMurid = muridList.filter(
+    (m) =>
+      (m["Nama Lengkap"] || "")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
+      (m.NISN || "").includes(searchQuery) ||
+      (m.Kelas || "").toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const renderDataSiswa = () => {
-    if (viewState === 'list') {
+    if (viewState === "list") {
       return (
         <div className="space-y-4">
-           <div className="flex gap-4">
-              <input 
-                type="text" 
-                placeholder="Cari siswa (Nama, NISN, Kelas)..." 
-                className="flex-1 border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <button onClick={() => { setSelectedStudent(null); setViewState('add'); }} className="bg-sky-500 text-white px-4 py-2 rounded-lg flex items-center gap-2">
-                <Plus className="w-4 h-4" /> Tambah
-              </button>
-           </div>
-           
-           {loading ? (
-             <div className="text-center py-8 text-slate-500">Memuat data...</div>
-           ) : filteredMurid.length === 0 ? (
-             <div className="text-center py-8 text-slate-500">Tidak ada data murid ditemukan.</div>
-           ) : (
-             <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
-               {filteredMurid.map((m, i) => (
-                 <div key={i} className="border rounded-xl p-4 flex justify-between items-center dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                   <div className="flex items-center gap-4">
-                     <div className="w-10 h-10 bg-slate-200 dark:bg-slate-600 rounded-full flex items-center justify-center">
-                       <User className="w-5 h-5 text-slate-500 dark:text-slate-300" />
-                     </div>
-                     <div>
-                       <h4 className="font-bold text-slate-800 dark:text-white">{m['Nama Lengkap']} ({m.Kelas})</h4>
-                       <p className="text-xs text-slate-500">NISN: {m.NISN} | NIS: {m.NIS || '-'}</p>
-                     </div>
-                   </div>
-                   <div className="flex gap-2">
-                     <button 
-                       onClick={() => { setSelectedStudent(m); setViewState('edit'); }} 
-                       className="text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2 rounded-lg transition-colors"
-                       title="Edit"
-                     >
-                       <Edit className="w-4 h-4" />
-                     </button>
-                     <button 
-                       onClick={() => handleDelete(m.NISN)} 
-                       className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg transition-colors"
-                       title="Hapus"
-                     >
-                       <Trash2 className="w-4 h-4" />
-                     </button>
-                   </div>
-                 </div>
-               ))}
-             </div>
-           )}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <input type="text" placeholder="Cari siswa (Nama, NISN, Kelas)..." className="flex-1 min-w-[200px] border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            <div className="flex gap-2">
+              <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleImport} />
+              <button onClick={handleExportTemplate} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-sm transition-all"><Download className="w-4 h-4" /> Template</button>
+              <button onClick={() => fileInputRef.current?.click()} className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-sm transition-all"><Upload className="w-4 h-4" /> Import</button>
+              <button onClick={handleExportData} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-sm transition-all"><Download className="w-4 h-4" /> Export</button>
+              <button onClick={() => { setSelectedStudent(null); setViewState("add"); }} className="bg-sky-500 hover:bg-sky-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-sm transition-all"><Plus className="w-4 h-4" /> Tambah</button>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-8 text-slate-500">
+              Memuat data...
+            </div>
+          ) : filteredMurid.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              Tidak ada data murid ditemukan.
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+              {filteredMurid.map((m, i) => (
+                <div
+                  key={i}
+                  className="border rounded-xl p-4 flex justify-between items-center dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-slate-200 dark:bg-slate-600 rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-slate-500 dark:text-slate-300" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 dark:text-white">
+                        {m["Nama Lengkap"]} ({m.Kelas})
+                      </h4>
+                      <p className="text-xs text-slate-500">
+                        NISN: {m.NISN} | NIS: {m.NIS || "-"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setSelectedStudent(m);
+                        setViewState("edit");
+                      }}
+                      className="text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2 rounded-lg transition-colors"
+                      title="Edit"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(m.NISN)}
+                      className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg transition-colors"
+                      title="Hapus"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       );
     }
 
     return (
       <form onSubmit={handleSave} className="space-y-4">
-        <div className="flex items-center gap-2 mb-4 text-slate-500 cursor-pointer hover:text-slate-800" onClick={() => setViewState('list')}>
+        <div
+          className="flex items-center gap-2 mb-4 text-slate-500 cursor-pointer hover:text-slate-800"
+          onClick={() => setViewState("list")}
+        >
           <ArrowRightLeft className="w-4 h-4 rotate-180" /> Kembali
         </div>
-        <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-4">{viewState === 'add' ? 'Tambah Siswa Baru' : 'Edit Data Siswa'}</h3>
-        
+        <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-4">
+          {viewState === "add" ? "Tambah Siswa Baru" : "Edit Data Siswa"}
+        </h3>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Nama Lengkap</label>
-            <input type="text" name="nama" defaultValue={selectedStudent?.['Nama Lengkap']} className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600" required />
+            <label className="block text-sm font-medium mb-1">
+              Nama Lengkap
+            </label>
+            <input
+              type="text"
+              name="nama"
+              defaultValue={selectedStudent?.["Nama Lengkap"]}
+              className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600"
+              required
+            />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">NISN</label>
-            <input type="text" name="nisn" defaultValue={selectedStudent?.NISN} readOnly={viewState === 'edit'} className={`w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600 ${viewState === 'edit' ? 'bg-slate-100 dark:bg-slate-800' : ''}`} required />
+            <input
+              type="text"
+              name="nisn"
+              defaultValue={selectedStudent?.NISN}
+              readOnly={viewState === "edit"}
+              className={`w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600 ${viewState === "edit" ? "bg-slate-100 dark:bg-slate-800" : ""}`}
+              required
+            />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">NIS</label>
-            <input type="text" name="nis" defaultValue={selectedStudent?.NIS} className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600" />
+            <input
+              type="text"
+              name="nis"
+              defaultValue={selectedStudent?.NIS}
+              className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Kelas</label>
-            <select name="kelas" defaultValue={selectedStudent?.Kelas || 'Kelas 1'} className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600">
+            <select
+              name="kelas"
+              defaultValue={selectedStudent?.Kelas || "Kelas 1"}
+              className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600"
+            >
               <option value="Kelas 1">Kelas 1</option>
               <option value="Kelas 2">Kelas 2</option>
               <option value="Kelas 3">Kelas 3</option>
@@ -2315,15 +3294,28 @@ function DataMuridModal({ onClose, showToast }: { onClose: () => void, showToast
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Jenis Kelamin</label>
-            <select name="jenisKelamin" defaultValue={selectedStudent?.['Jenis Kelamin (L/P)'] || 'L'} className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600">
+            <label className="block text-sm font-medium mb-1">
+              Jenis Kelamin
+            </label>
+            <select
+              name="jenisKelamin"
+              defaultValue={selectedStudent?.["Jenis Kelamin (L/P)"] || "L"}
+              className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600"
+            >
               <option value="L">Laki-laki (L)</option>
               <option value="P">Perempuan (P)</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Tanggal Lahir</label>
-            <input type="date" name="tanggalLahir" defaultValue={selectedStudent?.['Tanggal Lahir (YYYY-MM-DD)']} className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600" />
+            <label className="block text-sm font-medium mb-1">
+              Tanggal Lahir
+            </label>
+            <input
+              type="date"
+              name="tanggalLahir"
+              defaultValue={selectedStudent?.["Tanggal Lahir (YYYY-MM-DD)"]}
+              className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600"
+            />
           </div>
         </div>
 
@@ -2334,18 +3326,40 @@ function DataMuridModal({ onClose, showToast }: { onClose: () => void, showToast
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium mb-1">Username</label>
-              <input type="text" value={selectedStudent?.NIS || 'Auto-generated from NIS'} className="w-full border rounded px-3 py-2 text-sm bg-slate-100 dark:bg-slate-600 text-slate-500" readOnly />
+              <input
+                type="text"
+                value={selectedStudent?.NIS || "Auto-generated from NIS"}
+                className="w-full border rounded px-3 py-2 text-sm bg-slate-100 dark:bg-slate-600 text-slate-500"
+                readOnly
+              />
             </div>
             <div>
               <label className="block text-xs font-medium mb-1">Password</label>
-              <input type="text" name="password" defaultValue={selectedStudent?.['Password (Default: baujeng(kelas))']} placeholder={viewState === 'edit' ? 'Kosongkan jika tidak ingin mengubah' : 'Masukkan password baru'} className="w-full border rounded px-3 py-2 text-sm dark:bg-slate-700 dark:border-slate-600" />
-              <p className="text-[10px] text-slate-500 mt-1">Default: baujeng(kelas) (contoh: baujeng1)</p>
+              <input
+                type="text"
+                name="password"
+                defaultValue={
+                  selectedStudent?.["Password (Default: baujeng(kelas))"]
+                }
+                placeholder={
+                  viewState === "edit"
+                    ? "Kosongkan jika tidak ingin mengubah"
+                    : "Masukkan password baru"
+                }
+                className="w-full border rounded px-3 py-2 text-sm dark:bg-slate-700 dark:border-slate-600"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">
+                Default: baujeng(kelas) (contoh: baujeng1)
+              </p>
             </div>
           </div>
         </div>
 
         <div className="flex justify-end pt-4">
-          <button type="submit" className="bg-sky-500 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2">
+          <button
+            type="submit"
+            className="bg-sky-500 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2"
+          >
             <Save className="w-4 h-4" /> Simpan Data
           </button>
         </div>
@@ -2354,18 +3368,24 @@ function DataMuridModal({ onClose, showToast }: { onClose: () => void, showToast
   };
 
   const renderMutasi = () => {
-    if (viewState === 'list') {
+    if (viewState === "list") {
       return (
         <div className="space-y-4">
           <div className="flex gap-2 mb-4">
-            <button onClick={() => setViewState('mutasi_masuk')} className="flex-1 bg-green-100 hover:bg-green-200 text-green-700 py-3 rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2">
+            <button
+              onClick={() => setViewState("mutasi_masuk")}
+              className="flex-1 bg-green-100 hover:bg-green-200 text-green-700 py-3 rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2"
+            >
               <Download className="w-4 h-4" /> Input Mutasi Masuk
             </button>
-            <button onClick={() => setViewState('mutasi_keluar')} className="flex-1 bg-red-100 hover:bg-red-200 text-red-700 py-3 rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2">
+            <button
+              onClick={() => setViewState("mutasi_keluar")}
+              className="flex-1 bg-red-100 hover:bg-red-200 text-red-700 py-3 rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2"
+            >
               <LogOut className="w-4 h-4" /> Input Mutasi Keluar
             </button>
           </div>
-          
+
           <div className="text-center text-slate-500 py-8 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
             <ArrowRightLeft className="w-12 h-12 mx-auto mb-2 opacity-20" />
             <p>Belum ada data mutasi tercatat</p>
@@ -2374,44 +3394,77 @@ function DataMuridModal({ onClose, showToast }: { onClose: () => void, showToast
       );
     }
 
-    const isMasuk = viewState === 'mutasi_masuk';
-    
+    const isMasuk = viewState === "mutasi_masuk";
+
     return (
       <form onSubmit={handleSave} className="space-y-4">
-        <div className="flex items-center gap-2 mb-4 text-slate-500 cursor-pointer hover:text-slate-800" onClick={() => setViewState('list')}>
+        <div
+          className="flex items-center gap-2 mb-4 text-slate-500 cursor-pointer hover:text-slate-800"
+          onClick={() => setViewState("list")}
+        >
           <ArrowRightLeft className="w-4 h-4 rotate-180" /> Kembali
         </div>
-        <h3 className={`font-bold text-lg mb-4 ${isMasuk ? 'text-green-600' : 'text-red-600'}`}>
-          {isMasuk ? 'Formulir Mutasi Masuk' : 'Formulir Mutasi Keluar'}
+        <h3
+          className={`font-bold text-lg mb-4 ${isMasuk ? "text-green-600" : "text-red-600"}`}
+        >
+          {isMasuk ? "Formulir Mutasi Masuk" : "Formulir Mutasi Keluar"}
         </h3>
 
         <div className="grid grid-cols-1 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">Nama Siswa</label>
-            <input type="text" className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600" required />
+            <input
+              type="text"
+              className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600"
+              required
+            />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">NISN</label>
-              <input type="text" className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600" required />
+              <input
+                type="text"
+                className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600"
+                required
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Tanggal Mutasi</label>
-              <input type="date" className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600" required />
+              <label className="block text-sm font-medium mb-1">
+                Tanggal Mutasi
+              </label>
+              <input
+                type="date"
+                className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600"
+                required
+              />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">{isMasuk ? 'Sekolah Asal' : 'Sekolah Tujuan'}</label>
-            <input type="text" className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600" required />
+            <label className="block text-sm font-medium mb-1">
+              {isMasuk ? "Sekolah Asal" : "Sekolah Tujuan"}
+            </label>
+            <input
+              type="text"
+              className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600"
+              required
+            />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Alasan Mutasi</label>
-            <textarea className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600 h-24 resize-none" required></textarea>
+            <label className="block text-sm font-medium mb-1">
+              Alasan Mutasi
+            </label>
+            <textarea
+              className="w-full border rounded-lg px-4 py-2 dark:bg-slate-700 dark:border-slate-600 h-24 resize-none"
+              required
+            ></textarea>
           </div>
         </div>
 
         <div className="flex justify-end pt-4">
-          <button type="submit" className={`${isMasuk ? 'bg-green-600' : 'bg-red-600'} text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2`}>
+          <button
+            type="submit"
+            className={`${isMasuk ? "bg-green-600" : "bg-red-600"} text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2`}
+          >
             <Save className="w-4 h-4" /> Simpan Data Mutasi
           </button>
         </div>
@@ -2424,46 +3477,56 @@ function DataMuridModal({ onClose, showToast }: { onClose: () => void, showToast
       <ModalHeader title="Data Murid" onClose={onClose} />
       <div className="p-6 overflow-y-auto">
         <div className="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-700">
-          <button 
-            onClick={() => { setTab('data'); setViewState('list'); }}
-            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${tab === 'data' ? 'border-sky-500 text-sky-600 dark:text-sky-400' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+          <button
+            onClick={() => {
+              setTab("data");
+              setViewState("list");
+            }}
+            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${tab === "data" ? "border-sky-500 text-sky-600 dark:text-sky-400" : "border-transparent text-slate-500 hover:text-slate-700"}`}
           >
             Data Siswa
           </button>
-          <button 
-            onClick={() => { setTab('mutasi'); setViewState('list'); }}
-            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${tab === 'mutasi' ? 'border-sky-500 text-sky-600 dark:text-sky-400' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+          <button
+            onClick={() => {
+              setTab("mutasi");
+              setViewState("list");
+            }}
+            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${tab === "mutasi" ? "border-sky-500 text-sky-600 dark:text-sky-400" : "border-transparent text-slate-500 hover:text-slate-700"}`}
           >
             Mutasi Siswa
           </button>
         </div>
 
-        {tab === 'data' ? renderDataSiswa() : renderMutasi()}
+        {tab === "data" ? renderDataSiswa() : renderMutasi()}
       </div>
     </>
   );
 }
 
-function ApiConfigView({ showToast }: { showToast: (msg: string, type?: 'success' | 'error') => void }) {
+function ApiConfigView({
+  showToast,
+}: {
+  showToast: (msg: string, type?: "success" | "error") => void;
+}) {
   const [apiKeys, setApiKeys] = useState({
-    gemini_api_key: '',
-    whatsapp_api_key: '',
-    other_api_key: '',
-    wa_message_template: ''
+    gemini_api_key: "",
+    whatsapp_api_key: "",
+    other_api_key: "",
+    wa_message_template: "",
   });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchKeys = async () => {
       try {
-        const res = await fetch('/api/api-settings');
+        const res = await fetch("/api/api-settings");
         const data = await res.json();
         if (data.success) {
           setApiKeys({
-            gemini_api_key: data.data.gemini_api_key || '',
-            whatsapp_api_key: data.data.whatsapp_api_key || '',
-            other_api_key: data.data.other_api_key || '',
-            wa_message_template: data.data.wa_message_template || ''
+            gemini_api_key: data.data.gemini_api_key || "",
+            whatsapp_api_key: data.data.whatsapp_api_key || "",
+            other_api_key: data.data.other_api_key || "",
+            wa_message_template: data.data.wa_message_template || "",
           });
         }
       } catch (error) {
@@ -2477,10 +3540,10 @@ function ApiConfigView({ showToast }: { showToast: (msg: string, type?: 'success
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch('/api/api-settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(apiKeys)
+      const res = await fetch("/api/api-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(apiKeys),
       });
       const result = await res.json();
       if (result.success) {
@@ -2498,8 +3561,12 @@ function ApiConfigView({ showToast }: { showToast: (msg: string, type?: 'success
   return (
     <div className="max-w-4xl mx-auto">
       <header className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Konfigurasi API</h1>
-        <p className="text-slate-500 dark:text-slate-400">Kelola kunci API untuk integrasi layanan pihak ketiga</p>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
+          Konfigurasi API
+        </h1>
+        <p className="text-slate-500 dark:text-slate-400">
+          Kelola kunci API untuk integrasi layanan pihak ketiga
+        </p>
       </header>
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-8">
@@ -2510,15 +3577,19 @@ function ApiConfigView({ showToast }: { showToast: (msg: string, type?: 'success
                 <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
                   <Key className="w-5 h-5" />
                 </div>
-                <h3 className="font-bold text-slate-800 dark:text-white">Gemini AI</h3>
+                <h3 className="font-bold text-slate-800 dark:text-white">
+                  Gemini AI
+                </h3>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 h-10">
                 Digunakan untuk fitur Chatbot cerdas bagi Guru dan Siswa.
               </p>
-              <input 
-                type="password" 
+              <input
+                type="password"
                 value={apiKeys.gemini_api_key}
-                onChange={(e) => setApiKeys({...apiKeys, gemini_api_key: e.target.value})}
+                onChange={(e) =>
+                  setApiKeys({ ...apiKeys, gemini_api_key: e.target.value })
+                }
                 className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                 placeholder="Masukkan API Key"
               />
@@ -2529,15 +3600,19 @@ function ApiConfigView({ showToast }: { showToast: (msg: string, type?: 'success
                 <div className="p-2 bg-green-100 text-green-600 rounded-lg">
                   <Megaphone className="w-5 h-5" />
                 </div>
-                <h3 className="font-bold text-slate-800 dark:text-white">WhatsApp Gateway</h3>
+                <h3 className="font-bold text-slate-800 dark:text-white">
+                  WhatsApp Gateway
+                </h3>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 h-10">
                 Digunakan untuk notifikasi otomatis ke orang tua (Opsional).
               </p>
-              <input 
-                type="password" 
+              <input
+                type="password"
                 value={apiKeys.whatsapp_api_key}
-                onChange={(e) => setApiKeys({...apiKeys, whatsapp_api_key: e.target.value})}
+                onChange={(e) =>
+                  setApiKeys({ ...apiKeys, whatsapp_api_key: e.target.value })
+                }
                 className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-green-500 outline-none"
                 placeholder="Masukkan API Key"
               />
@@ -2548,15 +3623,19 @@ function ApiConfigView({ showToast }: { showToast: (msg: string, type?: 'success
                 <div className="p-2 bg-purple-100 text-purple-600 rounded-lg">
                   <Settings className="w-5 h-5" />
                 </div>
-                <h3 className="font-bold text-slate-800 dark:text-white">Lainnya</h3>
+                <h3 className="font-bold text-slate-800 dark:text-white">
+                  Lainnya
+                </h3>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 h-10">
                 Slot untuk integrasi API tambahan di masa depan.
               </p>
-              <input 
-                type="password" 
+              <input
+                type="password"
                 value={apiKeys.other_api_key}
-                onChange={(e) => setApiKeys({...apiKeys, other_api_key: e.target.value})}
+                onChange={(e) =>
+                  setApiKeys({ ...apiKeys, other_api_key: e.target.value })
+                }
                 className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-purple-500 outline-none"
                 placeholder="Masukkan API Key"
               />
@@ -2564,22 +3643,54 @@ function ApiConfigView({ showToast }: { showToast: (msg: string, type?: 'success
           </div>
 
           <div className="mt-8 bg-slate-50 dark:bg-slate-700/50 p-6 rounded-xl border border-slate-100 dark:border-slate-700">
-            <h3 className="font-bold text-slate-800 dark:text-white mb-2">Template Pesan WhatsApp</h3>
+            <h3 className="font-bold text-slate-800 dark:text-white mb-2">
+              Template Pesan WhatsApp
+            </h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-              Gunakan variabel berikut: <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{nama_guru}}"}</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{kelas}}"}</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{hari}}"}</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{tanggal}}"}</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{waktu}}"}</code>, <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">{"{{jadwal}}"}</code>
+              Gunakan variabel berikut:{" "}
+              <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">
+                {"{{nama_guru}}"}
+              </code>
+              ,{" "}
+              <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">
+                {"{{kelas}}"}
+              </code>
+              ,{" "}
+              <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">
+                {"{{hari}}"}
+              </code>
+              ,{" "}
+              <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">
+                {"{{tanggal}}"}
+              </code>
+              ,{" "}
+              <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">
+                {"{{waktu}}"}
+              </code>
+              ,{" "}
+              <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-blue-600 dark:text-blue-400 font-mono">
+                {"{{jadwal}}"}
+              </code>
             </p>
-            <textarea 
+            <textarea
               rows={8}
               value={apiKeys.wa_message_template}
-              onChange={(e) => setApiKeys({...apiKeys, wa_message_template: e.target.value})}
+              onChange={(e) =>
+                setApiKeys({ ...apiKeys, wa_message_template: e.target.value })
+              }
               className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 bg-white dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono"
               placeholder="Masukkan template pesan WA di sini... Kosongkan untuk menggunakan template default."
             />
           </div>
 
           <div className="flex justify-end pt-4">
-            <button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 dark:shadow-none transition-all flex items-center gap-2 disabled:opacity-50">
-              <Save className="w-5 h-5" /> {loading ? 'Menyimpan...' : 'Simpan Konfigurasi'}
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 dark:shadow-none transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              <Save className="w-5 h-5" />{" "}
+              {loading ? "Menyimpan..." : "Simpan Konfigurasi"}
             </button>
           </div>
         </form>
@@ -2588,23 +3699,31 @@ function ApiConfigView({ showToast }: { showToast: (msg: string, type?: 'success
   );
 }
 
-function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToast: (msg: string, type?: 'success' | 'error') => void }) {
+function PengumumanModal({
+  onClose,
+  showToast,
+}: {
+  onClose: () => void;
+  showToast: (msg: string, type?: "success" | "error") => void;
+}) {
   const [appName, setAppName] = useState("BISMA");
   const [landingDesc, setLandingDesc] = useState("");
-  
+
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [announcementTitle, setAnnouncementTitle] = useState("");
   const [announcementContent, setAnnouncementContent] = useState("");
-  const [targetRoles, setTargetRoles] = useState<string[]>(['Publik']);
-  const [tanggalTerbit, setTanggalTerbit] = useState(new Date().toISOString().split('T')[0]);
+  const [targetRoles, setTargetRoles] = useState<string[]>(["Publik"]);
+  const [tanggalTerbit, setTanggalTerbit] = useState(
+    new Date().toISOString().split("T")[0],
+  );
   const [tanggalKedaluwarsa, setTanggalKedaluwarsa] = useState("");
-  
+
   const [announcements, setAnnouncements] = useState<any[]>([]);
 
   const fetchAnnouncements = async () => {
     try {
-      const res = await fetch('/api/pengumuman');
+      const res = await fetch("/api/pengumuman");
       const result = await res.json();
       if (result.success && result.data) {
         setAnnouncements(result.data);
@@ -2617,7 +3736,7 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
   useEffect(() => {
     fetchAnnouncements();
 
-    const stored = localStorage.getItem('public_dashboard_data');
+    const stored = localStorage.getItem("public_dashboard_data");
     if (stored) {
       const data = JSON.parse(stored);
       setAppName(data.appName || "BISMA");
@@ -2629,8 +3748,8 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
     setEditingId(null);
     setAnnouncementTitle("");
     setAnnouncementContent("");
-    setTargetRoles(['Publik']);
-    setTanggalTerbit(new Date().toISOString().split('T')[0]);
+    setTargetRoles(["Publik"]);
+    setTanggalTerbit(new Date().toISOString().split("T")[0]);
     setTanggalKedaluwarsa("");
     setShowForm(true);
   };
@@ -2639,28 +3758,30 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
     setEditingId(ann.id);
     setAnnouncementTitle(ann.judul);
     setAnnouncementContent(ann.isi);
-    setTargetRoles(ann.target_roles || ['Publik']);
+    setTargetRoles(ann.target_roles || ["Publik"]);
     setTanggalTerbit(ann.tanggal_terbit || "");
     setTanggalKedaluwarsa(ann.tanggal_kedaluwarsa || "");
     setShowForm(true);
   };
 
   const handleRoleToggle = (role: string) => {
-    setTargetRoles(prev => 
-      prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]
+    setTargetRoles((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
     );
   };
 
   const handleSaveApp = () => {
-    const stored = localStorage.getItem('public_dashboard_data');
-    let data = stored ? JSON.parse(stored) : { kelas1: 0, kelas2: 0, kelas3: 0, kelas4: 0, kelas5: 0, kelas6: 0 };
-    
+    const stored = localStorage.getItem("public_dashboard_data");
+    let data = stored
+      ? JSON.parse(stored)
+      : { kelas1: 0, kelas2: 0, kelas3: 0, kelas4: 0, kelas5: 0, kelas6: 0 };
+
     data.appName = appName;
     data.landingDesc = landingDesc;
 
-    localStorage.setItem('public_dashboard_data', JSON.stringify(data));
+    localStorage.setItem("public_dashboard_data", JSON.stringify(data));
     showToast("Pengaturan aplikasi disimpan", "success");
-    window.dispatchEvent(new Event('public-data-update'));
+    window.dispatchEvent(new Event("public-data-update"));
   };
 
   const handleSaveAnnouncement = async () => {
@@ -2670,24 +3791,31 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
     }
 
     try {
-      const url = editingId ? `/api/pengumuman/${editingId}` : '/api/pengumuman';
-      const method = editingId ? 'PUT' : 'POST';
+      const url = editingId
+        ? `/api/pengumuman/${editingId}`
+        : "/api/pengumuman";
+      const method = editingId ? "PUT" : "POST";
 
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           judul: announcementTitle,
           isi: announcementContent,
           target_roles: targetRoles,
           tanggal_terbit: tanggalTerbit || null,
-          tanggal_kedaluwarsa: tanggalKedaluwarsa || null
-        })
+          tanggal_kedaluwarsa: tanggalKedaluwarsa || null,
+        }),
       });
-      
+
       const result = await res.json();
       if (result.success) {
-        showToast(editingId ? "Pengumuman berhasil diperbarui!" : "Pengumuman berhasil dipublikasikan!", "success");
+        showToast(
+          editingId
+            ? "Pengumuman berhasil diperbarui!"
+            : "Pengumuman berhasil dipublikasikan!",
+          "success",
+        );
         setShowForm(false);
         setEditingId(null);
         fetchAnnouncements(); // Refresh list
@@ -2700,9 +3828,9 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Hapus pengumuman ini?')) return;
+    if (!confirm("Hapus pengumuman ini?")) return;
     try {
-      const res = await fetch(`/api/pengumuman/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/pengumuman/${id}`, { method: "DELETE" });
       const result = await res.json();
       if (result.success) {
         showToast("Pengumuman dihapus", "success");
@@ -2718,14 +3846,17 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
       <ModalHeader title="Landing Page & Pengumuman" onClose={onClose} />
       <div className="p-8 overflow-y-auto bg-slate-50 dark:bg-slate-900/50">
         <div className="max-w-4xl mx-auto space-y-8">
-          
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-6">
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Pengaturan Aplikasi</h3>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">
+              Pengaturan Aplikasi
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Nama Aplikasi</label>
-                <input 
-                  type="text" 
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  Nama Aplikasi
+                </label>
+                <input
+                  type="text"
                   value={appName}
                   onChange={(e) => setAppName(e.target.value)}
                   className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
@@ -2733,8 +3864,10 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Deskripsi Landing Page</label>
-                <textarea 
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  Deskripsi Landing Page
+                </label>
+                <textarea
                   value={landingDesc}
                   onChange={(e) => setLandingDesc(e.target.value)}
                   className="w-full h-24 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none resize-none"
@@ -2743,7 +3876,10 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
               </div>
             </div>
             <div className="flex justify-end">
-              <button onClick={handleSaveApp} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold transition-colors">
+              <button
+                onClick={handleSaveApp}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold transition-colors"
+              >
                 Simpan Pengaturan
               </button>
             </div>
@@ -2752,8 +3888,10 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
           {/* Announcement Widget Section */}
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-slate-800 dark:text-white">Daftar Pengumuman</h3>
-              <button 
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white">
+                Daftar Pengumuman
+              </h3>
+              <button
                 onClick={handleNewAnnouncement}
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors"
               >
@@ -2763,55 +3901,72 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
 
             {showForm && (
               <div className="mb-8 bg-slate-50 dark:bg-slate-700/50 p-6 rounded-xl border border-slate-200 dark:border-slate-600">
-                <h4 className="font-bold text-slate-800 dark:text-white mb-4">Form Detail Pengumuman</h4>
+                <h4 className="font-bold text-slate-800 dark:text-white mb-4">
+                  Form Detail Pengumuman
+                </h4>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Judul Pengumuman</label>
-                    <input 
-                      type="text" 
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                      Judul Pengumuman
+                    </label>
+                    <input
+                      type="text"
                       value={announcementTitle}
                       onChange={(e) => setAnnouncementTitle(e.target.value)}
                       className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 text-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Konten Pengumuman</label>
-                    <textarea 
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                      Konten Pengumuman
+                    </label>
+                    <textarea
                       value={announcementContent}
                       onChange={(e) => setAnnouncementContent(e.target.value)}
                       className="w-full h-32 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 text-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                     ></textarea>
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Peran Target</label>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                      Peran Target
+                    </label>
                     <div className="flex flex-wrap gap-4">
-                      {['Publik', 'Siswa', 'Guru', 'Staff'].map(role => (
-                        <label key={role} className="flex items-center gap-2 cursor-pointer">
-                          <input 
-                            type="checkbox" 
+                      {["Publik", "Siswa", "Guru", "Staff"].map((role) => (
+                        <label
+                          key={role}
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
                             checked={targetRoles.includes(role)}
                             onChange={() => handleRoleToggle(role)}
                             className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
                           />
-                          <span className="text-sm text-slate-700 dark:text-slate-300">{role}</span>
+                          <span className="text-sm text-slate-700 dark:text-slate-300">
+                            {role}
+                          </span>
                         </label>
                       ))}
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Tanggal Terbit</label>
-                      <input 
-                        type="date" 
+                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                        Tanggal Terbit
+                      </label>
+                      <input
+                        type="date"
                         value={tanggalTerbit}
                         onChange={(e) => setTanggalTerbit(e.target.value)}
                         className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 text-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Tanggal Kedaluwarsa</label>
-                      <input 
-                        type="date" 
+                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                        Tanggal Kedaluwarsa
+                      </label>
+                      <input
+                        type="date"
                         value={tanggalKedaluwarsa}
                         onChange={(e) => setTanggalKedaluwarsa(e.target.value)}
                         className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 text-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
@@ -2819,13 +3974,13 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
                     </div>
                   </div>
                   <div className="flex justify-end gap-3 pt-4">
-                    <button 
+                    <button
                       onClick={() => setShowForm(false)}
                       className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-bold hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
                     >
                       Batal
                     </button>
-                    <button 
+                    <button
                       onClick={handleSaveAnnouncement}
                       className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors"
                     >
@@ -2840,32 +3995,56 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="p-3 text-sm font-bold text-slate-600 dark:text-slate-400">Judul</th>
-                    <th className="p-3 text-sm font-bold text-slate-600 dark:text-slate-400">Terbit</th>
-                    <th className="p-3 text-sm font-bold text-slate-600 dark:text-slate-400">Target Peran</th>
-                    <th className="p-3 text-sm font-bold text-slate-600 dark:text-slate-400 text-right">Aksi</th>
+                    <th className="p-3 text-sm font-bold text-slate-600 dark:text-slate-400">
+                      Judul
+                    </th>
+                    <th className="p-3 text-sm font-bold text-slate-600 dark:text-slate-400">
+                      Terbit
+                    </th>
+                    <th className="p-3 text-sm font-bold text-slate-600 dark:text-slate-400">
+                      Target Peran
+                    </th>
+                    <th className="p-3 text-sm font-bold text-slate-600 dark:text-slate-400 text-right">
+                      Aksi
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {announcements.map((ann, idx) => (
-                    <tr key={idx} className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <td className="p-3 text-sm font-medium text-slate-800 dark:text-slate-200">{ann.judul}</td>
-                      <td className="p-3 text-sm text-slate-600 dark:text-slate-400">
-                        {ann.tanggal_terbit ? new Date(ann.tanggal_terbit).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                    <tr
+                      key={idx}
+                      className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                    >
+                      <td className="p-3 text-sm font-medium text-slate-800 dark:text-slate-200">
+                        {ann.judul}
                       </td>
                       <td className="p-3 text-sm text-slate-600 dark:text-slate-400">
-                        {Array.isArray(ann.target_roles) ? ann.target_roles.join(', ') : 'Publik'}
+                        {ann.tanggal_terbit
+                          ? new Date(ann.tanggal_terbit).toLocaleDateString(
+                              "id-ID",
+                              {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              },
+                            )
+                          : "-"}
+                      </td>
+                      <td className="p-3 text-sm text-slate-600 dark:text-slate-400">
+                        {Array.isArray(ann.target_roles)
+                          ? ann.target_roles.join(", ")
+                          : "Publik"}
                       </td>
                       <td className="p-3 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button 
+                          <button
                             onClick={() => handleEditAnnouncement(ann)}
                             className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                             title="Edit"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleDelete(ann.id)}
                             className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                             title="Hapus"
@@ -2878,7 +4057,10 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
                   ))}
                   {announcements.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="p-6 text-center text-slate-500 dark:text-slate-400">
+                      <td
+                        colSpan={4}
+                        className="p-6 text-center text-slate-500 dark:text-slate-400"
+                      >
                         Belum ada pengumuman
                       </td>
                     </tr>
@@ -2886,7 +4068,6 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
                 </tbody>
               </table>
             </div>
-
           </div>
         </div>
       </div>
@@ -2894,7 +4075,13 @@ function PengumumanModal({ onClose, showToast }: { onClose: () => void, showToas
   );
 }
 
-function PengaturanModal({ onClose, showToast }: { onClose: () => void, showToast: (msg: string, type?: 'success' | 'error') => void }) {
+function PengaturanModal({
+  onClose,
+  showToast,
+}: {
+  onClose: () => void;
+  showToast: (msg: string, type?: "success" | "error") => void;
+}) {
   const [schoolName, setSchoolName] = useState("Sekolah");
   const [headmasterName, setHeadmasterName] = useState("Drs. H. Ahmad");
   const [headmasterNIP, setHeadmasterNIP] = useState("196001011980031001");
@@ -2921,7 +4108,7 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const res = await fetch('/api/pengaturan');
+        const res = await fetch("/api/pengaturan");
         const result = await res.json();
         if (result.success && result.data) {
           const data = result.data;
@@ -2938,12 +4125,12 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
           if (data.wa_message_template) {
             setWaTemplate(data.wa_message_template);
           }
-          
+
           // Also update localStorage for consistency
-          localStorage.setItem('school_identity_data', JSON.stringify(data));
+          localStorage.setItem("school_identity_data", JSON.stringify(data));
         } else {
           // Fallback to localStorage if API fails or returns empty
-          const stored = localStorage.getItem('school_identity_data');
+          const stored = localStorage.getItem("school_identity_data");
           if (stored) {
             const data = JSON.parse(stored);
             setSchoolName(data.schoolName || "Sekolah");
@@ -2964,7 +4151,7 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
       } catch (error) {
         console.error("Failed to fetch settings", error);
         // Fallback to localStorage on error
-        const stored = localStorage.getItem('school_identity_data');
+        const stored = localStorage.getItem("school_identity_data");
         if (stored) {
           const data = JSON.parse(stored);
           setSchoolName(data.schoolName || "Sekolah");
@@ -2983,7 +4170,7 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
         }
       }
     };
-    
+
     fetchSettings();
   }, []);
 
@@ -2999,22 +4186,22 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
       tahunAjaran,
       semester,
       jumlahUlangan,
-      wa_message_template: waTemplate
+      wa_message_template: waTemplate,
     };
-    
+
     try {
       // Save to API
-      const res = await fetch('/api/pengaturan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+      const res = await fetch("/api/pengaturan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
       });
-      
+
       const result = await res.json();
       if (result.success) {
         // Update localStorage and dispatch event
-        localStorage.setItem('school_identity_data', JSON.stringify(data));
-        window.dispatchEvent(new Event('school-identity-update'));
+        localStorage.setItem("school_identity_data", JSON.stringify(data));
+        window.dispatchEvent(new Event("school-identity-update"));
         showToast("Pengaturan sekolah berhasil disimpan!");
         onClose();
       } else {
@@ -3030,41 +4217,54 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
       <ModalHeader title="Pengaturan Umum" onClose={onClose} />
       <div className="p-8 overflow-y-auto bg-slate-50 dark:bg-slate-900/50">
         <div className="max-w-3xl mx-auto space-y-8">
-          
           {/* School Identity Section */}
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 rounded-lg">
                 <LayoutDashboard className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-white">Identitas Sekolah</h3>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white">
+                Identitas Sekolah
+              </h3>
             </div>
-            
+
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Sekolah Resmi</label>
-                <input 
-                  type="text" 
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                  Nama Sekolah Resmi
+                </label>
+                <input
+                  type="text"
                   value={schoolName}
                   onChange={(e) => setSchoolName(e.target.value)}
                   className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-slate-500 outline-none"
                 />
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tahun Ajaran</label>
-                  <input 
-                    type="text" 
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                    Tahun Ajaran (Filter Data Aktif)
+                  </label>
+                  <select
                     value={tahunAjaran}
                     onChange={(e) => setTahunAjaran(e.target.value)}
                     className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-slate-500 outline-none font-bold"
-                    placeholder="Contoh: 2024/2025"
-                  />
+                  >
+                    <option value="2024/2025">2024/2025</option>
+                    <option value="2025/2026">2025/2026</option>
+                    <option value="2026/2027">2026/2027</option>
+                    <option value="2027/2028">2027/2028</option>
+                    <option value="2028/2029">2028/2029</option>
+                    <option value="2029/2030">2029/2030</option>
+                  </select>
+                  <p className="text-[10px] text-amber-600 mt-1">Mengubah ini akan memfilter data dan membuat backup data tahun sebelumnya.</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Semester</label>
-                  <select 
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                    Semester
+                  </label>
+                  <select
                     value={semester}
                     onChange={(e) => setSemester(e.target.value)}
                     className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-slate-500 outline-none font-bold"
@@ -3077,18 +4277,22 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Kepala Sekolah</label>
-                  <input 
-                    type="text" 
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                    Nama Kepala Sekolah
+                  </label>
+                  <input
+                    type="text"
                     value={headmasterName}
                     onChange={(e) => setHeadmasterName(e.target.value)}
                     className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-slate-500 outline-none font-bold"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">NIP Kepala Sekolah</label>
-                  <input 
-                    type="text" 
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                    NIP Kepala Sekolah
+                  </label>
+                  <input
+                    type="text"
                     value={headmasterNIP}
                     onChange={(e) => setHeadmasterNIP(e.target.value)}
                     className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-slate-500 outline-none"
@@ -3097,16 +4301,21 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Jumlah Ulangan Harian (Per Tengah Semester)</label>
-                <input 
-                  type="number" 
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                  Jumlah Ulangan Harian (Per Tengah Semester)
+                </label>
+                <input
+                  type="number"
                   min="1"
                   max="10"
                   value={jumlahUlangan}
                   onChange={(e) => setJumlahUlangan(e.target.value)}
                   className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-slate-500 outline-none"
                 />
-                <p className="text-xs text-slate-400 mt-1">Mengatur jumlah kolom nilai ulangan harian sebelum STS dan ASAS pada fitur Nilai.</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Mengatur jumlah kolom nilai ulangan harian sebelum STS dan
+                  ASAS pada fitur Nilai.
+                </p>
               </div>
             </div>
           </div>
@@ -3114,18 +4323,32 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
           {/* Logo Assets Section */}
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-3 mb-6">
-              <h3 className="text-sm font-bold text-slate-500 uppercase">Asset URL Logo (JOS JIS)</h3>
+              <h3 className="text-sm font-bold text-slate-500 uppercase">
+                Asset URL Logo (JOS JIS)
+              </h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">1x1</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
+                  1x1
+                </label>
                 <div className="flex gap-2">
                   <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-lg flex-shrink-0 overflow-hidden border border-slate-200 dark:border-slate-600">
-                    {logo1x1 ? <img src={logo1x1} alt="1x1" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><Upload className="w-4 h-4" /></div>}
+                    {logo1x1 ? (
+                      <img
+                        src={logo1x1}
+                        alt="1x1"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-300">
+                        <Upload className="w-4 h-4" />
+                      </div>
+                    )}
                   </div>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={logo1x1}
                     onChange={(e) => setLogo1x1(e.target.value)}
                     className="flex-1 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-slate-50 dark:bg-slate-700 dark:text-white text-sm focus:ring-2 focus:ring-slate-500 outline-none"
@@ -3135,13 +4358,25 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">3x4</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
+                  3x4
+                </label>
                 <div className="flex gap-2">
                   <div className="w-9 h-12 bg-slate-100 dark:bg-slate-700 rounded-lg flex-shrink-0 overflow-hidden border border-slate-200 dark:border-slate-600">
-                    {logo3x4 ? <img src={logo3x4} alt="3x4" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><Upload className="w-4 h-4" /></div>}
+                    {logo3x4 ? (
+                      <img
+                        src={logo3x4}
+                        alt="3x4"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-300">
+                        <Upload className="w-4 h-4" />
+                      </div>
+                    )}
                   </div>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={logo3x4}
                     onChange={(e) => setLogo3x4(e.target.value)}
                     className="flex-1 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-slate-50 dark:bg-slate-700 dark:text-white text-sm focus:ring-2 focus:ring-slate-500 outline-none"
@@ -3151,13 +4386,25 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">4x3</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
+                  4x3
+                </label>
                 <div className="flex gap-2">
                   <div className="w-12 h-9 bg-slate-100 dark:bg-slate-700 rounded-lg flex-shrink-0 overflow-hidden border border-slate-200 dark:border-slate-600">
-                    {logo4x3 ? <img src={logo4x3} alt="4x3" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><Upload className="w-4 h-4" /></div>}
+                    {logo4x3 ? (
+                      <img
+                        src={logo4x3}
+                        alt="4x3"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-300">
+                        <Upload className="w-4 h-4" />
+                      </div>
+                    )}
                   </div>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={logo4x3}
                     onChange={(e) => setLogo4x3(e.target.value)}
                     className="flex-1 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-slate-50 dark:bg-slate-700 dark:text-white text-sm focus:ring-2 focus:ring-slate-500 outline-none"
@@ -3167,13 +4414,25 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Kop Surat</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
+                  Kop Surat
+                </label>
                 <div className="flex gap-2">
                   <div className="w-20 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex-shrink-0 overflow-hidden border border-slate-200 dark:border-slate-600">
-                    {logoKop ? <img src={logoKop} alt="Kop" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><Upload className="w-4 h-4" /></div>}
+                    {logoKop ? (
+                      <img
+                        src={logoKop}
+                        alt="Kop"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-300">
+                        <Upload className="w-4 h-4" />
+                      </div>
+                    )}
                   </div>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={logoKop}
                     onChange={(e) => setLogoKop(e.target.value)}
                     className="flex-1 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-slate-50 dark:bg-slate-700 dark:text-white text-sm focus:ring-2 focus:ring-slate-500 outline-none"
@@ -3187,10 +4446,15 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
           {/* WA Template Section */}
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="flex flex-col gap-2 mb-4">
-              <h3 className="text-sm font-bold text-slate-500 uppercase">Template Pesan WhatsApp</h3>
-              <p className="text-xs text-slate-400">Gunakan variabel berikut: {'{{nama_guru}}'}, {'{{kelas}}'}, {'{{hari}}'}, {'{{tanggal}}'}, {'{{waktu}}'}, {'{{jadwal}}'}</p>
+              <h3 className="text-sm font-bold text-slate-500 uppercase">
+                Template Pesan WhatsApp
+              </h3>
+              <p className="text-xs text-slate-400">
+                Gunakan variabel berikut: {"{{nama_guru}}"}, {"{{kelas}}"},{" "}
+                {"{{hari}}"}, {"{{tanggal}}"}, {"{{waktu}}"}, {"{{jadwal}}"}
+              </p>
             </div>
-            <textarea 
+            <textarea
               value={waTemplate}
               onChange={(e) => setWaTemplate(e.target.value)}
               className="w-full h-64 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 text-slate-700 dark:text-white focus:ring-2 focus:ring-slate-500 outline-none resize-y font-mono text-sm"
@@ -3199,58 +4463,82 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
           </div>
 
           <div className="pt-4">
-            <button onClick={handleSave} className="w-full bg-slate-800 hover:bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-slate-200 dark:shadow-none transition-all flex items-center justify-center gap-2">
+            <button
+              onClick={handleSave}
+              className="w-full bg-slate-800 hover:bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-slate-200 dark:shadow-none transition-all flex items-center justify-center gap-2"
+            >
               <Save className="w-5 h-5" /> SIMPAN PENGATURAN
             </button>
           </div>
-
         </div>
       </div>
     </>
   );
 }
 
-function VisitorConfigView({ showToast }: { showToast: (msg: string, type?: 'success' | 'error') => void }) {
+function VisitorConfigView({
+  showToast,
+}: {
+  showToast: (msg: string, type?: "success" | "error") => void;
+}) {
   const [loading, setLoading] = useState(false);
   const defaultMonthlyStats = [
-    { month: 'Jun 24', visitors: 300 },
-    { month: 'Jul 24', visitors: 400 },
-    { month: 'Ags 24', visitors: 520 },
-    { month: 'Sep 24', visitors: 650 },
-    { month: 'Okt 24', visitors: 780 },
-    { month: 'Nov 24', visitors: 850 },
-    { month: 'Des 24', visitors: 860 },
-    { month: 'Jan 25', visitors: 890 },
-    { month: 'Feb 25', visitors: 920 },
-    { month: 'Mar 25', visitors: 960 },
-    { month: 'Apr 25', visitors: 990 },
-    { month: 'Mei 25', visitors: 28000 },
-    { month: 'Jun 25', visitors: 30000 },
+    { month: "Jun 24", visitors: 300 },
+    { month: "Jul 24", visitors: 400 },
+    { month: "Ags 24", visitors: 520 },
+    { month: "Sep 24", visitors: 650 },
+    { month: "Okt 24", visitors: 780 },
+    { month: "Nov 24", visitors: 850 },
+    { month: "Des 24", visitors: 860 },
+    { month: "Jan 25", visitors: 890 },
+    { month: "Feb 25", visitors: 920 },
+    { month: "Mar 25", visitors: 960 },
+    { month: "Apr 25", visitors: 990 },
+    { month: "Mei 25", visitors: 28000 },
+    { month: "Jun 25", visitors: 30000 },
   ];
-  
+
   const defaultPieData = [
-    { name: 'SD/MI', value: 45 },
-    { name: 'SMP/MTs', value: 25 },
-    { name: 'SMA/SMK/MA', value: 15 },
-    { name: 'Lainnya', value: 15 },
+    { name: "SD/MI", value: 45 },
+    { name: "SMP/MTs", value: 25 },
+    { name: "SMA/SMK/MA", value: 15 },
+    { name: "Lainnya", value: 15 },
   ];
   const defaultWordCloud = [
-    { text: 'Inovatif', count: 120 },
-    { text: 'Aman', count: 90 },
-    { text: 'Keren', count: 85 },
-    { text: 'Mudah', count: 70 },
-    { text: 'Lengkap', count: 60 },
+    { text: "Inovatif", count: 120 },
+    { text: "Aman", count: 90 },
+    { text: "Keren", count: 85 },
+    { text: "Mudah", count: 70 },
+    { text: "Lengkap", count: 60 },
   ];
   const defaultTestimonials = [
-    { name: 'Ahmad S.', lembaga: 'SDN Baujeng I', fitur: 'Dashboard Publik', testimoni: 'Sangat informatif memantau kehadiran dan kedisiplinan!', rating: 5 },
-    { name: 'Siti M.', lembaga: 'SMPN 1 Beji', fitur: 'Presensi QR', testimoni: 'Aplikasi yang mempermudah sekolah mengecek absensi.', rating: 5 },
-    { name: 'Guru J.', lembaga: 'SMA Maju', fitur: 'Lainnya', testimoni: 'Sangat bagus untuk dicontoh.', rating: 4 },
+    {
+      name: "Ahmad S.",
+      lembaga: "SDN Baujeng I",
+      fitur: "Dashboard Publik",
+      testimoni: "Sangat informatif memantau kehadiran dan kedisiplinan!",
+      rating: 5,
+    },
+    {
+      name: "Siti M.",
+      lembaga: "SMPN 1 Beji",
+      fitur: "Presensi QR",
+      testimoni: "Aplikasi yang mempermudah sekolah mengecek absensi.",
+      rating: 5,
+    },
+    {
+      name: "Guru J.",
+      lembaga: "SMA Maju",
+      fitur: "Lainnya",
+      testimoni: "Sangat bagus untuk dicontoh.",
+      rating: 4,
+    },
   ];
 
   const [config, setConfig] = useState<{
     base_visitor_count: number;
     enable_fake_visitor: boolean;
-    monthly_stats: { month: string, visitors: number }[];
+    monthly_stats: { month: string; visitors: number }[];
     pie_data: any[];
     word_cloud: any[];
     testimonials: any[];
@@ -3266,7 +4554,7 @@ function VisitorConfigView({ showToast }: { showToast: (msg: string, type?: 'suc
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const res = await fetch('/api/helpdesk-config');
+        const res = await fetch("/api/helpdesk-config");
         if (res.ok) {
           const resData = await res.json();
           if (resData.success && resData.data) {
@@ -3276,7 +4564,7 @@ function VisitorConfigView({ showToast }: { showToast: (msg: string, type?: 'suc
               monthly_stats: resData.data.monthly_stats || defaultMonthlyStats,
               pie_data: resData.data.pie_data || defaultPieData,
               word_cloud: resData.data.word_cloud || defaultWordCloud,
-              testimonials: resData.data.testimonials || defaultTestimonials
+              testimonials: resData.data.testimonials || defaultTestimonials,
             }));
             return;
           }
@@ -3284,10 +4572,10 @@ function VisitorConfigView({ showToast }: { showToast: (msg: string, type?: 'suc
       } catch (e) {
         console.error("Failed to fetch from supabase", e);
       }
-      
+
       // Fallback
       try {
-        const local = localStorage.getItem('visitor_config');
+        const local = localStorage.getItem("visitor_config");
         if (local) {
           const parsed = JSON.parse(local);
           setConfig((prev: any) => ({
@@ -3296,7 +4584,7 @@ function VisitorConfigView({ showToast }: { showToast: (msg: string, type?: 'suc
             monthly_stats: parsed.monthly_stats || defaultMonthlyStats,
             pie_data: parsed.pie_data || defaultPieData,
             word_cloud: parsed.word_cloud || defaultWordCloud,
-            testimonials: parsed.testimonials || defaultTestimonials
+            testimonials: parsed.testimonials || defaultTestimonials,
           }));
         }
       } catch (e) {
@@ -3309,19 +4597,19 @@ function VisitorConfigView({ showToast }: { showToast: (msg: string, type?: 'suc
   const handleSave = async () => {
     setLoading(true);
     try {
-      localStorage.setItem('visitor_config', JSON.stringify(config));
-      window.dispatchEvent(new Event('storage'));
-      
-      const fetchCurrent = await fetch('/api/helpdesk-config');
+      localStorage.setItem("visitor_config", JSON.stringify(config));
+      window.dispatchEvent(new Event("storage"));
+
+      const fetchCurrent = await fetch("/api/helpdesk-config");
       let currentHelpdesk = {};
       if (fetchCurrent.ok) {
         const resData = await fetchCurrent.json();
         if (resData.success && resData.data) currentHelpdesk = resData.data;
       }
 
-      const res = await fetch('/api/helpdesk-config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/helpdesk-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...currentHelpdesk,
           base_visitor_count: config.base_visitor_count,
@@ -3329,14 +4617,17 @@ function VisitorConfigView({ showToast }: { showToast: (msg: string, type?: 'suc
           monthly_stats: config.monthly_stats,
           pie_data: config.pie_data,
           word_cloud: config.word_cloud,
-          testimonials: config.testimonials
-        })
+          testimonials: config.testimonials,
+        }),
       });
 
       if (res.ok) {
         showToast("Konfigurasi Fake Dashboard disimpan ke Supabase", "success");
       } else {
-        showToast("Gagal menyimpan ke Supabase, hanya tersimpan lokal", "error");
+        showToast(
+          "Gagal menyimpan ke Supabase, hanya tersimpan lokal",
+          "error",
+        );
       }
     } catch (e) {
       showToast("Gagal menyimpan ke Supabase, jaringan error", "error");
@@ -3353,28 +4644,60 @@ function VisitorConfigView({ showToast }: { showToast: (msg: string, type?: 'suc
 
   const handlePieChange = (index: number, field: string, value: any) => {
     const newPie = [...config.pie_data];
-    newPie[index] = { ...newPie[index], [field]: field === 'value' ? Number(value) : value };
+    newPie[index] = {
+      ...newPie[index],
+      [field]: field === "value" ? Number(value) : value,
+    };
     setConfig({ ...config, pie_data: newPie });
   };
 
-  const addWordCloud = () => setConfig({ ...config, word_cloud: [{ text: 'Kata Baru', count: 10 }, ...config.word_cloud] });
+  const addWordCloud = () =>
+    setConfig({
+      ...config,
+      word_cloud: [{ text: "Kata Baru", count: 10 }, ...config.word_cloud],
+    });
   const updateWordCloud = (index: number, field: string, value: any) => {
     const newWC = [...config.word_cloud];
-    newWC[index] = { ...newWC[index], [field]: field === 'count' ? Number(value) : value };
+    newWC[index] = {
+      ...newWC[index],
+      [field]: field === "count" ? Number(value) : value,
+    };
     setConfig({ ...config, word_cloud: newWC });
   };
   const removeWordCloud = (index: number) => {
-    setConfig({ ...config, word_cloud: config.word_cloud.filter((_, i) => i !== index) });
+    setConfig({
+      ...config,
+      word_cloud: config.word_cloud.filter((_, i) => i !== index),
+    });
   };
 
-  const addTestimonial = () => setConfig({ ...config, testimonials: [{ name: 'Nama Baru', lembaga: 'Lembaga', fitur: 'Lainnya', testimoni: 'Kesan...', rating: 5 }, ...config.testimonials] });
+  const addTestimonial = () =>
+    setConfig({
+      ...config,
+      testimonials: [
+        {
+          name: "Nama Baru",
+          lembaga: "Lembaga",
+          fitur: "Lainnya",
+          testimoni: "Kesan...",
+          rating: 5,
+        },
+        ...config.testimonials,
+      ],
+    });
   const updateTestimonial = (index: number, field: string, value: any) => {
     const newTesti = [...config.testimonials];
-    newTesti[index] = { ...newTesti[index], [field]: field === 'rating' ? Number(value) : value };
+    newTesti[index] = {
+      ...newTesti[index],
+      [field]: field === "rating" ? Number(value) : value,
+    };
     setConfig({ ...config, testimonials: newTesti });
   };
   const removeTestimonial = (index: number) => {
-    setConfig({ ...config, testimonials: config.testimonials.filter((_, i) => i !== index) });
+    setConfig({
+      ...config,
+      testimonials: config.testimonials.filter((_, i) => i !== index),
+    });
   };
 
   return (
@@ -3382,9 +4705,12 @@ function VisitorConfigView({ showToast }: { showToast: (msg: string, type?: 'suc
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-            <Users className="w-6 h-6 text-teal-500" /> Konfigurasi Visitor & Fake Data
+            <Users className="w-6 h-6 text-teal-500" /> Konfigurasi Visitor &
+            Fake Data
           </h2>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Atur tampilan visitor harian dan data dummy untuk dashboard publik.</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">
+            Atur tampilan visitor harian dan data dummy untuk dashboard publik.
+          </p>
         </div>
       </div>
 
@@ -3392,38 +4718,65 @@ function VisitorConfigView({ showToast }: { showToast: (msg: string, type?: 'suc
         <div className="space-y-6">
           <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600">
             <div>
-              <h3 className="font-bold text-slate-800 dark:text-white">Aktifkan Fake Visitor</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Tampilkan jumlah visitor real-time yang dimanipulasi pada public dashboard.</p>
+              <h3 className="font-bold text-slate-800 dark:text-white">
+                Aktifkan Fake Visitor
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Tampilkan jumlah visitor real-time yang dimanipulasi pada public
+                dashboard.
+              </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                className="sr-only peer" 
+              <input
+                type="checkbox"
+                className="sr-only peer"
                 checked={config.enable_fake_visitor}
-                onChange={(e) => setConfig({...config, enable_fake_visitor: e.target.checked})}
+                onChange={(e) =>
+                  setConfig({
+                    ...config,
+                    enable_fake_visitor: e.target.checked,
+                  })
+                }
               />
               <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-teal-500"></div>
             </label>
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Base Visitor Harian Hari Ini</label>
-            <input 
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+              Base Visitor Harian Hari Ini
+            </label>
+            <input
               type="number"
               value={config.base_visitor_count}
-              onChange={(e) => setConfig({...config, base_visitor_count: Number(e.target.value)})}
+              onChange={(e) =>
+                setConfig({
+                  ...config,
+                  base_visitor_count: Number(e.target.value),
+                })
+              }
               className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white"
             />
-            <p className="text-xs mt-2 text-slate-500 dark:text-slate-400">Angka ini akan ditambah dengan hitungan random di tampilan untuk kesan real-time.</p>
+            <p className="text-xs mt-2 text-slate-500 dark:text-slate-400">
+              Angka ini akan ditambah dengan hitungan random di tampilan untuk
+              kesan real-time.
+            </p>
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-4">Konfigurasi Pengunjung per Bulan (Bagan Monitoring)</label>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-4">
+              Konfigurasi Pengunjung per Bulan (Bagan Monitoring)
+            </label>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {config.monthly_stats.map((stat, idx) => (
-                <div key={stat.month} className="bg-slate-50 dark:bg-slate-800 p-2 lg:p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">{stat.month}</label>
-                  <input 
+                <div
+                  key={stat.month}
+                  className="bg-slate-50 dark:bg-slate-800 p-2 lg:p-3 rounded-xl border border-slate-200 dark:border-slate-700"
+                >
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">
+                    {stat.month}
+                  </label>
+                  <input
                     type="number"
                     value={stat.visitors}
                     onChange={(e) => handleMonthChange(idx, e.target.value)}
@@ -3432,23 +4785,38 @@ function VisitorConfigView({ showToast }: { showToast: (msg: string, type?: 'suc
                 </div>
               ))}
             </div>
-            <p className="text-xs mt-3 text-slate-500 dark:text-slate-400 border-l-2 border-teal-500 pl-3">Nilai di atas akan digunakan untuk Chart Statistik Pengunjung di halaman Monitoring Dashboard. Untuk lonjakan prediksi Mei-Juni yang drastis, disajikan dalam tooltip yang lebih informatif.</p>
+            <p className="text-xs mt-3 text-slate-500 dark:text-slate-400 border-l-2 border-teal-500 pl-3">
+              Nilai di atas akan digunakan untuk Chart Statistik Pengunjung di
+              halaman Monitoring Dashboard. Untuk lonjakan prediksi Mei-Juni
+              yang drastis, disajikan dalam tooltip yang lebih informatif.
+            </p>
           </div>
 
           <div className="border-t border-slate-200 dark:border-slate-700 my-6"></div>
 
           {/* --- PIE CHART --- */}
           <div>
-            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-4">Statistik Asal Pengunjung (Pie Chart)</label>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-4">
+              Statistik Asal Pengunjung (Pie Chart)
+            </label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {config.pie_data.map((pie, i) => (
-                <div key={i} className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3">
-                  <input 
-                    type="text" value={pie.name} onChange={(e) => handlePieChange(i, 'name', e.target.value)}
+                <div
+                  key={i}
+                  className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3"
+                >
+                  <input
+                    type="text"
+                    value={pie.name}
+                    onChange={(e) => handlePieChange(i, "name", e.target.value)}
                     className="w-full bg-transparent border-b border-slate-300 dark:border-slate-600 mb-2 text-xs font-bold text-slate-800 dark:text-white outline-none"
                   />
-                  <input 
-                    type="number" value={pie.value} onChange={(e) => handlePieChange(i, 'value', e.target.value)}
+                  <input
+                    type="number"
+                    value={pie.value}
+                    onChange={(e) =>
+                      handlePieChange(i, "value", e.target.value)
+                    }
                     className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-sm outline-none text-slate-800 dark:text-white"
                   />
                 </div>
@@ -3459,23 +4827,42 @@ function VisitorConfigView({ showToast }: { showToast: (msg: string, type?: 'suc
           {/* --- WORD CLOUD --- */}
           <div className="mt-8">
             <div className="flex justify-between items-center mb-4">
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">Konfigurasi Word Cloud</label>
-              <button onClick={addWordCloud} className="px-3 py-1 bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400 text-xs font-bold rounded-lg hover:bg-teal-200 dark:hover:bg-teal-900/50">
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">
+                Konfigurasi Word Cloud
+              </label>
+              <button
+                onClick={addWordCloud}
+                className="px-3 py-1 bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400 text-xs font-bold rounded-lg hover:bg-teal-200 dark:hover:bg-teal-900/50"
+              >
                 + Tambah Kata
               </button>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {config.word_cloud.map((wc, i) => (
-                <div key={i} className="flex gap-2 items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2">
-                  <input 
-                    type="text" value={wc.text} onChange={(e) => updateWordCloud(i, 'text', e.target.value)}
+                <div
+                  key={i}
+                  className="flex gap-2 items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2"
+                >
+                  <input
+                    type="text"
+                    value={wc.text}
+                    onChange={(e) => updateWordCloud(i, "text", e.target.value)}
                     className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-xs outline-none text-slate-800 dark:text-white"
                   />
-                  <input 
-                    type="number" value={wc.count} onChange={(e) => updateWordCloud(i, 'count', e.target.value)}
+                  <input
+                    type="number"
+                    value={wc.count}
+                    onChange={(e) =>
+                      updateWordCloud(i, "count", e.target.value)
+                    }
                     className="w-16 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-xs outline-none text-slate-800 dark:text-white"
                   />
-                  <button onClick={() => removeWordCloud(i)} className="text-red-500 hover:text-red-700 p-1"><X className="w-4 h-4" /></button>
+                  <button
+                    onClick={() => removeWordCloud(i)}
+                    className="text-red-500 hover:text-red-700 p-1"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               ))}
             </div>
@@ -3484,33 +4871,88 @@ function VisitorConfigView({ showToast }: { showToast: (msg: string, type?: 'suc
           {/* --- TESTIMONIALS --- */}
           <div className="mt-8">
             <div className="flex justify-between items-center mb-4">
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">Data Testimoni (Monitoring)</label>
-              <button onClick={addTestimonial} className="px-3 py-1 bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400 text-xs font-bold rounded-lg hover:bg-teal-200 dark:hover:bg-teal-900/50">
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">
+                Data Testimoni (Monitoring)
+              </label>
+              <button
+                onClick={addTestimonial}
+                className="px-3 py-1 bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400 text-xs font-bold rounded-lg hover:bg-teal-200 dark:hover:bg-teal-900/50"
+              >
                 + Tambah Testimoni
               </button>
             </div>
             <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
               {config.testimonials.map((t, i) => (
-                <div key={i} className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 relative">
-                  <button onClick={() => removeTestimonial(i)} className="absolute top-4 right-4 text-red-500 hover:text-red-700"><X className="w-5 h-5"/></button>
+                <div
+                  key={i}
+                  className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 relative"
+                >
+                  <button
+                    onClick={() => removeTestimonial(i)}
+                    className="absolute top-4 right-4 text-red-500 hover:text-red-700"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 pr-8">
-                    <input type="text" value={t.name} onChange={(e) => updateTestimonial(i, 'name', e.target.value)} placeholder="Nama" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm outline-none text-slate-800 dark:text-white" />
-                    <input type="text" value={t.lembaga} onChange={(e) => updateTestimonial(i, 'lembaga', e.target.value)} placeholder="Lembaga" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm outline-none text-slate-800 dark:text-white" />
-                    <input type="text" value={t.fitur} onChange={(e) => updateTestimonial(i, 'fitur', e.target.value)} placeholder="Fitur" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm outline-none text-slate-800 dark:text-white" />
-                    <input type="number" min="1" max="5" value={t.rating} onChange={(e) => updateTestimonial(i, 'rating', e.target.value)} placeholder="Bintang" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm outline-none text-slate-800 dark:text-white" />
+                    <input
+                      type="text"
+                      value={t.name}
+                      onChange={(e) =>
+                        updateTestimonial(i, "name", e.target.value)
+                      }
+                      placeholder="Nama"
+                      className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm outline-none text-slate-800 dark:text-white"
+                    />
+                    <input
+                      type="text"
+                      value={t.lembaga}
+                      onChange={(e) =>
+                        updateTestimonial(i, "lembaga", e.target.value)
+                      }
+                      placeholder="Lembaga"
+                      className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm outline-none text-slate-800 dark:text-white"
+                    />
+                    <input
+                      type="text"
+                      value={t.fitur}
+                      onChange={(e) =>
+                        updateTestimonial(i, "fitur", e.target.value)
+                      }
+                      placeholder="Fitur"
+                      className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm outline-none text-slate-800 dark:text-white"
+                    />
+                    <input
+                      type="number"
+                      min="1"
+                      max="5"
+                      value={t.rating}
+                      onChange={(e) =>
+                        updateTestimonial(i, "rating", e.target.value)
+                      }
+                      placeholder="Bintang"
+                      className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm outline-none text-slate-800 dark:text-white"
+                    />
                   </div>
-                  <input type="text" value={t.testimoni} onChange={(e) => updateTestimonial(i, 'testimoni', e.target.value)} placeholder="Tulis testimoni..." className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm outline-none text-slate-800 dark:text-white" />
+                  <input
+                    type="text"
+                    value={t.testimoni}
+                    onChange={(e) =>
+                      updateTestimonial(i, "testimoni", e.target.value)
+                    }
+                    placeholder="Tulis testimoni..."
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm outline-none text-slate-800 dark:text-white"
+                  />
                 </div>
               ))}
             </div>
           </div>
 
-          <button 
+          <button
             onClick={handleSave}
             disabled={loading}
             className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 rounded-xl shadow-lg transition-all"
           >
-            {loading ? 'Menyimpan...' : 'Simpan Konfigurasi'}
+            {loading ? "Menyimpan..." : "Simpan Konfigurasi"}
           </button>
         </div>
       </div>
@@ -3518,34 +4960,41 @@ function VisitorConfigView({ showToast }: { showToast: (msg: string, type?: 'suc
   );
 }
 
-function HelpDeskConfigView({ showToast }: { showToast: (msg: string, type?: 'success' | 'error') => void }) {
+function HelpDeskConfigView({
+  showToast,
+}: {
+  showToast: (msg: string, type?: "success" | "error") => void;
+}) {
   const [loading, setLoading] = useState(false);
 
   const [config, setConfig] = useState({
-    wa_number: '6285743524766',
-    wa_message: 'hallo mohon bantuan dalam akses BISMA dengan kendala ',
-    email: 'akhmadnasor@gmail.com',
-    disclaimer: 'Keamanan dan Privasi Anak adalah prioritas utama kami di SDN Baujeng I Beji. Aplikasi BISMA mematuhi standar perlindungan data anak, memastikan informasi pribadi, nilai, dan lokasi tidak dibagikan kepada pihak ketiga manapun tanpa izin eksplisit dari orang tua/wali materi.',
-    youtube_url: 'https://youtube.com/',
-    ig_url: 'https://www.instagram.com/sdnbaujeng1/',
-    web_url: 'https://www.sdnbaujeng1.sch.id/',
-    location: 'SDN Baujeng I Beji',
-    map_embed_url: '',
-    map_link_url: 'https://maps.app.goo.gl/6SZ4yHvr9FMNzdZG9'
+    wa_number: "6285743524766",
+    wa_message: "hallo mohon bantuan dalam akses BISMA dengan kendala ",
+    email: "akhmadnasor@gmail.com",
+    disclaimer:
+      "Keamanan dan Privasi Anak adalah prioritas utama kami di SDN Baujeng I Beji. Aplikasi BISMA mematuhi standar perlindungan data anak, memastikan informasi pribadi, nilai, dan lokasi tidak dibagikan kepada pihak ketiga manapun tanpa izin eksplisit dari orang tua/wali materi.",
+    youtube_url: "https://youtube.com/",
+    ig_url: "https://www.instagram.com/sdnbaujeng1/",
+    web_url: "https://www.sdnbaujeng1.sch.id/",
+    location: "SDN Baujeng I Beji",
+    map_embed_url: "",
+    map_link_url: "https://maps.app.goo.gl/6SZ4yHvr9FMNzdZG9",
   });
 
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const res = await fetch('/api/helpdesk-config');
+        const res = await fetch("/api/helpdesk-config");
         if (res.ok) {
           const resData = await res.json();
           if (resData.success && resData.data) {
             setConfig((prev) => ({
               ...prev,
               ...resData.data,
-              ig_url: resData.data.ig_url ?? 'https://www.instagram.com/sdnbaujeng1/',
-              web_url: resData.data.web_url ?? 'https://www.sdnbaujeng1.sch.id/'
+              ig_url:
+                resData.data.ig_url ?? "https://www.instagram.com/sdnbaujeng1/",
+              web_url:
+                resData.data.web_url ?? "https://www.sdnbaujeng1.sch.id/",
             }));
             return;
           }
@@ -3553,16 +5002,16 @@ function HelpDeskConfigView({ showToast }: { showToast: (msg: string, type?: 'su
       } catch (e) {
         console.error("Failed to fetch from supabase", e);
       }
-      
+
       try {
-        const stored = localStorage.getItem('helpdesk_config');
+        const stored = localStorage.getItem("helpdesk_config");
         if (stored) {
           const parsed = JSON.parse(stored);
-          setConfig(prev => ({
+          setConfig((prev) => ({
             ...prev,
             ...parsed,
-            ig_url: parsed.ig_url ?? 'https://www.instagram.com/sdnbaujeng1/',
-            web_url: parsed.web_url ?? 'https://www.sdnbaujeng1.sch.id/'
+            ig_url: parsed.ig_url ?? "https://www.instagram.com/sdnbaujeng1/",
+            web_url: parsed.web_url ?? "https://www.sdnbaujeng1.sch.id/",
           }));
         }
       } catch (e) {}
@@ -3573,19 +5022,19 @@ function HelpDeskConfigView({ showToast }: { showToast: (msg: string, type?: 'su
   const handleSave = async () => {
     setLoading(true);
     try {
-      localStorage.setItem('helpdesk_config', JSON.stringify(config));
-      window.dispatchEvent(new Event('storage'));
-      
-      const fetchCurrent = await fetch('/api/helpdesk-config');
+      localStorage.setItem("helpdesk_config", JSON.stringify(config));
+      window.dispatchEvent(new Event("storage"));
+
+      const fetchCurrent = await fetch("/api/helpdesk-config");
       let currentHelpdesk = {};
       if (fetchCurrent.ok) {
         const resData = await fetchCurrent.json();
         if (resData.success && resData.data) currentHelpdesk = resData.data;
       }
 
-      const res = await fetch('/api/helpdesk-config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/helpdesk-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...currentHelpdesk,
           wa_number: config.wa_number,
@@ -3597,14 +5046,17 @@ function HelpDeskConfigView({ showToast }: { showToast: (msg: string, type?: 'su
           web_url: config.web_url,
           location: config.location,
           map_embed_url: config.map_embed_url,
-          map_link_url: config.map_link_url
-        })
+          map_link_url: config.map_link_url,
+        }),
       });
 
       if (res.ok) {
         showToast("Konfigurasi Pusat Bantuan disimpan ke Supabase", "success");
       } else {
-        showToast("Gagal menyimpan ke Supabase, hanya tersimpan lokal", "error");
+        showToast(
+          "Gagal menyimpan ke Supabase, hanya tersimpan lokal",
+          "error",
+        );
       }
     } catch (e) {
       showToast("Gagal menyimpan ke Supabase, jaringan error", "error");
@@ -3618,52 +5070,70 @@ function HelpDeskConfigView({ showToast }: { showToast: (msg: string, type?: 'su
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-            <HelpCircle className="w-6 h-6 text-indigo-500" /> Konfigurasi Pusat Bantuan
+            <HelpCircle className="w-6 h-6 text-indigo-500" /> Konfigurasi Pusat
+            Bantuan
           </h2>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Pengaturan kontak dan panduan pengguna.</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">
+            Pengaturan kontak dan panduan pengguna.
+          </p>
         </div>
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-700 space-y-6">
-        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Google Map Embed/Iframe URL</label>
-            <input 
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+              Google Map Embed/Iframe URL
+            </label>
+            <input
               type="url"
-              value={config.map_embed_url || ''}
-              onChange={(e) => setConfig({...config, map_embed_url: e.target.value})}
+              value={config.map_embed_url || ""}
+              onChange={(e) =>
+                setConfig({ ...config, map_embed_url: e.target.value })
+              }
               className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
               placeholder="https://www.google.com/maps/embed?..."
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Google Map Direct Link</label>
-            <input 
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+              Google Map Direct Link
+            </label>
+            <input
               type="url"
-              value={config.map_link_url || ''}
-              onChange={(e) => setConfig({...config, map_link_url: e.target.value})}
+              value={config.map_link_url || ""}
+              onChange={(e) =>
+                setConfig({ ...config, map_link_url: e.target.value })
+              }
               className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
               placeholder="https://maps.app.goo.gl/..."
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">WhatsApp Number</label>
-            <input 
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+              WhatsApp Number
+            </label>
+            <input
               type="text"
               value={config.wa_number}
-              onChange={(e) => setConfig({...config, wa_number: e.target.value})}
+              onChange={(e) =>
+                setConfig({ ...config, wa_number: e.target.value })
+              }
               className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
               placeholder="Contoh: 08123456789"
             />
-            <p className="text-xs mt-1 text-slate-500">Awali dengan 0 atau 62</p>
+            <p className="text-xs mt-1 text-slate-500">
+              Awali dengan 0 atau 62
+            </p>
           </div>
           <div>
-            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Email Konfirmasi</label>
-            <input 
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+              Email Konfirmasi
+            </label>
+            <input
               type="email"
               value={config.email}
-              onChange={(e) => setConfig({...config, email: e.target.value})}
+              onChange={(e) => setConfig({ ...config, email: e.target.value })}
               className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
               placeholder="Contoh: email@sekolah.id"
             />
@@ -3671,11 +5141,15 @@ function HelpDeskConfigView({ showToast }: { showToast: (msg: string, type?: 'su
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Pesan Template WhatsApp</label>
-          <input 
+          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+            Pesan Template WhatsApp
+          </label>
+          <input
             type="text"
             value={config.wa_message}
-            onChange={(e) => setConfig({...config, wa_message: e.target.value})}
+            onChange={(e) =>
+              setConfig({ ...config, wa_message: e.target.value })
+            }
             className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
             placeholder="Pesan..."
           />
@@ -3683,21 +5157,29 @@ function HelpDeskConfigView({ showToast }: { showToast: (msg: string, type?: 'su
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">URL Youtube Panduan</label>
-            <input 
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+              URL Youtube Panduan
+            </label>
+            <input
               type="url"
               value={config.youtube_url}
-              onChange={(e) => setConfig({...config, youtube_url: e.target.value})}
+              onChange={(e) =>
+                setConfig({ ...config, youtube_url: e.target.value })
+              }
               className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
               placeholder="https://youtube.com/..."
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Teks Lokasi (Alamat)</label>
-            <input 
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+              Teks Lokasi (Alamat)
+            </label>
+            <input
               type="text"
               value={config.location}
-              onChange={(e) => setConfig({...config, location: e.target.value})}
+              onChange={(e) =>
+                setConfig({ ...config, location: e.target.value })
+              }
               className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
               placeholder="SDN Baujeng I Beji..."
             />
@@ -3706,21 +5188,27 @@ function HelpDeskConfigView({ showToast }: { showToast: (msg: string, type?: 'su
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">URL Instagram</label>
-            <input 
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+              URL Instagram
+            </label>
+            <input
               type="url"
               value={config.ig_url}
-              onChange={(e) => setConfig({...config, ig_url: e.target.value})}
+              onChange={(e) => setConfig({ ...config, ig_url: e.target.value })}
               className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
               placeholder="https://www.instagram.com/..."
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">URL Website</label>
-            <input 
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+              URL Website
+            </label>
+            <input
               type="url"
               value={config.web_url}
-              onChange={(e) => setConfig({...config, web_url: e.target.value})}
+              onChange={(e) =>
+                setConfig({ ...config, web_url: e.target.value })
+              }
               className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
               placeholder="https://www.sdnbaujeng1.sch.id/"
             />
@@ -3728,23 +5216,28 @@ function HelpDeskConfigView({ showToast }: { showToast: (msg: string, type?: 'su
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Teks Disclaimer Keamanan Anak</label>
-          <textarea 
+          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+            Teks Disclaimer Keamanan Anak
+          </label>
+          <textarea
             rows={2}
             value={config.disclaimer}
-            onChange={(e) => setConfig({...config, disclaimer: e.target.value})}
+            onChange={(e) =>
+              setConfig({ ...config, disclaimer: e.target.value })
+            }
             className="w-full border border-slate-300 dark:border-slate-600 p-3 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
             placeholder="Disclaimer..."
           ></textarea>
         </div>
 
         <div className="pt-4 mt-6 border-t border-slate-200 dark:border-slate-700 pt-6">
-          <button 
+          <button
             onClick={handleSave}
             disabled={loading}
             className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg transition-all flex justify-center items-center gap-2"
           >
-             <Save className="w-5 h-5" /> {loading ? 'Menyimpan...' : 'Simpan Konfigurasi'}
+            <Save className="w-5 h-5" />{" "}
+            {loading ? "Menyimpan..." : "Simpan Konfigurasi"}
           </button>
         </div>
       </div>

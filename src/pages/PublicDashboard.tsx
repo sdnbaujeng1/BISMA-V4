@@ -3,6 +3,7 @@ import { LogIn, Moon, Sun, BookOpen, AlertCircle, X, User, Backpack, Calculator,
 import { motion, AnimatePresence } from 'motion/react';
 import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
 import HelpDeskFloat from '../components/HelpDeskFloat';
+import { supabase } from '../lib/supabase';
 
 export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }: { onNavigate: (page: string) => void, darkMode: boolean, toggleDarkMode: () => void }) {
   const [data, setData] = useState<any>(null);
@@ -10,15 +11,36 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
   const [time, setTime] = useState(new Date());
   const [showAbsentModal, setShowAbsentModal] = useState(false);
   const [fakeVisitor, setFakeVisitor] = useState(0);
+  const [realVisitor, setRealVisitor] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setTime(new Date());
     }, 1000);
 
-    // Visitor effect
+    // Real-time visitor effect with Supabase Presence
+    const roomOne = supabase.channel('public_visitors', {
+      config: {
+        presence: {
+          key: Math.random().toString(36).substring(7),
+        },
+      },
+    });
+
+    roomOne
+      .on('presence', { event: 'sync' }, () => {
+        const state = roomOne.presenceState();
+        let numRealVisitors = 0;
+        for (const id in state) {
+          numRealVisitors += state[id].length;
+        }
+        setRealVisitor(numRealVisitors);
+      })
+      .subscribe();
+      
     let visitorInterval: ReturnType<typeof setInterval>;
     
+    // Visitor effect
     const initVisitor = async () => {
       try {
         let baseCount = 324;
@@ -33,23 +55,31 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
            }
         }
         
-        const updateVisitor = () => {
-           if (enableFake) {
-             setFakeVisitor(prev => {
-                if (prev === 0) return baseCount + Math.floor(Math.random() * 5);
-                const change = Math.random() > 0.5 ? 1 : -1;
-                return Math.max(baseCount, prev + change);
-             });
-           } else {
-             setFakeVisitor(0);
-           }
+        if (enableFake) {
+          setFakeVisitor(baseCount);
+          visitorInterval = setInterval(() => {
+            const minVal = Math.max(0, baseCount - 5);
+            const maxVal = baseCount;
+            
+            setFakeVisitor(prev => {
+               let current = prev;
+               if (current < minVal || current > maxVal) current = maxVal;
+               
+               const change = Math.random() > 0.5 ? 1 : -1;
+               let next = current + change;
+               if (next > maxVal) next = maxVal - 1;
+               if (next < minVal) next = minVal + 1;
+               return next;
+            });
+          }, 3000);
+        } else {
+          setFakeVisitor(0);
         }
-        updateVisitor();
-        visitorInterval = setInterval(updateVisitor, 3000);
       } catch (e) {}
     }
     
     initVisitor();
+
     
     // Load Public Dashboard Data
     const loadPublicData = () => {
@@ -86,7 +116,8 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
 
     return () => {
       clearInterval(timer);
-      clearInterval(visitorInterval);
+      if (visitorInterval) clearInterval(visitorInterval);
+      roomOne.unsubscribe();
     };
   }, []);
 
@@ -148,11 +179,11 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
           </div>
 
           <div className="flex items-center gap-6">
-            {fakeVisitor > 0 && (
+            {(fakeVisitor > 0 || realVisitor > 0) && (
               <div className="flex flex-col items-end border-r border-slate-200 dark:border-slate-700 pr-4 md:pr-6">
                 <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-0.5">Live Visitors</span>
                 <span className="font-mono text-lg font-light text-slate-800 dark:text-slate-200 leading-none flex items-center">
-                  {fakeVisitor.toLocaleString('id-ID')}
+                  {(fakeVisitor + realVisitor).toLocaleString('id-ID')}
                   <span className="inline-block w-1.5 h-1.5 bg-green-500 rounded-full ml-2 animate-pulse"></span>
                 </span>
               </div>

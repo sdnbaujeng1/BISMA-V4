@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Trophy, ChevronDown, ChevronUp } from 'lucide-react';
+import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
 
 const HABIT_POINTS: Record<string, { points: number, icon: string }> = {
   'Bangun Pagi': { points: 2, icon: '🌅' },
@@ -13,6 +14,7 @@ const HABIT_POINTS: Record<string, { points: number, icon: string }> = {
 };
 
 export default function PointRewardCard({ user }: { user: any }) {
+  const schoolIdentity = useSchoolIdentity();
   const [loading, setLoading] = useState(true);
   const [studentPoints, setStudentPoints] = useState(0);
   const [studentRank, setStudentRank] = useState(0);
@@ -126,7 +128,7 @@ export default function PointRewardCard({ user }: { user: any }) {
           <div className="flex items-center gap-2">
             <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2">
               <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-300" />
-              Point Reward Kasih Ibu
+              Point Reward {schoolIdentity.kasihIbuLabel || 'Kasih Ibu'}
             </h3>
             <button 
               onClick={() => setIsMinimized(!isMinimized)}

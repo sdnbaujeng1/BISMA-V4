@@ -23,6 +23,8 @@ import NilaiGuru from './pages/NilaiGuru';
 
 import MonitoringDashboard from './pages/MonitoringDashboard';
 
+import { supabase } from './lib/supabase';
+
 export default function App() {
   useSchoolIdentity(); // Initialize global school identity
   const [currentPage, setCurrentPage] = useState('public');
@@ -33,6 +35,35 @@ export default function App() {
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
+
+  useEffect(() => {
+    // Global tracking of Visitors
+    const globalRoom = supabase.channel('public_visitors', {
+      config: {
+        presence: {
+          key: Math.random().toString(36).substring(7),
+        },
+      },
+    });
+
+    globalRoom.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        const storedUser = localStorage.getItem('userData');
+        let role = 'visitor';
+        if (storedUser) {
+          try {
+            const parsed = JSON.parse(storedUser);
+            role = parsed.role || 'visitor';
+          } catch(e) {}
+        }
+        await globalRoom.track({ online_at: new Date().toISOString(), role });
+      }
+    });
+
+    return () => {
+      globalRoom.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;

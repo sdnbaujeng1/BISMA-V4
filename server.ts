@@ -11,6 +11,19 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1Ni
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+async function getTahunAjaranFilter() {
+  const { data } = await supabase.from('pengaturan').select('value').eq('key', 'tahunAjaran').maybeSingle();
+  const ta = data?.value || "2024/2025";
+  const parts = ta.split("/");
+  const startYear = parseInt(parts[0]) || 2024;
+  const endYear = parseInt(parts[1]) || 2025;
+  return {
+    start: `${startYear}-07-01T00:00:00.000Z`,
+    end: `${endYear}-06-30T23:59:59.999Z`
+  };
+}
+
+
 let waProgress = {
   isRunning: false,
   total: 0,
@@ -1065,7 +1078,8 @@ app.get('/api/admin/stats', async (req, res) => {
   app.get('/api/monitoring/analisa-siswa', async (req, res) => {
     try {
       const { month } = req.query;
-      let query = supabase.from('jurnal').select('ketidakhadiran, catatan_mengajar, kelas, timestamp');
+      const { start, end } = await getTahunAjaranFilter();
+      let query = supabase.from('jurnal').select('ketidakhadiran, catatan_mengajar, kelas, timestamp').gte('timestamp', start).lte('timestamp', end);
 
       if (month) {
         const [year, m] = (month as string).split('-');
@@ -1415,8 +1429,31 @@ app.get('/api/admin/stats', async (req, res) => {
   app.post('/api/import-master', async (req, res) => {
     try {
       const { type, data } = req.body;
+      let parsedData = data;
+
+      if (typeof data === "string") {
+
+        const lines = data.split(/\r?\n/).filter((l) => l.trim() !== "");
+
+        const headers = lines[0].split(";").map((h) => h.trim());
+
+        parsedData = lines.slice(1).map((line) => {
+
+          const values = line.split(";");
+
+          return headers.reduce((obj: any, header, index) => {
+
+            obj[header] = values[index]?.trim();
+
+            return obj;
+
+          }, {});
+
+        });
+
+      }
       
-      if (type === 'guru') {
+      if (type === 'guru' || type === 'Guru') {
         for (const item of data) {
           await supabase.from('guru').upsert({
             nip: item.NIP,
@@ -1426,7 +1463,7 @@ app.get('/api/admin/stats', async (req, res) => {
             target_jp: item.Target_JP || 24
           });
         }
-      } else if (type === 'tendik') {
+      } else if (type === 'tendik' || type === 'Tendik') {
         for (const item of data) {
           await supabase.from('tendik').upsert({
             nip: item.NIP,
@@ -1434,7 +1471,7 @@ app.get('/api/admin/stats', async (req, res) => {
             password: item.Password || '123456'
           });
         }
-      } else if (type === 'murid') {
+      } else if (type === 'murid' || type === 'Siswa' || type === 'Siswa') {
         for (const item of data) {
           await supabase.from('murid').upsert({
             "NISN": item.NISN,
@@ -1484,7 +1521,8 @@ app.get('/api/admin/stats', async (req, res) => {
   app.get('/api/laporan', async (req, res) => {
     try {
       const { nip, namaGuru } = req.query;
-      let query = supabase.from('jurnal').select('*').order('timestamp', { ascending: false });
+      const { start, end } = await getTahunAjaranFilter();
+      let query = supabase.from('jurnal').select('*').gte('timestamp', start).lte('timestamp', end).order('timestamp', { ascending: false });
       
       if (nip || namaGuru) {
         // If user has multiple roles (like tendik and something else), they might have entries under nip or nama_guru
@@ -1573,7 +1611,8 @@ app.get('/api/admin/stats', async (req, res) => {
       const studentClass = student['Kelas'];
 
       // 2. Query journals for this class
-      let query = supabase.from('jurnal').select('id, timestamp, ketidakhadiran, mata_pelajaran, jam_pembelajaran').eq('kelas', studentClass).order('timestamp', { ascending: false });
+      const { start, end } = await getTahunAjaranFilter();
+      let query = supabase.from('jurnal').select('id, timestamp, ketidakhadiran, mata_pelajaran, jam_pembelajaran').eq('kelas', studentClass).gte('timestamp', start).lte('timestamp', end).order('timestamp', { ascending: false });
       
       const { data: journals, error } = await query;
       if (error) throw error;
@@ -1581,7 +1620,7 @@ app.get('/api/admin/stats', async (req, res) => {
       // 2.5 Query presensi_qr for this student (using name and class)
       let qrData: any[] = [];
       try {
-        const { data, error } = await supabase.from('presensi_qr').select('timestamp, jenis, detail').eq('nama', studentName).eq('kelas', studentClass).order('timestamp', { ascending: false });
+        const { data, error } = await supabase.from('presensi_qr').select('timestamp, jenis, detail').eq('nama', studentName).eq('kelas', studentClass).gte('timestamp', start).lte('timestamp', end).order('timestamp', { ascending: false });
         if (!error) {
           qrData = data || [];
         }
@@ -1590,7 +1629,7 @@ app.get('/api/admin/stats', async (req, res) => {
       }
 
       // 2.6 Query presensi table for this student (using name and class)
-      const { data: presensiData, error: presensiError } = await supabase.from('presensi').select('id, timestamp, presensi, ekstra').eq('nama_murid', studentName).eq('kelas', studentClass).order('timestamp', { ascending: false });
+      const { data: presensiData, error: presensiError } = await supabase.from('presensi').select('id, timestamp, presensi, ekstra').eq('nama_murid', studentName).eq('kelas', studentClass).gte('timestamp', start).lte('timestamp', end).order('timestamp', { ascending: false });
       if (presensiError) throw presensiError;
 
       console.log(`Attendance for ${studentName} (${nisn}):`);
@@ -1807,7 +1846,8 @@ app.get('/api/admin/stats', async (req, res) => {
     try {
       const { kelas, teacherId, studentId } = req.query;
       
-      let query = supabase.from('tugas').select('*').order('created_at', { ascending: false });
+      const { start, end } = await getTahunAjaranFilter();
+      let query = supabase.from('tugas').select('*').gte('created_at', start).lte('created_at', end).order('created_at', { ascending: false });
 
       if (kelas) {
         query = query.eq('kelas', kelas);
@@ -2009,7 +2049,8 @@ app.get('/api/admin/stats', async (req, res) => {
     try {
       const { month } = req.query; // format: YYYY-MM
       
-      let query = supabase.from('kasih_ibu').select('jenis_kebiasaan, timestamp');
+      const { start, end } = await getTahunAjaranFilter();
+      let query = supabase.from('kasih_ibu').select('jenis_kebiasaan, timestamp').gte('timestamp', start).lte('timestamp', end);
       
       if (month) {
         const startDate = `${month}-01T00:00:00Z`;
@@ -2081,7 +2122,8 @@ app.get('/api/admin/stats', async (req, res) => {
   app.get('/api/kasih-ibu', async (req, res) => {
     try {
       const { kelas, nis, nama, tanggal } = req.query;
-      let query = supabase.from('kasih_ibu').select('*').order('timestamp', { ascending: false });
+      const { start, end } = await getTahunAjaranFilter();
+      let query = supabase.from('kasih_ibu').select('*').gte('timestamp', start).lte('timestamp', end).order('timestamp', { ascending: false });
       
       if (kelas) query = query.eq('kelas', kelas);
       if (tanggal) query = query.eq('tanggal_kegiatan', tanggal);
@@ -2174,10 +2216,12 @@ app.get('/api/admin/stats', async (req, res) => {
       const { nis, kelas } = req.query;
       
       // 1. Teacher's Journal for this class
-      const { data: teacherJournal } = await supabase.from('jurnal').select('*').eq('kelas', kelas).order('timestamp', { ascending: false });
+      const { start, end } = await getTahunAjaranFilter();
+      const { data: teacherJournal } = await supabase.from('jurnal').select('*').eq('kelas', kelas).gte('timestamp', start).lte('timestamp', end).order('timestamp', { ascending: false });
       
       // 2. Student's Habit Journal
-      const { data: studentJournal } = await supabase.from('jurnal_kebiasaan').select('*').eq('nis', nis).order('timestamp', { ascending: false });
+      // const { start, end } = await getTahunAjaranFilter();
+      const { data: studentJournal } = await supabase.from('jurnal_kebiasaan').select('*').eq('nis', nis).gte('timestamp', start).lte('timestamp', end).order('timestamp', { ascending: false });
 
       const combined = [
         ...(teacherJournal || []).map(j => ({ ...j, source: 'Guru', type: 'KBM' })),
@@ -2382,7 +2426,8 @@ app.get('/api/admin/stats', async (req, res) => {
   });
 
   app.get('/api/bank-sampah/transactions', async (req, res) => {
-    const { data, error } = await supabase.from('tabungan_sampah').select('*').order('tanggal', { ascending: false });
+    const { start, end } = await getTahunAjaranFilter();
+    const { data, error } = await supabase.from('tabungan_sampah').select('*').gte('tanggal', start).lte('tanggal', end).order('tanggal', { ascending: false });
     if (error) return res.status(500).json({ success: false, message: error.message });
     res.json({ success: true, data });
   });
@@ -2413,9 +2458,56 @@ app.get('/api/admin/stats', async (req, res) => {
     }
   });
 
+  
   app.post('/api/pengaturan', async (req, res) => {
     try {
       const settings = req.body;
+      
+      // -- TAHUN AJARAN MIGRATION LOGIC --
+      if (settings.tahunAjaran) {
+         const { data: oldTaData } = await supabase.from('pengaturan').select('value').eq('key', 'tahunAjaran').maybeSingle();
+         const oldTa = oldTaData?.value || "2024/2025";
+         if (settings.tahunAjaran !== oldTa) {
+            console.log(`Migrating from ${oldTa} to ${settings.tahunAjaran}`);
+            
+            // 1. Fetch current data
+            const { data: oldMurid } = await supabase.from('murid').select('*');
+            const { data: oldJadwal } = await supabase.from('jadwal_real').select('*');
+            
+            // 2. Backup to pengaturan
+            await supabase.from('pengaturan').upsert([
+               { key: `backup_murid_${oldTa}`, value: JSON.stringify(oldMurid || []) },
+               { key: `backup_jadwal_${oldTa}`, value: JSON.stringify(oldJadwal || []) }
+            ]);
+            
+            // 3. Clear current tables
+            await supabase.from('murid').delete().neq('"NISN"', 'dummy_value_for_delete');
+            await supabase.from('jadwal_real').delete().gt('id', -1);
+            
+            // 4. Restore new data if exists
+            const { data: newMuridBackup } = await supabase.from('pengaturan').select('value').eq('key', `backup_murid_${settings.tahunAjaran}`).maybeSingle();
+            const { data: newJadwalBackup } = await supabase.from('pengaturan').select('value').eq('key', `backup_jadwal_${settings.tahunAjaran}`).maybeSingle();
+            
+            if (newMuridBackup?.value) {
+               try {
+                 const parsedMurid = JSON.parse(newMuridBackup.value);
+                 if (parsedMurid.length > 0) {
+                    await supabase.from('murid').insert(parsedMurid);
+                 }
+               } catch(e) { console.error('Failed to parse/restore murid backup', e); }
+            }
+            if (newJadwalBackup?.value) {
+               try {
+                 const parsedJadwal = JSON.parse(newJadwalBackup.value);
+                 if (parsedJadwal.length > 0) {
+                    await supabase.from('jadwal_real').insert(parsedJadwal);
+                 }
+               } catch(e) { console.error('Failed to parse/restore jadwal backup', e); }
+            }
+         }
+      }
+      // -- END TAHUN AJARAN MIGRATION LOGIC --
+
       const updates = Object.entries(settings).map(([key, value]) => ({
         key,
         value: String(value)
@@ -2475,7 +2567,8 @@ app.get('/api/admin/stats', async (req, res) => {
 
   app.get('/api/bank-sampah/stats', async (req, res) => {
     try {
-      const { data: transactions } = await supabase.from('tabungan_sampah').select('kelas, nilai, berat');
+      const { start, end } = await getTahunAjaranFilter();
+      const { data: transactions } = await supabase.from('tabungan_sampah').select('kelas, nilai, berat').gte('tanggal', start).lte('tanggal', end);
       
       let totalSavings = 0;
       let totalWeight = 0;

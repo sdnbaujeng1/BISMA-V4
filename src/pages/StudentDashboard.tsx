@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
-import { 
-  LayoutDashboard, 
-  Calendar, 
-  Trash2, 
-  Heart, 
-  UserCheck, 
-  AlertTriangle, 
-  BookOpen, 
+import { useState, useEffect, useRef } from "react";
+import {
+  LayoutDashboard,
+  Calendar,
+  Trash2,
+  Heart,
+  UserCheck,
+  AlertTriangle,
+  BookOpen,
   LogOut,
   Moon,
   Sun,
@@ -27,13 +27,13 @@ import {
   Minimize2,
   Gamepad,
   FileText,
-  Send
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import UnifiedAnnouncementCard from '../components/UnifiedAnnouncementCard';
-import PointRewardCard from '../components/PointRewardCard';
-import NilaiSiswa from './NilaiSiswa';
-import { supabase } from '../lib/supabase';
+  Send,
+} from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import UnifiedAnnouncementCard from "../components/UnifiedAnnouncementCard";
+import PointRewardCard from "../components/PointRewardCard";
+import NilaiSiswa from "./NilaiSiswa";
+import { supabase } from "../lib/supabase";
 
 function Edugame({ onBack }: { onBack: () => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,19 +43,26 @@ function Edugame({ onBack }: { onBack: () => void }) {
     if (!isFullscreen) {
       setIsFullscreen(true);
       if (containerRef.current && containerRef.current.requestFullscreen) {
-        containerRef.current.requestFullscreen().catch(err => {
-          console.error(`Error attempting to enable fullscreen: ${err.message}`);
+        containerRef.current.requestFullscreen().catch((err) => {
+          console.error(
+            `Error attempting to enable fullscreen: ${err.message}`,
+          );
         });
       }
       try {
-        if (window.screen.orientation && (window.screen.orientation as any).lock) {
-          (window.screen.orientation as any).lock('landscape').catch((e: any) => console.log('Orientation lock failed', e));
+        if (
+          window.screen.orientation &&
+          (window.screen.orientation as any).lock
+        ) {
+          (window.screen.orientation as any)
+            .lock("landscape")
+            .catch((e: any) => console.log("Orientation lock failed", e));
         }
       } catch (e) {}
     } else {
       setIsFullscreen(false);
       if (document.fullscreenElement && document.exitFullscreen) {
-        document.exitFullscreen().catch(err => console.error(err));
+        document.exitFullscreen().catch((err) => console.error(err));
       }
       try {
         if (window.screen.orientation && window.screen.orientation.unlock) {
@@ -67,48 +74,60 @@ function Edugame({ onBack }: { onBack: () => void }) {
 
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(prev => {
+      setIsFullscreen((prev) => {
         const isNativeFullscreen = !!document.fullscreenElement;
         if (!isNativeFullscreen) {
           try {
             if (window.screen.orientation && window.screen.orientation.unlock) {
               window.screen.orientation.unlock();
             }
-          } catch(e) {}
+          } catch (e) {}
           return false;
         }
         return true;
       });
     };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
   return (
-    <div ref={containerRef} className={`fixed inset-0 bg-white dark:bg-slate-900 flex flex-col ${isFullscreen ? 'z-[200]' : 'z-[100]'}`}>
+    <div
+      ref={containerRef}
+      className={`fixed inset-0 bg-white dark:bg-slate-900 flex flex-col ${isFullscreen ? "z-[200]" : "z-[100]"}`}
+    >
       {!isFullscreen && (
         <header className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
           <div className="flex items-center gap-4">
-            <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+            <button
+              onClick={onBack}
+              className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            >
               <X className="w-6 h-6 text-slate-500" />
             </button>
-            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Edugame</h2>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white">
+              Edugame
+            </h2>
           </div>
-          <button onClick={toggleFullscreen} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+          <button
+            onClick={toggleFullscreen}
+            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+          >
             <Maximize2 className="w-6 h-6 text-slate-500 dark:text-slate-400" />
           </button>
         </header>
       )}
       <div className="flex-grow overflow-hidden relative">
-        <iframe 
-          src="https://edugamev2.netlify.app/" 
+        <iframe
+          src="https://edugamev2.netlify.app/"
           className="w-full h-full border-0"
           title="Edugame"
           allow="fullscreen; orientation"
         ></iframe>
         {isFullscreen && (
-          <button 
-            onClick={toggleFullscreen} 
+          <button
+            onClick={toggleFullscreen}
             className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors z-[210]"
           >
             <Minimize2 className="w-6 h-6" />
@@ -119,10 +138,22 @@ function Edugame({ onBack }: { onBack: () => void }) {
   );
 }
 
-import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
+import { useSchoolIdentity } from "../hooks/useSchoolIdentity";
 
-export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkMode, onNavigate }: { user: any, onLogout: () => void, darkMode: boolean, toggleDarkMode: () => void, onNavigate: (page: string) => void }) {
-  const [activeTab, setActiveTab] = useState('dashboard');
+export default function StudentDashboard({
+  user,
+  onLogout,
+  darkMode,
+  toggleDarkMode,
+  onNavigate,
+}: {
+  user: any;
+  onLogout: () => void;
+  darkMode: boolean;
+  toggleDarkMode: () => void;
+  onNavigate: (page: string) => void;
+}) {
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [showAbout, setShowAbout] = useState(false);
   const [time, setTime] = useState(new Date());
   const schoolIdentity = useSchoolIdentity();
@@ -135,38 +166,65 @@ export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkM
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard':
-        return <DashboardHome user={user} onNavigate={setActiveTab} onExternalNavigate={onNavigate} />;
-      case 'kbm':
-        return <MenuKBM user={user} onNavigate={setActiveTab} onExternalNavigate={onNavigate} />;
-      case 'profil':
-        return <Profil user={user} onLogout={onLogout} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />;
-      case 'chatbot':
+      case "dashboard":
+        return (
+          <DashboardHome
+            user={user}
+            onNavigate={setActiveTab}
+            onExternalNavigate={onNavigate}
+          />
+        );
+      case "kbm":
+        return (
+          <MenuKBM
+            user={user}
+            onNavigate={setActiveTab}
+            onExternalNavigate={onNavigate}
+          />
+        );
+      case "profil":
+        return (
+          <Profil
+            user={user}
+            onLogout={onLogout}
+            darkMode={darkMode}
+            toggleDarkMode={toggleDarkMode}
+          />
+        );
+      case "chatbot":
         return <ChatbotView />;
-      case 'jadwal':
-        return <JadwalHariIni user={user} onBack={() => setActiveTab('kbm')} />;
-      case 'bank_sampah':
-        return <BankSampah user={user} onBack={() => setActiveTab('kbm')} />;
-      case 'kasih_ibu':
-        return <KasihIbu user={user} onBack={() => setActiveTab('kbm')} />;
-      case 'jurnal_kasih_ibu':
-        return <JurnalKasihIbu user={user} onBack={() => setActiveTab('kbm')} />;
-      case 'kehadiran':
-        return <Kehadiran user={user} onBack={() => setActiveTab('kbm')} />;
-      case 'pelanggaran':
-        return <Pelanggaran onBack={() => setActiveTab('kbm')} />;
-      case 'literasi':
-        return <Literasi onBack={() => setActiveTab('kbm')} />;
-      case 'tugas':
-        return <Tugas user={user} onBack={() => setActiveTab('kbm')} />;
-      case 'tahfidz':
-        return <Tahfidz onBack={() => setActiveTab('kbm')} />;
-      case 'edugame':
-        return <Edugame onBack={() => setActiveTab('kbm')} />;
-      case 'nilai_siswa':
-        return <NilaiSiswa user={user} onBack={() => setActiveTab('kbm')} />;
+      case "jadwal":
+        return <JadwalHariIni user={user} onBack={() => setActiveTab("kbm")} />;
+      case "bank_sampah":
+        return <BankSampah user={user} onBack={() => setActiveTab("kbm")} />;
+      case "kasih_ibu":
+        return <KasihIbu user={user} onBack={() => setActiveTab("kbm")} />;
+      case "jurnal_kasih_ibu":
+        return (
+          <JurnalKasihIbu user={user} onBack={() => setActiveTab("kbm")} />
+        );
+      case "kehadiran":
+        return <Kehadiran user={user} onBack={() => setActiveTab("kbm")} />;
+      case "pelanggaran":
+        return <Pelanggaran onBack={() => setActiveTab("kbm")} />;
+      case "literasi":
+        return <Literasi onBack={() => setActiveTab("kbm")} />;
+      case "tugas":
+        return <Tugas user={user} onBack={() => setActiveTab("kbm")} />;
+      case "tahfidz":
+        return <Tahfidz onBack={() => setActiveTab("kbm")} />;
+      case "edugame":
+        return <Edugame onBack={() => setActiveTab("kbm")} />;
+      case "nilai_siswa":
+        return <NilaiSiswa user={user} onBack={() => setActiveTab("kbm")} />;
       default:
-        return <DashboardHome user={user} onNavigate={setActiveTab} onExternalNavigate={onNavigate} />;
+        return (
+          <DashboardHome
+            user={user}
+            onNavigate={setActiveTab}
+            onExternalNavigate={onNavigate}
+          />
+        );
     }
   };
 
@@ -181,16 +239,31 @@ export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkM
             </div>
             <div>
               <p className="text-xs text-white/80 opacity-90">Halo, Siswa!</p>
-              <h2 className="text-lg font-bold">{user?.Nama_Murid || user?.name || 'Siswa'}</h2>
-              <p className="text-xs text-white/80">{user?.Kelas || 'Kelas ?'}</p>
+              <h2 className="text-lg font-bold">
+                {user?.Nama_Murid || user?.name || "Siswa"}
+              </h2>
+              <p className="text-xs text-white/80">
+                {user?.Kelas || "Kelas ?"}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-             <button onClick={toggleDarkMode} className="hidden md:block bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors">
-              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            <button
+              onClick={toggleDarkMode}
+              className="hidden md:block bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors"
+            >
+              {darkMode ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
             </button>
-            <button onClick={onLogout} className="bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold">
-              <LogOut className="w-4 h-4" /> <span className="hidden sm:inline">Keluar</span>
+            <button
+              onClick={onLogout}
+              className="bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold"
+            >
+              <LogOut className="w-4 h-4" />{" "}
+              <span className="hidden sm:inline">Keluar</span>
             </button>
           </div>
         </div>
@@ -198,14 +271,24 @@ export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkM
 
       <main className="flex-grow px-4 -mt-8 z-10">
         <div className="max-w-7xl mx-auto space-y-6">
-           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 flex justify-between items-center border border-slate-100 dark:border-slate-700">
-            <span className="font-bold text-slate-700 dark:text-slate-200">PORTAL SISWA</span>
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 flex justify-between items-center border border-slate-100 dark:border-slate-700">
+            <span className="font-bold text-slate-700 dark:text-slate-200">
+              PORTAL SISWA
+            </span>
             <div className="flex flex-col items-end">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                {time.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                {time.toLocaleDateString("id-ID", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
               </span>
               <span className="font-mono text-blue-600 dark:text-blue-400 font-semibold text-lg">
-                {time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                {time.toLocaleTimeString("id-ID", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </span>
             </div>
           </div>
@@ -226,35 +309,35 @@ export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkM
 
       {/* Floating Navigation */}
       <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md px-4 py-2 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 flex items-center gap-2 sm:gap-4 z-50">
-        <button 
-          onClick={() => setActiveTab('chatbot')}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeTab === 'chatbot' ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+        <button
+          onClick={() => setActiveTab("chatbot")}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeTab === "chatbot" ? "text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"}`}
         >
           <MessageSquare className="w-5 h-5" />
           <span className="text-[9px] font-bold">Chatbot</span>
         </button>
-        <button 
-          onClick={() => setActiveTab('dashboard')}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeTab === 'dashboard' ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+        <button
+          onClick={() => setActiveTab("dashboard")}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeTab === "dashboard" ? "text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"}`}
         >
           <LayoutDashboard className="w-5 h-5" />
           <span className="text-[9px] font-bold">Dashboard</span>
         </button>
-        <button 
-          onClick={() => setActiveTab('kbm')}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeTab === 'kbm' || ['jadwal', 'tugas', 'literasi', 'tahfidz'].includes(activeTab) ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+        <button
+          onClick={() => setActiveTab("kbm")}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeTab === "kbm" || ["jadwal", "tugas", "literasi", "tahfidz"].includes(activeTab) ? "text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"}`}
         >
           <BookOpen className="w-5 h-5" />
           <span className="text-[9px] font-bold">Menu</span>
         </button>
-        <button 
-          onClick={() => setActiveTab('profil')}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeTab === 'profil' ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+        <button
+          onClick={() => setActiveTab("profil")}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeTab === "profil" ? "text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"}`}
         >
           <User className="w-5 h-5" />
           <span className="text-[9px] font-bold">Profil</span>
         </button>
-        <button 
+        <button
           onClick={() => setShowAbout(true)}
           className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all text-slate-400 hover:text-slate-600 dark:hover:text-slate-300`}
         >
@@ -273,60 +356,84 @@ export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkM
               exit={{ opacity: 0, scale: 0.9 }}
               className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden relative"
             >
-              <button 
+              <button
                 onClick={() => setShowAbout(false)}
                 className="absolute top-4 right-4 p-2 bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 rounded-full transition-colors"
               >
                 <X className="w-5 h-5 text-slate-500" />
               </button>
-              
+
               <div className="h-32 bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
                 <div className="w-20 h-20 bg-white rounded-2xl shadow-lg flex items-center justify-center transform rotate-12">
-                   <img src={logoUrl} className="w-14 h-14 object-contain" alt="Logo" />
+                  <img
+                    src={logoUrl}
+                    className="w-14 h-14 object-contain"
+                    alt="Logo"
+                  />
                 </div>
               </div>
-              
+
               <div className="p-8 text-center">
-                <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">BISMA APPS</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Portal Siswa & Monitoring</p>
-                
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">
+                  BISMA APPS
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                  Portal Siswa & Monitoring
+                </p>
+
                 <div className="space-y-4 text-left">
                   <div className="flex items-center gap-4 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
                     <div className="p-2 rounded-lg bg-blue-600 text-white">
                       <User className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400 uppercase font-bold">Pengembang</p>
-                      <p className="font-semibold text-slate-700 dark:text-slate-200">akhmadnasor</p>
+                      <p className="text-xs text-slate-400 uppercase font-bold">
+                        Pengembang
+                      </p>
+                      <p className="font-semibold text-slate-700 dark:text-slate-200">
+                        akhmadnasor
+                      </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-4 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
                     <div className="p-2 rounded-lg bg-blue-600 text-white">
                       <MessageSquare className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400 uppercase font-bold">Kontak WhatsApp</p>
-                      <a href="https://api.whatsapp.com/send?phone=6285749662221" target="_top" rel="noopener noreferrer" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">
+                      <p className="text-xs text-slate-400 uppercase font-bold">
+                        Kontak WhatsApp
+                      </p>
+                      <a
+                        href="https://api.whatsapp.com/send?phone=6285749662221"
+                        target="_top"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                      >
                         085749662221
                       </a>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-4 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
-                     <div className="p-2 rounded-lg bg-blue-600 text-white">
+                    <div className="p-2 rounded-lg bg-blue-600 text-white">
                       <Info className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400 uppercase font-bold">Versi Aplikasi</p>
-                      <p className="font-semibold text-slate-700 dark:text-slate-200">V.4.0.0 (Beta)</p>
+                      <p className="text-xs text-slate-400 uppercase font-bold">
+                        Versi Aplikasi
+                      </p>
+                      <p className="font-semibold text-slate-700 dark:text-slate-200">
+                        V.4.0.0 (Beta)
+                      </p>
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="mt-8">
                   <p className="text-xs text-slate-400">
-                    &copy; {new Date().getFullYear()} {schoolIdentity.schoolName}
+                    &copy; {new Date().getFullYear()}{" "}
+                    {schoolIdentity.schoolName}
                   </p>
                 </div>
               </div>
@@ -338,14 +445,27 @@ export default function StudentDashboard({ user, onLogout, darkMode, toggleDarkM
   );
 }
 
-import BankSampahSummaryCard from '../components/BankSampahSummaryCard';
+import BankSampahSummaryCard from "../components/BankSampahSummaryCard";
 
-function DashboardHome({ user, onNavigate, onExternalNavigate }: { user: any, onNavigate: (page: string) => void, onExternalNavigate: (page: string) => void }) {
+function DashboardHome({
+  user,
+  onNavigate,
+  onExternalNavigate,
+}: {
+  user: any;
+  onNavigate: (page: string) => void;
+  onExternalNavigate: (page: string) => void;
+}) {
+  const schoolIdentity = useSchoolIdentity();
+
   return (
     <div className="space-y-6">
       {/* Bank Sampah Summary & Point Reward Card */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-stretch">
-        <div onDoubleClick={() => onNavigate('bank_sampah')} className="cursor-pointer h-full">
+        <div
+          onDoubleClick={() => onNavigate("bank_sampah")}
+          className="cursor-pointer h-full"
+        >
           <BankSampahSummaryCard user={user} />
         </div>
         <div className="h-full">
@@ -355,34 +475,95 @@ function DashboardHome({ user, onNavigate, onExternalNavigate }: { user: any, on
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { id: 'jadwal', label: 'Jadwal', icon: Calendar, color: 'bg-purple-500', shadow: 'shadow-purple-200' },
-          { id: 'tugas', label: 'Tugas', icon: ClipboardList, color: 'bg-blue-500', shadow: 'shadow-blue-200' },
-          { id: 'nilai_siswa', label: 'Nilai', icon: FileSpreadsheet, color: 'bg-fuchsia-500', shadow: 'shadow-fuchsia-200' },
-          { id: 'kehadiran', label: 'Absensi', icon: UserCheck, color: 'bg-indigo-500', shadow: 'shadow-indigo-200' },
-          { id: 'pelanggaran', label: 'Disiplin', icon: AlertTriangle, color: 'bg-red-500', shadow: 'shadow-red-200' },
-          { id: 'jurnal_kasih_ibu', label: 'Jurnal Kasih Ibu', icon: FileText, color: 'bg-rose-500', shadow: 'shadow-rose-200' },
-          { id: 'rumah_pendidikan', label: 'Rumah Pendidikan', img: 'https://lh3.googleusercontent.com/d/1DgxC8VjC0SS_xWtmTqnIReQmGpCqzGDO', color: 'bg-white', shadow: 'shadow-slate-200' },
-          { id: 'edugame', label: 'Edugame', icon: Gamepad, color: 'bg-green-500', shadow: 'shadow-green-200' },
+          {
+            id: "jadwal",
+            label: "Jadwal",
+            icon: Calendar,
+            color: "bg-purple-500",
+            shadow: "shadow-purple-200",
+          },
+          {
+            id: "tugas",
+            label: "Tugas",
+            icon: ClipboardList,
+            color: "bg-blue-500",
+            shadow: "shadow-blue-200",
+          },
+          {
+            id: "nilai_siswa",
+            label: "Nilai",
+            icon: FileSpreadsheet,
+            color: "bg-fuchsia-500",
+            shadow: "shadow-fuchsia-200",
+          },
+          {
+            id: "kehadiran",
+            label: "Absensi",
+            icon: UserCheck,
+            color: "bg-indigo-500",
+            shadow: "shadow-indigo-200",
+          },
+          {
+            id: "pelanggaran",
+            label: "Disiplin",
+            icon: AlertTriangle,
+            color: "bg-red-500",
+            shadow: "shadow-red-200",
+          },
+          {
+            id: "jurnal_kasih_ibu",
+            label: `Jurnal ${schoolIdentity.kasihIbuLabel || "Kasih Ibu"}`,
+            icon: FileText,
+            color: "bg-rose-500",
+            shadow: "shadow-rose-200",
+          },
+          {
+            id: "rumah_pendidikan",
+            label: "Rumah Pendidikan",
+            img: "https://lh3.googleusercontent.com/d/1DgxC8VjC0SS_xWtmTqnIReQmGpCqzGDO",
+            color: "bg-white",
+            shadow: "shadow-slate-200",
+          },
+          {
+            id: "edugame",
+            label: "Edugame",
+            icon: Gamepad,
+            color: "bg-green-500",
+            shadow: "shadow-green-200",
+          },
         ].map((item) => (
           <button
             key={item.id}
             onClick={() => {
-              if (item.id === 'rumah_pendidikan') {
-                window.open('https://rumah.pendidikan.go.id/ruang/murid', '_blank', 'noopener,noreferrer');
+              if (item.id === "rumah_pendidikan") {
+                window.open(
+                  "https://rumah.pendidikan.go.id/ruang/murid",
+                  "_blank",
+                  "noopener,noreferrer",
+                );
               } else {
                 onNavigate(item.id);
               }
             }}
             className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition-all flex flex-col items-center gap-3 group hover:-translate-y-1"
           >
-            <div className={`${item.color} w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg ${item.shadow} dark:shadow-none group-hover:scale-110 transition-transform overflow-hidden`}>
+            <div
+              className={`${item.color} w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg ${item.shadow} dark:shadow-none group-hover:scale-110 transition-transform overflow-hidden`}
+            >
               {item.img ? (
-                <img src={item.img} alt={item.label} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                <img
+                  src={item.img}
+                  alt={item.label}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
               ) : item.icon ? (
                 <item.icon className="w-6 h-6" />
               ) : null}
             </div>
-            <span className="font-medium text-slate-700 dark:text-slate-300 text-sm text-center">{item.label}</span>
+            <span className="font-medium text-slate-700 dark:text-slate-300 text-sm text-center">
+              {item.label}
+            </span>
           </button>
         ))}
       </div>
@@ -390,20 +571,101 @@ function DashboardHome({ user, onNavigate, onExternalNavigate }: { user: any, on
   );
 }
 
-function MenuKBM({ user, onNavigate, onExternalNavigate }: { user: any, onNavigate: (page: string) => void, onExternalNavigate: (page: string) => void }) {
+function MenuKBM({
+  user,
+  onNavigate,
+  onExternalNavigate,
+}: {
+  user: any;
+  onNavigate: (page: string) => void;
+  onExternalNavigate: (page: string) => void;
+}) {
+  const schoolIdentity = useSchoolIdentity();
   const menuItems = [
-    { id: 'jadwal', icon: Calendar, label: 'Jadwal Pelajaran', color: 'bg-purple-500', shadow: 'shadow-purple-200' },
-    { id: 'tugas', icon: ClipboardList, label: 'Tugas Sekolah', color: 'bg-blue-500', shadow: 'shadow-blue-200' },
-    { id: 'nilai_siswa', icon: FileSpreadsheet, label: 'Nilai', color: 'bg-fuchsia-500', shadow: 'shadow-fuchsia-200' },
-    { id: 'literasi', icon: BookOpen, label: 'Literasi Digital', color: 'bg-orange-500', shadow: 'shadow-orange-200' },
-    { id: 'tahfidz', icon: BookHeart, label: 'Tahfidz Quran', color: 'bg-emerald-500', shadow: 'shadow-emerald-200' },
-    { id: 'bank_sampah', icon: Trash2, label: 'Bank Sampah', color: 'bg-green-500', shadow: 'shadow-green-200' },
-    { id: 'kasih_ibu', icon: Heart, label: 'Kasih Ibu', color: 'bg-pink-500', shadow: 'shadow-pink-200' },
-    { id: 'jurnal_kasih_ibu', icon: FileText, label: 'Jurnal Kasih Ibu', color: 'bg-rose-500', shadow: 'shadow-rose-200' },
-    { id: 'kehadiran', icon: UserCheck, label: 'Rekap Absensi', color: 'bg-indigo-500', shadow: 'shadow-indigo-200' },
-    { id: 'pelanggaran', icon: AlertTriangle, label: 'Catatan Disiplin', color: 'bg-red-500', shadow: 'shadow-red-200' },
-    { id: 'rumah_pendidikan', label: 'Rumah Pendidikan', img: 'https://lh3.googleusercontent.com/d/1DgxC8VjC0SS_xWtmTqnIReQmGpCqzGDO', color: 'bg-white', shadow: 'shadow-slate-200' },
-    { id: 'edugame', label: 'Edugame', icon: Gamepad, color: 'bg-green-500', shadow: 'shadow-green-200' },
+    {
+      id: "jadwal",
+      icon: Calendar,
+      label: "Jadwal Pelajaran",
+      color: "bg-purple-500",
+      shadow: "shadow-purple-200",
+    },
+    {
+      id: "tugas",
+      icon: ClipboardList,
+      label: "Tugas Sekolah",
+      color: "bg-blue-500",
+      shadow: "shadow-blue-200",
+    },
+    {
+      id: "nilai_siswa",
+      icon: FileSpreadsheet,
+      label: "Nilai",
+      color: "bg-fuchsia-500",
+      shadow: "shadow-fuchsia-200",
+    },
+    {
+      id: "literasi",
+      icon: BookOpen,
+      label: "Literasi Digital",
+      color: "bg-orange-500",
+      shadow: "shadow-orange-200",
+    },
+    {
+      id: "tahfidz",
+      icon: BookHeart,
+      label: "Tahfidz Quran",
+      color: "bg-emerald-500",
+      shadow: "shadow-emerald-200",
+    },
+    {
+      id: "bank_sampah",
+      icon: Trash2,
+      label: "Bank Sampah",
+      color: "bg-green-500",
+      shadow: "shadow-green-200",
+    },
+    {
+      id: "kasih_ibu",
+      icon: Heart,
+      label: schoolIdentity.kasihIbuLabel || "Kasih Ibu",
+      color: "bg-pink-500",
+      shadow: "shadow-pink-200",
+    },
+    {
+      id: "jurnal_kasih_ibu",
+      icon: FileText,
+      label: `Jurnal ${schoolIdentity.kasihIbuLabel || "Kasih Ibu"}`,
+      color: "bg-rose-500",
+      shadow: "shadow-rose-200",
+    },
+    {
+      id: "kehadiran",
+      icon: UserCheck,
+      label: "Rekap Absensi",
+      color: "bg-indigo-500",
+      shadow: "shadow-indigo-200",
+    },
+    {
+      id: "pelanggaran",
+      icon: AlertTriangle,
+      label: "Catatan Disiplin",
+      color: "bg-red-500",
+      shadow: "shadow-red-200",
+    },
+    {
+      id: "rumah_pendidikan",
+      label: "Rumah Pendidikan",
+      img: "https://lh3.googleusercontent.com/d/1DgxC8VjC0SS_xWtmTqnIReQmGpCqzGDO",
+      color: "bg-white",
+      shadow: "shadow-slate-200",
+    },
+    {
+      id: "edugame",
+      label: "Edugame",
+      icon: Gamepad,
+      color: "bg-green-500",
+      shadow: "shadow-green-200",
+    },
   ];
 
   return (
@@ -412,29 +674,52 @@ function MenuKBM({ user, onNavigate, onExternalNavigate }: { user: any, onNaviga
         <button
           key={item.id}
           onClick={() => {
-            if (item.id === 'rumah_pendidikan') {
-              window.open('https://rumah.pendidikan.go.id/ruang/murid', '_blank', 'noopener,noreferrer');
+            if (item.id === "rumah_pendidikan") {
+              window.open(
+                "https://rumah.pendidikan.go.id/ruang/murid",
+                "_blank",
+                "noopener,noreferrer",
+              );
             } else {
               onNavigate(item.id);
             }
           }}
           className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition-all flex flex-col items-center gap-3 group hover:-translate-y-1"
         >
-          <div className={`${item.color} w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg ${item.shadow} dark:shadow-none group-hover:scale-110 transition-transform overflow-hidden`}>
+          <div
+            className={`${item.color} w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg ${item.shadow} dark:shadow-none group-hover:scale-110 transition-transform overflow-hidden`}
+          >
             {item.img ? (
-              <img src={item.img} alt={item.label} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              <img
+                src={item.img}
+                alt={item.label}
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
             ) : item.icon ? (
               <item.icon className="w-7 h-7" />
             ) : null}
           </div>
-          <span className="font-bold text-slate-700 dark:text-slate-300 text-sm text-center">{item.label}</span>
+          <span className="font-bold text-slate-700 dark:text-slate-300 text-sm text-center">
+            {item.label}
+          </span>
         </button>
       ))}
     </div>
   );
 }
 
-function Profil({ user, onLogout, darkMode, toggleDarkMode }: { user: any, onLogout: () => void, darkMode: boolean, toggleDarkMode: () => void }) {
+function Profil({
+  user,
+  onLogout,
+  darkMode,
+  toggleDarkMode,
+}: {
+  user: any;
+  onLogout: () => void;
+  darkMode: boolean;
+  toggleDarkMode: () => void;
+}) {
   return (
     <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 border border-slate-100 dark:border-slate-700 animate-in fade-in duration-300">
       <h3 className="font-bold text-slate-700 dark:text-slate-200 mb-6 flex items-center gap-2 text-lg">
@@ -443,41 +728,61 @@ function Profil({ user, onLogout, darkMode, toggleDarkMode }: { user: any, onLog
       <div className="space-y-6">
         <div className="flex items-center gap-4 pb-6 border-b border-slate-100 dark:border-slate-700">
           <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-2xl">
-            {user?.Nama_Murid?.charAt(0) || 'S'}
+            {user?.Nama_Murid?.charAt(0) || "S"}
           </div>
           <div>
-            <h4 className="font-bold text-lg text-slate-800 dark:text-white">{user?.Nama_Murid || user?.name}</h4>
-            <p className="text-slate-500 dark:text-slate-400">{user?.Kelas || 'Kelas ?'}</p>
+            <h4 className="font-bold text-lg text-slate-800 dark:text-white">
+              {user?.Nama_Murid || user?.name}
+            </h4>
+            <p className="text-slate-500 dark:text-slate-400">
+              {user?.Kelas || "Kelas ?"}
+            </p>
           </div>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-500 dark:text-slate-400">NIS / NISN</label>
-            <p className="font-semibold text-slate-800 dark:text-slate-200 text-lg">{user?.NIS || user?.NISN || '-'}</p>
+            <label className="block text-sm font-medium text-slate-500 dark:text-slate-400">
+              NIS / NISN
+            </label>
+            <p className="font-semibold text-slate-800 dark:text-slate-200 text-lg">
+              {user?.NIS || user?.NISN || "-"}
+            </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-500 dark:text-slate-400">Tempat, Tanggal Lahir</label>
-            <p className="font-semibold text-slate-800 dark:text-slate-200">{user?.Tempat_Lahir}, {user?.Tanggal_Lahir}</p>
+            <label className="block text-sm font-medium text-slate-500 dark:text-slate-400">
+              Tempat, Tanggal Lahir
+            </label>
+            <p className="font-semibold text-slate-800 dark:text-slate-200">
+              {user?.Tempat_Lahir}, {user?.Tanggal_Lahir}
+            </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-500 dark:text-slate-400">Alamat</label>
-            <p className="font-semibold text-slate-800 dark:text-slate-200">{user?.Alamat || '-'}</p>
+            <label className="block text-sm font-medium text-slate-500 dark:text-slate-400">
+              Alamat
+            </label>
+            <p className="font-semibold text-slate-800 dark:text-slate-200">
+              {user?.Alamat || "-"}
+            </p>
           </div>
         </div>
 
         <div className="pt-6 space-y-3">
-           <button 
+          <button
             onClick={toggleDarkMode}
             className="hidden md:flex w-full items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           >
             <span className="font-medium text-slate-700 dark:text-slate-200 flex items-center gap-2">
-              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              {darkMode ? 'Mode Terang' : 'Mode Gelap'}
+              {darkMode ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
+              {darkMode ? "Mode Terang" : "Mode Gelap"}
             </span>
           </button>
-          
-          <button 
+
+          <button
             onClick={onLogout}
             className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-bold hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
           >
@@ -490,35 +795,46 @@ function Profil({ user, onLogout, darkMode, toggleDarkMode }: { user: any, onLog
 }
 
 function ChatbotView() {
-  const [messages, setMessages] = useState<{ text: string, sender: 'user' | 'bot' }[]>([
-    { text: 'Halo! Saya adalah asisten virtual BISMA. Ada yang bisa saya bantu?', sender: 'bot' }
+  const [messages, setMessages] = useState<
+    { text: string; sender: "user" | "bot" }[]
+  >([
+    {
+      text: "Halo! Saya adalah asisten virtual BISMA. Ada yang bisa saya bantu?",
+      sender: "bot",
+    },
   ]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSend = async () => {
     if (!input.trim()) return;
-    
+
     const userMessage = input;
-    setMessages(prev => [...prev, { text: userMessage, sender: 'user' }]);
-    setInput('');
+    setMessages((prev) => [...prev, { text: userMessage, sender: "user" }]);
+    setInput("");
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/chatbot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage })
+      const res = await fetch("/api/chatbot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMessage }),
       });
       const data = await res.json();
-      
+
       if (data.success) {
-        setMessages(prev => [...prev, { text: data.reply, sender: 'bot' }]);
+        setMessages((prev) => [...prev, { text: data.reply, sender: "bot" }]);
       } else {
-        setMessages(prev => [...prev, { text: `Maaf, terjadi kesalahan: ${data.message}`, sender: 'bot' }]);
+        setMessages((prev) => [
+          ...prev,
+          { text: `Maaf, terjadi kesalahan: ${data.message}`, sender: "bot" },
+        ]);
       }
     } catch (error) {
-      setMessages(prev => [...prev, { text: 'Maaf, gagal terhubung ke server.', sender: 'bot' }]);
+      setMessages((prev) => [
+        ...prev,
+        { text: "Maaf, gagal terhubung ke server.", sender: "bot" },
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -528,12 +844,17 @@ function ChatbotView() {
     <div className="flex flex-col h-[calc(100vh-160px)]">
       <div className="flex-grow overflow-y-auto p-4 space-y-4">
         {messages.map((msg, idx) => (
-          <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] p-3 rounded-2xl ${
-              msg.sender === 'user' 
-                ? 'bg-blue-600 text-white rounded-tr-none' 
-                : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-tl-none shadow-sm'
-            }`}>
+          <div
+            key={idx}
+            className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
+          >
+            <div
+              className={`max-w-[85%] p-3 rounded-2xl ${
+                msg.sender === "user"
+                  ? "bg-blue-600 text-white rounded-tr-none"
+                  : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-tl-none shadow-sm"
+              }`}
+            >
               <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
             </div>
           </div>
@@ -542,24 +863,30 @@ function ChatbotView() {
           <div className="flex justify-start">
             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-2xl rounded-tl-none shadow-sm flex gap-1">
               <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></span>
-              <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
-              <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></span>
+              <span
+                className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+                style={{ animationDelay: "0.2s" }}
+              ></span>
+              <span
+                className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+                style={{ animationDelay: "0.4s" }}
+              ></span>
             </div>
           </div>
         )}
       </div>
-      
+
       <div className="p-4 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
         <div className="flex gap-2">
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+            onKeyPress={(e) => e.key === "Enter" && handleSend()}
             placeholder="Ketik pesan..."
             className="flex-grow bg-slate-100 dark:bg-slate-900 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white"
           />
-          <button 
+          <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
             className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white p-3 rounded-xl transition-colors flex items-center justify-center"
@@ -572,21 +899,21 @@ function ChatbotView() {
   );
 }
 
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
-function JadwalHariIni({ user, onBack }: { user: any, onBack: () => void }) {
+function JadwalHariIni({ user, onBack }: { user: any; onBack: () => void }) {
   const [jadwal, setJadwal] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const schoolIdentity = useSchoolIdentity();
 
   const handleDownloadPDF = async () => {
     try {
-      const kelas = user?.Kelas || 'Kelas 1';
+      const kelas = user?.Kelas || "Kelas 1";
       // Fetch full schedule
       const res = await fetch(`/api/jadwal?kelas=${kelas}`);
       const data = await res.json();
-      
+
       if (!data.success || !data.data) {
         alert("Gagal mengambil data jadwal penuh");
         return;
@@ -594,40 +921,55 @@ function JadwalHariIni({ user, onBack }: { user: any, onBack: () => void }) {
 
       const fullSchedule = data.data;
       const groupedDays: any = {};
-      
+
       // Group by day then sort by jam
       fullSchedule.forEach((j: any) => {
         if (!groupedDays[j.hari]) groupedDays[j.hari] = [];
         groupedDays[j.hari].push(j);
       });
 
-      const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-      
-      const doc = new jsPDF('p', 'pt', 'a4');
-      
+      const days = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+
+      const doc = new jsPDF("p", "pt", "a4");
+
       // Header
       doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text(schoolIdentity.schoolName, doc.internal.pageSize.getWidth() / 2, 40, { align: 'center' });
-      
+      doc.setFont("helvetica", "bold");
+      doc.text(
+        schoolIdentity.schoolName,
+        doc.internal.pageSize.getWidth() / 2,
+        40,
+        { align: "center" },
+      );
+
       doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Jadwal Pelajaran Siswa', doc.internal.pageSize.getWidth() / 2, 60, { align: 'center' });
-      
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        "Jadwal Pelajaran Siswa",
+        doc.internal.pageSize.getWidth() / 2,
+        60,
+        { align: "center" },
+      );
+
       doc.setFontSize(10);
-      doc.text(`Nama: ${user?.Nama_Murid || user?.name || ''} | Kelas: ${kelas}`, doc.internal.pageSize.getWidth() / 2, 80, { align: 'center' });
-      
+      doc.text(
+        `Nama: ${user?.Nama_Murid || user?.name || ""} | Kelas: ${kelas}`,
+        doc.internal.pageSize.getWidth() / 2,
+        80,
+        { align: "center" },
+      );
+
       const tableColumn = ["Hari", "Jam Ke", "Mata Pelajaran", "Guru"];
       const tableRows: any[] = [];
 
-      days.forEach(hari => {
+      days.forEach((hari) => {
         const todaySchedule = groupedDays[hari] || [];
         todaySchedule.sort((a: any, b: any) => a.jam - b.jam);
-        
+
         let startJam = 0;
-        let lastMapel = '';
-        let lastGuru = '';
-        
+        let lastMapel = "";
+        let lastGuru = "";
+
         todaySchedule.forEach((j: any) => {
           if (startJam === 0) {
             startJam = j.jam;
@@ -641,21 +983,21 @@ function JadwalHariIni({ user, onBack }: { user: any, onBack: () => void }) {
               hari,
               startJam === endJam ? String(startJam) : `${startJam}-${endJam}`,
               lastMapel,
-              lastGuru
+              lastGuru,
             ]);
             startJam = j.jam;
             lastMapel = j.mapel;
             lastGuru = j.guru;
           }
         });
-        
+
         if (startJam > 0) {
           const endJam = todaySchedule[todaySchedule.length - 1].jam;
           tableRows.push([
             hari,
             startJam === endJam ? String(startJam) : `${startJam}-${endJam}`,
             lastMapel,
-            lastGuru
+            lastGuru,
           ]);
         }
       });
@@ -664,16 +1006,20 @@ function JadwalHariIni({ user, onBack }: { user: any, onBack: () => void }) {
         head: [tableColumn],
         body: tableRows,
         startY: 100,
-        theme: 'grid',
+        theme: "grid",
         styles: { fontSize: 10, cellPadding: 5 },
-        headStyles: { fillColor: [192, 38, 211], textColor: 255, fontStyle: 'bold' }, // fuchsia-600
-        didParseCell: function(data: any) {
+        headStyles: {
+          fillColor: [192, 38, 211],
+          textColor: 255,
+          fontStyle: "bold",
+        }, // fuchsia-600
+        didParseCell: function (data: any) {
           // Add some simple row span simulation by clearing text if cell above is same day
           // Actual rowSpan is complex in autoTable without manual definition. We'll leave it simple.
-        }
+        },
       });
 
-      doc.save(`Jadwal_Pelajaran_${user?.Nama_Murid || 'Siswa'}.pdf`);
+      doc.save(`Jadwal_Pelajaran_${user?.Nama_Murid || "Siswa"}.pdf`);
     } catch (e) {
       console.error(e);
       alert("Terjadi kesalahan saat membuat PDF");
@@ -683,24 +1029,34 @@ function JadwalHariIni({ user, onBack }: { user: any, onBack: () => void }) {
   useEffect(() => {
     const fetchJadwal = async () => {
       try {
-        const kelas = user?.Kelas || 'Kelas 1';
-        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        const kelas = user?.Kelas || "Kelas 1";
+        const days = [
+          "Minggu",
+          "Senin",
+          "Selasa",
+          "Rabu",
+          "Kamis",
+          "Jumat",
+          "Sabtu",
+        ];
         const dayName = days[new Date().getDay()];
-        
+
         const res = await fetch(`/api/jadwal?kelas=${kelas}&hari=${dayName}`);
         const data = await res.json();
         if (data.success) {
           const groupedJadwal: any[] = [];
           if (data.data) {
-            data.data.sort((a: any, b: any) => a.jam - b.jam).forEach((j: any) => {
-              const last = groupedJadwal[groupedJadwal.length - 1];
-              if (last && last.mapel === j.mapel && last.guru === j.guru) {
-                last.jamArray.push(j.jam);
-              } else {
-                groupedJadwal.push({ ...j, jamArray: [j.jam] });
-              }
-            });
-            groupedJadwal.forEach(g => {
+            data.data
+              .sort((a: any, b: any) => a.jam - b.jam)
+              .forEach((j: any) => {
+                const last = groupedJadwal[groupedJadwal.length - 1];
+                if (last && last.mapel === j.mapel && last.guru === j.guru) {
+                  last.jamArray.push(j.jam);
+                } else {
+                  groupedJadwal.push({ ...j, jamArray: [j.jam] });
+                }
+              });
+            groupedJadwal.forEach((g) => {
               if (g.jamArray.length > 1) {
                 g.jam = `${g.jamArray[0]}-${g.jamArray[g.jamArray.length - 1]}`;
               } else {
@@ -723,15 +1079,27 @@ function JadwalHariIni({ user, onBack }: { user: any, onBack: () => void }) {
     <div className="space-y-6">
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+          <button
+            onClick={onBack}
+            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+          >
             <X className="w-6 h-6 text-slate-500" />
           </button>
           <div>
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Jadwal Hari Ini</h2>
-            <p className="text-slate-500 dark:text-slate-400">{new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+              Jadwal Hari Ini
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400">
+              {new Date().toLocaleDateString("id-ID", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </p>
           </div>
         </div>
-        <button 
+        <button
           onClick={handleDownloadPDF}
           className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-colors text-sm font-bold"
         >
@@ -747,7 +1115,7 @@ function JadwalHariIni({ user, onBack }: { user: any, onBack: () => void }) {
         ) : jadwal.length > 0 ? (
           <div className="relative border-l-2 border-fuchsia-100 dark:border-fuchsia-900/30 ml-4 pl-6 space-y-6">
             {jadwal.map((item, index) => (
-              <div 
+              <div
                 key={index}
                 className="relative bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 hover:shadow-md transition-all group"
               >
@@ -755,7 +1123,9 @@ function JadwalHariIni({ user, onBack }: { user: any, onBack: () => void }) {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <div className="bg-fuchsia-50 dark:bg-fuchsia-900/20 text-fuchsia-600 dark:text-fuchsia-400 px-4 py-2 rounded-xl font-bold text-center min-w-[80px]">
-                      <span className="block text-[10px] uppercase tracking-wider opacity-80 mb-0.5">Jam Ke</span>
+                      <span className="block text-[10px] uppercase tracking-wider opacity-80 mb-0.5">
+                        Jam Ke
+                      </span>
                       <span className="text-lg leading-none">{item.jam}</span>
                     </div>
                     <div>
@@ -781,7 +1151,9 @@ function JadwalHariIni({ user, onBack }: { user: any, onBack: () => void }) {
         ) : (
           <div className="text-center p-12 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 border-dashed">
             <Calendar className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-            <p className="text-slate-500 font-medium">Tidak ada jadwal pelajaran hari ini.</p>
+            <p className="text-slate-500 font-medium">
+              Tidak ada jadwal pelajaran hari ini.
+            </p>
             <p className="text-sm text-slate-400 mt-1">Selamat beristirahat!</p>
           </div>
         )}
@@ -790,21 +1162,22 @@ function JadwalHariIni({ user, onBack }: { user: any, onBack: () => void }) {
   );
 }
 
-function BankSampah({ user, onBack }: { user: any, onBack: () => void }) {
+function BankSampah({ user, onBack }: { user: any; onBack: () => void }) {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const schoolIdentity = useSchoolIdentity();
 
   useEffect(() => {
     const fetchTransactions = async () => {
-      const nama = user?.Nama_Murid || user?.name || user?.['Nama Lengkap'];
+      const nama = user?.Nama_Murid || user?.name || user?.["Nama Lengkap"];
       if (!nama) return;
-      
+
       try {
         const { data, error } = await supabase
-          .from('tabungan_sampah')
-          .select('*')
-          .eq('siswa', nama)
-          .order('tanggal', { ascending: false });
+          .from("tabungan_sampah")
+          .select("*")
+          .eq("siswa", nama)
+          .order("tanggal", { ascending: false });
 
         if (error) throw error;
         if (data) setTransactions(data);
@@ -818,18 +1191,31 @@ function BankSampah({ user, onBack }: { user: any, onBack: () => void }) {
     fetchTransactions();
   }, [user]);
 
-  const totalSaldo = transactions.reduce((acc, curr) => acc + Number(curr.nilai || 0), 0);
-  const totalBerat = transactions.reduce((acc, curr) => acc + Number(curr.berat || 0), 0);
+  const totalSaldo = transactions.reduce(
+    (acc, curr) => acc + Number(curr.nilai || 0),
+    0,
+  );
+  const totalBerat = transactions.reduce(
+    (acc, curr) => acc + Number(curr.berat || 0),
+    0,
+  );
 
   return (
     <div className="space-y-6">
       <header className="flex items-center gap-4 mb-6">
-        <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+        <button
+          onClick={onBack}
+          className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+        >
           <X className="w-6 h-6 text-slate-500" />
         </button>
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Bank Sampah</h2>
-          <p className="text-slate-500 dark:text-slate-400">Tabungan sampahmu</p>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+            Bank Sampah
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400">
+            Tabungan sampahmu
+          </p>
         </div>
       </header>
 
@@ -837,7 +1223,9 @@ function BankSampah({ user, onBack }: { user: any, onBack: () => void }) {
         <div className="flex justify-between items-start">
           <div>
             <p className="text-green-100 mb-1">Total Saldo Tabungan</p>
-            <h3 className="text-4xl font-bold">Rp {totalSaldo.toLocaleString('id-ID')}</h3>
+            <h3 className="text-4xl font-bold">
+              Rp {totalSaldo.toLocaleString("id-ID")}
+            </h3>
           </div>
           <div className="bg-white/20 p-3 rounded-xl">
             <Trash2 className="w-8 h-8 text-white" />
@@ -856,21 +1244,36 @@ function BankSampah({ user, onBack }: { user: any, onBack: () => void }) {
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-        <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-6">Riwayat Transaksi</h3>
+        <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-6">
+          Riwayat Transaksi
+        </h3>
         {loading ? (
           <div className="text-center py-8 text-slate-500">Memuat data...</div>
         ) : transactions.length === 0 ? (
-          <div className="text-center py-8 text-slate-500">Belum ada transaksi.</div>
+          <div className="text-center py-8 text-slate-500">
+            Belum ada transaksi.
+          </div>
         ) : (
           <div className="space-y-4">
             {transactions.map((t, idx) => (
-              <div key={idx} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
+              <div
+                key={idx}
+                className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl"
+              >
                 <div>
-                  <p className="font-semibold text-slate-800 dark:text-white">{t.jenis_sampah}</p>
-                  <p className="text-xs text-slate-500">{new Date(t.tanggal).toLocaleDateString('id-ID')} • {t.berat} kg</p>
+                  <p className="font-semibold text-slate-800 dark:text-white">
+                    {t.jenis_sampah}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {new Date(t.tanggal).toLocaleDateString("id-ID")} •{" "}
+                    {t.berat} kg
+                  </p>
                 </div>
-                <div className={`font-bold ${Number(t.nilai) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {Number(t.nilai) >= 0 ? '+' : '-'} Rp {Math.abs(Number(t.nilai)).toLocaleString('id-ID')}
+                <div
+                  className={`font-bold ${Number(t.nilai) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                >
+                  {Number(t.nilai) >= 0 ? "+" : "-"} Rp{" "}
+                  {Math.abs(Number(t.nilai)).toLocaleString("id-ID")}
                 </div>
               </div>
             ))}
@@ -881,7 +1284,7 @@ function BankSampah({ user, onBack }: { user: any, onBack: () => void }) {
   );
 }
 
-function JurnalKasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
+function JurnalKasihIbu({ user, onBack }: { user: any; onBack: () => void }) {
   const [jurnalData, setJurnalData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const schoolIdentity = useSchoolIdentity();
@@ -892,7 +1295,9 @@ function JurnalKasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
       const nama = user?.Nama_Murid || user?.name;
       if (!nis && !nama) return;
       try {
-        const response = await fetch(`/api/kasih-ibu?nis=${nis || ''}&nama=${nama || ''}`);
+        const response = await fetch(
+          `/api/kasih-ibu?nis=${nis || ""}&nama=${nama || ""}`,
+        );
         const data = await response.json();
         if (data.success) {
           setJurnalData(data.data);
@@ -914,15 +1319,22 @@ function JurnalKasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
     <div className="space-y-6">
       <header className="flex items-center justify-between gap-4 mb-6 print:hidden">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+          <button
+            onClick={onBack}
+            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+          >
             <X className="w-6 h-6 text-slate-500" />
           </button>
           <div>
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Jurnal Kasih Ibu</h2>
-            <p className="text-slate-500 dark:text-slate-400">Riwayat pembiasaan karakter baik</p>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+              Jurnal {schoolIdentity.kasihIbuLabel || "Kasih Ibu"}
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400">
+              Riwayat pembiasaan karakter baik
+            </p>
           </div>
         </div>
-        <button 
+        <button
           onClick={handlePrint}
           className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow-sm transition-colors"
         >
@@ -932,9 +1344,13 @@ function JurnalKasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6 print:shadow-none print:border-none print:p-0 print:w-full print:max-w-[210mm] print:mx-auto print:bg-white print:text-black">
         {loading ? (
-          <div className="text-center py-12 text-slate-500 dark:text-slate-400 print:hidden">Memuat data...</div>
+          <div className="text-center py-12 text-slate-500 dark:text-slate-400 print:hidden">
+            Memuat data...
+          </div>
         ) : jurnalData.length === 0 ? (
-          <div className="text-center py-12 text-slate-500 dark:text-slate-400 italic">Belum ada data jurnal.</div>
+          <div className="text-center py-12 text-slate-500 dark:text-slate-400 italic">
+            Belum ada data jurnal.
+          </div>
         ) : (
           <div className="overflow-x-auto print:overflow-visible">
             <table className="w-full text-sm print:text-xs border-collapse border border-slate-200 dark:border-slate-700 print:border-slate-300 table-fixed">
@@ -942,21 +1358,44 @@ function JurnalKasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
                 <tr className="bg-white dark:bg-slate-800">
                   <td colSpan={5} className="border-none p-0">
                     <div className="flex items-center gap-6 mb-4 border-b-2 border-black dark:border-white print:border-black pb-4 text-black dark:text-white pt-4">
-                      {schoolIdentity.schoolLogo && <img src={schoolIdentity.schoolLogo} className="h-20 w-20 object-contain" alt="Logo" />}
+                      {schoolIdentity.schoolLogo && (
+                        <img
+                          src={schoolIdentity.schoolLogo}
+                          className="h-20 w-20 object-contain"
+                          alt="Logo"
+                        />
+                      )}
                       <div className="text-left flex-1">
-                         <h3 className="text-2xl font-bold uppercase tracking-wide flex-wrap">{schoolIdentity.schoolName}</h3>
-                         <h4 className="text-xl font-semibold mt-1">Jurnal Kasih Ibu</h4>
-                         <p className="text-sm mt-1">Nama: {user?.Nama_Murid || user?.name} | Kelas: {user?.Kelas}</p>
+                        <h3 className="text-2xl font-bold uppercase tracking-wide flex-wrap">
+                          {schoolIdentity.schoolName}
+                        </h3>
+                        <h4 className="text-xl font-semibold mt-1">
+                          Jurnal {schoolIdentity.kasihIbuLabel || "Kasih Ibu"}
+                        </h4>
+                        <p className="text-sm mt-1">
+                          Nama: {user?.Nama_Murid || user?.name} | Kelas:{" "}
+                          {user?.Kelas}
+                        </p>
                       </div>
                     </div>
                   </td>
                 </tr>
                 <tr className="bg-slate-50 dark:bg-slate-900/50 print:bg-slate-100">
-                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-center w-12 print:w-10 text-slate-700 dark:text-slate-300">No</th>
-                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-left w-32 print:w-28 text-slate-700 dark:text-slate-300">Hari/Tanggal</th>
-                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-left w-36 print:w-32 text-slate-700 dark:text-slate-300">Aktivitas</th>
-                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-center w-24 print:w-20 text-slate-700 dark:text-slate-300">Perasaan</th>
-                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-left text-slate-700 dark:text-slate-300">Keterangan</th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-center w-12 print:w-10 text-slate-700 dark:text-slate-300">
+                    No
+                  </th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-left w-32 print:w-28 text-slate-700 dark:text-slate-300">
+                    Hari/Tanggal
+                  </th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-left w-36 print:w-32 text-slate-700 dark:text-slate-300">
+                    Aktivitas
+                  </th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-center w-24 print:w-20 text-slate-700 dark:text-slate-300">
+                    Perasaan
+                  </th>
+                  <th className="border-b border-slate-200 dark:border-slate-700 print:border-slate-300 p-3 print:p-2 text-left text-slate-700 dark:text-slate-300">
+                    Keterangan
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -964,32 +1403,48 @@ function JurnalKasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
                   const dateObj = new Date(item.tanggal);
                   let hariTanggal = item.tanggal;
                   if (!isNaN(dateObj.getTime())) {
-                    hariTanggal = dateObj.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-                  } else if (item.tanggal && item.tanggal.includes('T')) {
-                    const fallbackDate = new Date(item.tanggal.split('T')[0]);
+                    hariTanggal = dateObj.toLocaleDateString("id-ID", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    });
+                  } else if (item.tanggal && item.tanggal.includes("T")) {
+                    const fallbackDate = new Date(item.tanggal.split("T")[0]);
                     if (!isNaN(fallbackDate.getTime())) {
-                      hariTanggal = fallbackDate.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                      hariTanggal = fallbackDate.toLocaleDateString("id-ID", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      });
                     }
                   }
                   return (
-                  <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 print:hover:bg-transparent break-inside-avoid">
-                    <td className="border-b border-slate-100 dark:border-slate-800 print:border-slate-300 p-3 print:p-2 align-top text-center">{idx + 1}</td>
-                    <td className="border-b border-slate-100 dark:border-slate-800 print:border-slate-300 p-3 print:p-2 align-top text-slate-600 dark:text-slate-300">
-                      {hariTanggal}
-                    </td>
-                    <td className="border-b border-slate-100 dark:border-slate-800 print:border-slate-300 p-3 print:p-2 align-top font-medium text-slate-800 dark:text-slate-200">
-                      {item.habit_label}
-                    </td>
-                    <td className="border-b border-slate-100 dark:border-slate-800 print:border-slate-300 p-3 print:p-2 align-top text-center">
-                      <span className="inline-block px-2 py-1 bg-pink-50 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 rounded-lg text-xs font-medium">
-                        {item.perasaan || '-'}
-                      </span>
-                    </td>
-                    <td className="border-b border-slate-100 dark:border-slate-800 print:border-slate-300 p-3 print:p-2 align-top text-slate-600 dark:text-slate-300">
-                      {item.keterangan || '-'}
-                    </td>
-                  </tr>
-                )})}
+                    <tr
+                      key={idx}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/50 print:hover:bg-transparent break-inside-avoid"
+                    >
+                      <td className="border-b border-slate-100 dark:border-slate-800 print:border-slate-300 p-3 print:p-2 align-top text-center">
+                        {idx + 1}
+                      </td>
+                      <td className="border-b border-slate-100 dark:border-slate-800 print:border-slate-300 p-3 print:p-2 align-top text-slate-600 dark:text-slate-300">
+                        {hariTanggal}
+                      </td>
+                      <td className="border-b border-slate-100 dark:border-slate-800 print:border-slate-300 p-3 print:p-2 align-top font-medium text-slate-800 dark:text-slate-200">
+                        {item.habit_label}
+                      </td>
+                      <td className="border-b border-slate-100 dark:border-slate-800 print:border-slate-300 p-3 print:p-2 align-top text-center">
+                        <span className="inline-block px-2 py-1 bg-pink-50 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 rounded-lg text-xs font-medium">
+                          {item.perasaan || "-"}
+                        </span>
+                      </td>
+                      <td className="border-b border-slate-100 dark:border-slate-800 print:border-slate-300 p-3 print:p-2 align-top text-slate-600 dark:text-slate-300">
+                        {item.keterangan || "-"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -999,38 +1454,84 @@ function JurnalKasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
   );
 }
 
-function KasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
+function KasihIbu({ user, onBack }: { user: any; onBack: () => void }) {
+  const schoolIdentity = useSchoolIdentity();
   const habits = [
-    { id: 'bangun_pagi', label: 'Bangun Pagi', desc: 'Menanamkan disiplin', icon: '🌅' },
-    { id: 'beribadah', label: 'Beribadah', desc: 'Memperkuat nilai spiritual', icon: '🕌' },
-    { id: 'berolahraga', label: 'Berolahraga', desc: 'Menjaga kesehatan fisik', icon: '🏃' },
-    { id: 'makan_sehat', label: 'Makan Sehat', desc: 'Gizi seimbang', icon: '🥗' },
-    { id: 'gemar_belajar', label: 'Gemar Belajar', desc: 'Rasa ingin tahu', icon: '📚' },
-    { id: 'bermasyarakat', label: 'Bermasyarakat', desc: 'Gotong royong', icon: '🤝' },
-    { id: 'tidur_cepat', label: 'Tidur Cepat', desc: 'Istirahat cukup', icon: '😴' },
+    {
+      id: "bangun_pagi",
+      label: "Bangun Pagi",
+      desc: "Menanamkan disiplin",
+      icon: "🌅",
+    },
+    {
+      id: "beribadah",
+      label: "Beribadah",
+      desc: "Memperkuat nilai spiritual",
+      icon: "🕌",
+    },
+    {
+      id: "berolahraga",
+      label: "Berolahraga",
+      desc: "Menjaga kesehatan fisik",
+      icon: "🏃",
+    },
+    {
+      id: "makan_sehat",
+      label: "Makan Sehat",
+      desc: "Gizi seimbang",
+      icon: "🥗",
+    },
+    {
+      id: "gemar_belajar",
+      label: "Gemar Belajar",
+      desc: "Rasa ingin tahu",
+      icon: "📚",
+    },
+    {
+      id: "bermasyarakat",
+      label: "Bermasyarakat",
+      desc: "Gotong royong",
+      icon: "🤝",
+    },
+    {
+      id: "tidur_cepat",
+      label: "Tidur Cepat",
+      desc: "Istirahat cukup",
+      icon: "😴",
+    },
   ];
 
   const [selectedHabit, setSelectedHabit] = useState<any>(null);
-  const [keterangan, setKeterangan] = useState('');
-  const [statusPembiasaan, setStatusPembiasaan] = useState<string>('');
-  const [sholatChecklist, setSholatChecklist] = useState<Record<string, string>>({
-    Subuh: '', Dhuhur: '', Ashar: '', Maghrib: '', Isya: ''
+  const [keterangan, setKeterangan] = useState("");
+  const [statusPembiasaan, setStatusPembiasaan] = useState<string>("");
+  const [sholatChecklist, setSholatChecklist] = useState<
+    Record<string, string>
+  >({
+    Subuh: "",
+    Dhuhur: "",
+    Ashar: "",
+    Maghrib: "",
+    Isya: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [completedHabits, setCompletedHabits] = useState<string[]>([]);
-  
+
   const getLocalDateStr = () => {
     const d = new Date();
     // use exact current local date instead of utc
-    return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+      .toISOString()
+      .split("T")[0];
   };
 
   useEffect(() => {
     const fetchTodayHabits = async () => {
       try {
         const todayStr = getLocalDateStr();
-        const res = await fetch(`/api/kasih-ibu?nis=${user?.NISN || user?.NIS || user?.id}&tanggal=${todayStr}`);
+        const res = await fetch(
+          `/api/kasih-ibu?nis=${user?.NISN || user?.NIS || user?.id}&tanggal=${todayStr}`,
+        );
         const result = await res.json();
         if (result.success && result.data) {
           const filled = result.data.map((item: any) => item.habit_id);
@@ -1052,13 +1553,15 @@ function KasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!statusPembiasaan && selectedHabit?.id !== 'beribadah') {
+    if (!statusPembiasaan && selectedHabit?.id !== "beribadah") {
       alert("Silakan pilih status pembiasaan");
       return;
     }
-    
-    if (selectedHabit?.id === 'beribadah') {
-      const allFilled = Object.values(sholatChecklist).every(val => val !== '');
+
+    if (selectedHabit?.id === "beribadah") {
+      const allFilled = Object.values(sholatChecklist).every(
+        (val) => val !== "",
+      );
       if (!allFilled) {
         alert("Silakan lengkapi checklist sholat");
         return;
@@ -1068,42 +1571,50 @@ function KasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
     setSubmitting(true);
     try {
       let finalKeterangan = keterangan;
-      if (selectedHabit?.id === 'beribadah') {
+      if (selectedHabit?.id === "beribadah") {
         const sholatDetails = Object.entries(sholatChecklist)
           .map(([sholat, status]) => `${sholat}: ${status}`)
-          .join(', ');
+          .join(", ");
         finalKeterangan = `${keterangan}\n\nChecklist Sholat:\n${sholatDetails}`;
       } else {
         finalKeterangan = `${keterangan}\n\nStatus: ${statusPembiasaan}`;
       }
 
-      const res = await fetch('/api/kasih-ibu', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/kasih-ibu", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nis: user?.NISN || user?.NIS || user?.id,
-          nama: user?.Nama_Murid || user?.name || user?.['Nama Lengkap'],
+          nama: user?.Nama_Murid || user?.name || user?.["Nama Lengkap"],
           kelas: user?.Kelas,
           habit_id: selectedHabit.id,
           habit_label: selectedHabit.label,
           tanggal: getLocalDateStr(),
-          waktu: currentTime.toLocaleTimeString('id-ID', { hour12: false }),
-          perasaan: 'Senang', // Default feeling, could be added to UI later
-          keterangan: finalKeterangan
-        })
+          waktu: currentTime.toLocaleTimeString("id-ID", { hour12: false }),
+          perasaan: "Senang", // Default feeling, could be added to UI later
+          keterangan: finalKeterangan,
+        }),
       });
-      
+
       const result = await res.json();
       if (result.success) {
         alert("Kegiatan berhasil dicatat! Menunggu validasi wali kelas.");
         setSelectedHabit(null);
-        setKeterangan('');
-        setStatusPembiasaan('');
-        setSholatChecklist({ Subuh: '', Dhuhur: '', Ashar: '', Maghrib: '', Isya: '' });
-        
+        setKeterangan("");
+        setStatusPembiasaan("");
+        setSholatChecklist({
+          Subuh: "",
+          Dhuhur: "",
+          Ashar: "",
+          Maghrib: "",
+          Isya: "",
+        });
+
         // Refresh completed habits
         const todayStr = getLocalDateStr();
-        const resList = await fetch(`/api/kasih-ibu?nis=${user?.NISN || user?.NIS || user?.id}&tanggal=${todayStr}`);
+        const resList = await fetch(
+          `/api/kasih-ibu?nis=${user?.NISN || user?.NIS || user?.id}&tanggal=${todayStr}`,
+        );
         const resultList = await resList.json();
         if (resultList.success && resultList.data) {
           setCompletedHabits(resultList.data.map((item: any) => item.habit_id));
@@ -1121,12 +1632,19 @@ function KasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
   return (
     <div className="space-y-6 relative">
       <header className="flex items-center gap-4 mb-6">
-        <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+        <button
+          onClick={onBack}
+          className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+        >
           <X className="w-6 h-6 text-slate-500" />
         </button>
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Program Kasih Ibu</h2>
-          <p className="text-slate-500 dark:text-slate-400">Pembiasaan karakter baik</p>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+            Program {schoolIdentity.kasihIbuLabel || "Kasih Ibu"}
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400">
+            Pembiasaan karakter baik
+          </p>
         </div>
       </header>
 
@@ -1134,32 +1652,43 @@ function KasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
         {habits.map((habit) => {
           const isCompleted = completedHabits.includes(habit.id);
           return (
-          <button
-            key={habit.id}
-            disabled={isCompleted}
-            onClick={() => !isCompleted && setSelectedHabit(habit)}
-            className={`p-6 rounded-2xl shadow-sm border transition-all text-left group relative overflow-hidden ${
-              isCompleted 
-                ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-800/30 opacity-60 cursor-not-allowed' 
-                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:shadow-md'
-            }`}
-          >
-            {isCompleted && (
-              <div className="absolute top-4 right-4 bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 p-1.5 rounded-full">
-                <CheckCircle className="w-5 h-5" />
+            <button
+              key={habit.id}
+              disabled={isCompleted}
+              onClick={() => !isCompleted && setSelectedHabit(habit)}
+              className={`p-6 rounded-2xl shadow-sm border transition-all text-left group relative overflow-hidden ${
+                isCompleted
+                  ? "bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-800/30 opacity-60 cursor-not-allowed"
+                  : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:shadow-md"
+              }`}
+            >
+              {isCompleted && (
+                <div className="absolute top-4 right-4 bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 p-1.5 rounded-full">
+                  <CheckCircle className="w-5 h-5" />
+                </div>
+              )}
+              <div className="flex items-start gap-4 relative z-10">
+                <div
+                  className={`text-4xl transition-transform duration-300 drop-shadow-md ${!isCompleted && "group-hover:scale-125"}`}
+                >
+                  {habit.icon}
+                </div>
+                <div>
+                  <h3
+                    className={`font-bold text-lg ${isCompleted ? "text-green-700 dark:text-green-400" : "text-slate-800 dark:text-white"}`}
+                  >
+                    {habit.label}
+                  </h3>
+                  <p
+                    className={`text-sm mt-1 ${isCompleted ? "text-green-600/70 dark:text-green-500/70" : "text-slate-500 dark:text-slate-400"}`}
+                  >
+                    {habit.desc}
+                  </p>
+                </div>
               </div>
-            )}
-            <div className="flex items-start gap-4 relative z-10">
-              <div className={`text-4xl transition-transform duration-300 drop-shadow-md ${!isCompleted && 'group-hover:scale-125'}`}>
-                {habit.icon}
-              </div>
-              <div>
-                <h3 className={`font-bold text-lg ${isCompleted ? 'text-green-700 dark:text-green-400' : 'text-slate-800 dark:text-white'}`}>{habit.label}</h3>
-                <p className={`text-sm mt-1 ${isCompleted ? 'text-green-600/70 dark:text-green-500/70' : 'text-slate-500 dark:text-slate-400'}`}>{habit.desc}</p>
-              </div>
-            </div>
-          </button>
-        )})}
+            </button>
+          );
+        })}
       </div>
 
       {/* Modal Input */}
@@ -1172,34 +1701,51 @@ function KasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
               exit={{ opacity: 0, scale: 0.9 }}
               className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative max-h-[90vh] flex flex-col"
             >
-              <button 
+              <button
                 onClick={() => setSelectedHabit(null)}
                 className="absolute top-4 right-4 p-2 bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 rounded-full transition-colors z-10"
               >
                 <X className="w-5 h-5 text-slate-500" />
               </button>
-              
+
               <div className="p-8 overflow-y-auto flex-1">
                 <div className="text-center mb-6">
-                  <span className="text-6xl mb-4 block">{selectedHabit.icon}</span>
-                  <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{selectedHabit.label}</h2>
-                  <p className="text-slate-500 dark:text-slate-400">{selectedHabit.desc}</p>
+                  <span className="text-6xl mb-4 block">
+                    {selectedHabit.icon}
+                  </span>
+                  <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+                    {selectedHabit.label}
+                  </h2>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    {selectedHabit.desc}
+                  </p>
                 </div>
 
                 <form onSubmit={handleSave} className="space-y-4">
                   <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl text-center">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold mb-1">Waktu Saat Ini</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold mb-1">
+                      Waktu Saat Ini
+                    </p>
                     <p className="text-xl font-mono font-bold text-slate-800 dark:text-white">
-                      {currentTime.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      {currentTime.toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
                     </p>
                     <p className="text-2xl font-mono font-bold text-blue-600 dark:text-blue-400">
-                      {currentTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                      {currentTime.toLocaleTimeString("id-ID", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Keterangan Kegiatan</label>
-                    <textarea 
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                      Keterangan Kegiatan
+                    </label>
+                    <textarea
                       required
                       value={keterangan}
                       onChange={(e) => setKeterangan(e.target.value)}
@@ -1208,61 +1754,87 @@ function KasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
                     ></textarea>
                   </div>
 
-                  {selectedHabit.id === 'beribadah' ? (
+                  {selectedHabit.id === "beribadah" ? (
                     <div className="space-y-3">
-                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Checklist Sholat Wajib</label>
-                      {['Subuh', 'Dhuhur', 'Ashar', 'Maghrib', 'Isya'].map((sholat) => (
-                        <div key={sholat} className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl">
-                          <span className="font-medium text-slate-700 dark:text-slate-300">{sholat}</span>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setSholatChecklist(prev => ({ ...prev, [sholat]: 'Belum Terbiasa' }))}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors ${sholatChecklist[sholat] === 'Belum Terbiasa' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800' : 'bg-white dark:bg-slate-600 text-slate-500 border border-slate-200 dark:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-500'}`}
-                            >
-                              <XCircle className="w-3 h-3" /> Belum
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setSholatChecklist(prev => ({ ...prev, [sholat]: 'Sudah Terbiasa' }))}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors ${sholatChecklist[sholat] === 'Sudah Terbiasa' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800' : 'bg-white dark:bg-slate-600 text-slate-500 border border-slate-200 dark:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-500'}`}
-                            >
-                              <CheckCircle className="w-3 h-3" /> Sudah
-                            </button>
+                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                        Checklist Sholat Wajib
+                      </label>
+                      {["Subuh", "Dhuhur", "Ashar", "Maghrib", "Isya"].map(
+                        (sholat) => (
+                          <div
+                            key={sholat}
+                            className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl"
+                          >
+                            <span className="font-medium text-slate-700 dark:text-slate-300">
+                              {sholat}
+                            </span>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSholatChecklist((prev) => ({
+                                    ...prev,
+                                    [sholat]: "Belum Terbiasa",
+                                  }))
+                                }
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors ${sholatChecklist[sholat] === "Belum Terbiasa" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800" : "bg-white dark:bg-slate-600 text-slate-500 border border-slate-200 dark:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-500"}`}
+                              >
+                                <XCircle className="w-3 h-3" /> Belum
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSholatChecklist((prev) => ({
+                                    ...prev,
+                                    [sholat]: "Sudah Terbiasa",
+                                  }))
+                                }
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors ${sholatChecklist[sholat] === "Sudah Terbiasa" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800" : "bg-white dark:bg-slate-600 text-slate-500 border border-slate-200 dark:border-slate-500 hover:bg-slate-100 dark:hover:bg-slate-500"}`}
+                              >
+                                <CheckCircle className="w-3 h-3" /> Sudah
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ),
+                      )}
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Status Pembiasaan</label>
+                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                        Status Pembiasaan
+                      </label>
                       <div className="grid grid-cols-2 gap-3">
                         <button
                           type="button"
-                          onClick={() => setStatusPembiasaan('Belum Terbiasa')}
-                          className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${statusPembiasaan === 'Belum Terbiasa' ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400 ring-2 ring-red-500/20' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-700'}`}
+                          onClick={() => setStatusPembiasaan("Belum Terbiasa")}
+                          className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${statusPembiasaan === "Belum Terbiasa" ? "bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400 ring-2 ring-red-500/20" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-700"}`}
                         >
                           <XCircle className="w-6 h-6" />
-                          <span className="text-sm font-bold">Belum Terbiasa</span>
+                          <span className="text-sm font-bold">
+                            Belum Terbiasa
+                          </span>
                         </button>
                         <button
                           type="button"
-                          onClick={() => setStatusPembiasaan('Sudah Terbiasa')}
-                          className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${statusPembiasaan === 'Sudah Terbiasa' ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400 ring-2 ring-green-500/20' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-700'}`}
+                          onClick={() => setStatusPembiasaan("Sudah Terbiasa")}
+                          className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${statusPembiasaan === "Sudah Terbiasa" ? "bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400 ring-2 ring-green-500/20" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-700"}`}
                         >
                           <CheckCircle className="w-6 h-6" />
-                          <span className="text-sm font-bold">Sudah Terbiasa</span>
+                          <span className="text-sm font-bold">
+                            Sudah Terbiasa
+                          </span>
                         </button>
                       </div>
                     </div>
                   )}
 
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     disabled={submitting}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 dark:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-4"
                   >
-                    <Save className="w-5 h-5" /> {submitting ? 'Menyimpan...' : 'Simpan Kegiatan'}
+                    <Save className="w-5 h-5" />{" "}
+                    {submitting ? "Menyimpan..." : "Simpan Kegiatan"}
                   </button>
                 </form>
               </div>
@@ -1274,25 +1846,31 @@ function KasihIbu({ user, onBack }: { user: any, onBack: () => void }) {
   );
 }
 
-function Kehadiran({ user, onBack }: { user: any, onBack: () => void }) {
-  const [filterBulan, setFilterBulan] = useState('semua');
-  const [filterTahun, setFilterTahun] = useState('semua');
+function Kehadiran({ user, onBack }: { user: any; onBack: () => void }) {
+  const [filterBulan, setFilterBulan] = useState("semua");
+  const [filterTahun, setFilterTahun] = useState("semua");
   const [data, setData] = useState<any[]>([]);
-  const [summary, setSummary] = useState({ hadirPercent: 0, izin: 0, sakit: 0, alpha: 0, dispensasi: 0 });
+  const [summary, setSummary] = useState({
+    hadirPercent: 0,
+    izin: 0,
+    sakit: 0,
+    alpha: 0,
+    dispensasi: 0,
+  });
 
   const months = [
-    { value: '0', label: 'Januari' },
-    { value: '1', label: 'Februari' },
-    { value: '2', label: 'Maret' },
-    { value: '3', label: 'April' },
-    { value: '4', label: 'Mei' },
-    { value: '5', label: 'Juni' },
-    { value: '6', label: 'Juli' },
-    { value: '7', label: 'Agustus' },
-    { value: '8', label: 'September' },
-    { value: '9', label: 'Oktober' },
-    { value: '10', label: 'November' },
-    { value: '11', label: 'Desember' }
+    { value: "0", label: "Januari" },
+    { value: "1", label: "Februari" },
+    { value: "2", label: "Maret" },
+    { value: "3", label: "April" },
+    { value: "4", label: "Mei" },
+    { value: "5", label: "Juni" },
+    { value: "6", label: "Juli" },
+    { value: "7", label: "Agustus" },
+    { value: "8", label: "September" },
+    { value: "9", label: "Oktober" },
+    { value: "10", label: "November" },
+    { value: "11", label: "Desember" },
   ];
 
   const currentYear = new Date().getFullYear();
@@ -1303,7 +1881,9 @@ function Kehadiran({ user, onBack }: { user: any, onBack: () => void }) {
       const nisn = user?.NISN || user?.NIS || user?.id;
       if (!nisn) return;
       try {
-        const res = await fetch(`/api/siswa/kehadiran?nisn=${nisn}&month=${filterBulan}&year=${filterTahun}`);
+        const res = await fetch(
+          `/api/siswa/kehadiran?nisn=${nisn}&month=${filterBulan}&year=${filterTahun}`,
+        );
         const result = await res.json();
         if (result.success) {
           setData(result.data);
@@ -1313,7 +1893,7 @@ function Kehadiran({ user, onBack }: { user: any, onBack: () => void }) {
               izin: result.summary.izin,
               sakit: result.summary.sakit,
               alpha: result.summary.alpha,
-              dispensasi: result.summary.dispensasi || 0
+              dispensasi: result.summary.dispensasi || 0,
             });
           }
         }
@@ -1331,13 +1911,19 @@ function Kehadiran({ user, onBack }: { user: any, onBack: () => void }) {
     <div className="space-y-6">
       <header className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
         <div className="flex items-center gap-4 flex-1">
-          <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+          <button
+            onClick={onBack}
+            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+          >
             <X className="w-6 h-6 text-slate-500" />
           </button>
           <div>
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Rekap Kehadiran</h2>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+              Rekap Kehadiran
+            </h2>
             <p className="text-slate-500 dark:text-slate-400">
-              {user?.Nama_Murid || user?.['Nama Lengkap'] || 'Siswa'} - Kelas {user?.Kelas || '-'}
+              {user?.Nama_Murid || user?.["Nama Lengkap"] || "Siswa"} - Kelas{" "}
+              {user?.Kelas || "-"}
             </p>
           </div>
         </div>
@@ -1348,8 +1934,10 @@ function Kehadiran({ user, onBack }: { user: any, onBack: () => void }) {
             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm"
           >
             <option value="semua">Semua Bulan</option>
-            {months.map(m => (
-              <option key={m.value} value={m.value}>{m.label}</option>
+            {months.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
             ))}
           </select>
           <select
@@ -1358,8 +1946,10 @@ function Kehadiran({ user, onBack }: { user: any, onBack: () => void }) {
             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm"
           >
             <option value="semua">Semua Tahun</option>
-            {years.map(y => (
-              <option key={y} value={y}>{y}</option>
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
             ))}
           </select>
         </div>
@@ -1367,24 +1957,44 @@ function Kehadiran({ user, onBack }: { user: any, onBack: () => void }) {
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         <div className="bg-green-100 dark:bg-green-900/30 p-4 rounded-xl border border-green-200 dark:border-green-800/30 text-center">
-          <h3 className="text-2xl font-bold text-green-700 dark:text-green-400">{summary.hadirPercent}%</h3>
-          <p className="text-xs text-green-600 dark:text-green-500 uppercase font-bold mt-1">Hadir</p>
+          <h3 className="text-2xl font-bold text-green-700 dark:text-green-400">
+            {summary.hadirPercent}%
+          </h3>
+          <p className="text-xs text-green-600 dark:text-green-500 uppercase font-bold mt-1">
+            Hadir
+          </p>
         </div>
         <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-xl border border-blue-200 dark:border-blue-800/30 text-center">
-          <h3 className="text-2xl font-bold text-blue-700 dark:text-blue-400">{summary.izin} Hari</h3>
-          <p className="text-xs text-blue-600 dark:text-blue-500 uppercase font-bold mt-1">Izin</p>
+          <h3 className="text-2xl font-bold text-blue-700 dark:text-blue-400">
+            {summary.izin} Hari
+          </h3>
+          <p className="text-xs text-blue-600 dark:text-blue-500 uppercase font-bold mt-1">
+            Izin
+          </p>
         </div>
         <div className="bg-orange-100 dark:bg-orange-900/30 p-4 rounded-xl border border-orange-200 dark:border-orange-800/30 text-center">
-          <h3 className="text-2xl font-bold text-orange-700 dark:text-orange-400">{summary.sakit} Hari</h3>
-          <p className="text-xs text-orange-600 dark:text-orange-500 uppercase font-bold mt-1">Sakit</p>
+          <h3 className="text-2xl font-bold text-orange-700 dark:text-orange-400">
+            {summary.sakit} Hari
+          </h3>
+          <p className="text-xs text-orange-600 dark:text-orange-500 uppercase font-bold mt-1">
+            Sakit
+          </p>
         </div>
         <div className="bg-red-100 dark:bg-red-900/30 p-4 rounded-xl border border-red-200 dark:border-red-800/30 text-center">
-          <h3 className="text-2xl font-bold text-red-700 dark:text-red-400">{summary.alpha} Hari</h3>
-          <p className="text-xs text-red-600 dark:text-red-500 uppercase font-bold mt-1">Alpha</p>
+          <h3 className="text-2xl font-bold text-red-700 dark:text-red-400">
+            {summary.alpha} Hari
+          </h3>
+          <p className="text-xs text-red-600 dark:text-red-500 uppercase font-bold mt-1">
+            Alpha
+          </p>
         </div>
         <div className="bg-purple-100 dark:bg-purple-900/30 p-4 rounded-xl border border-purple-200 dark:border-purple-800/30 text-center">
-          <h3 className="text-2xl font-bold text-purple-700 dark:text-purple-400">{summary.dispensasi} Hari</h3>
-          <p className="text-xs text-purple-600 dark:text-purple-500 uppercase font-bold mt-1">Dispensasi</p>
+          <h3 className="text-2xl font-bold text-purple-700 dark:text-purple-400">
+            {summary.dispensasi} Hari
+          </h3>
+          <p className="text-xs text-purple-600 dark:text-purple-500 uppercase font-bold mt-1">
+            Dispensasi
+          </p>
         </div>
       </div>
 
@@ -1401,7 +2011,12 @@ function Kehadiran({ user, onBack }: { user: any, onBack: () => void }) {
             {data.map((row, idx) => (
               <tr key={idx}>
                 <td className="px-6 py-4">
-                  {new Date(row.date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  {new Date(row.date).toLocaleDateString("id-ID", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
                 </td>
                 <td className="px-6 py-4 font-bold">{row.status}</td>
                 <td className="px-6 py-4">{row.keterangan}</td>
@@ -1409,7 +2024,12 @@ function Kehadiran({ user, onBack }: { user: any, onBack: () => void }) {
             ))}
             {data.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-6 py-8 text-center text-slate-500">Tidak ada data kehadiran</td>
+                <td
+                  colSpan={3}
+                  className="px-6 py-8 text-center text-slate-500"
+                >
+                  Tidak ada data kehadiran
+                </td>
               </tr>
             )}
           </tbody>
@@ -1423,12 +2043,19 @@ function Pelanggaran({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-6">
       <header className="flex items-center gap-4 mb-6">
-        <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+        <button
+          onClick={onBack}
+          className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+        >
           <X className="w-6 h-6 text-slate-500" />
         </button>
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Catatan Kedisiplinan</h2>
-          <p className="text-slate-500 dark:text-slate-400">Rekap pelanggaran tata tertib</p>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+            Catatan Kedisiplinan
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400">
+            Rekap pelanggaran tata tertib
+          </p>
         </div>
       </header>
 
@@ -1436,8 +2063,12 @@ function Pelanggaran({ onBack }: { onBack: () => void }) {
         <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
         </div>
-        <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Tidak Ada Pelanggaran</h3>
-        <p className="text-slate-500 dark:text-slate-400">Hebat! Pertahankan sikap disiplinmu di sekolah.</p>
+        <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">
+          Tidak Ada Pelanggaran
+        </h3>
+        <p className="text-slate-500 dark:text-slate-400">
+          Hebat! Pertahankan sikap disiplinmu di sekolah.
+        </p>
       </div>
     </div>
   );
@@ -1447,14 +2078,19 @@ function Literasi({ onBack }: { onBack: () => void }) {
   return (
     <div className="fixed inset-0 z-[100] bg-white dark:bg-slate-900 flex flex-col">
       <header className="flex items-center gap-4 p-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-        <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+        <button
+          onClick={onBack}
+          className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+        >
           <X className="w-6 h-6 text-slate-500" />
         </button>
-        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Literasi Digital</h2>
+        <h2 className="text-xl font-bold text-slate-800 dark:text-white">
+          Literasi Digital
+        </h2>
       </header>
       <div className="flex-grow overflow-hidden">
-        <iframe 
-          src="https://perpusbaujeng1.netlify.app" 
+        <iframe
+          src="https://perpusbaujeng1.netlify.app"
           className="w-full h-full border-0"
           title="Perpustakaan Digital"
         ></iframe>
@@ -1467,14 +2103,19 @@ function Tahfidz({ onBack }: { onBack: () => void }) {
   return (
     <div className="fixed inset-0 z-[100] bg-white dark:bg-slate-900 flex flex-col">
       <header className="flex items-center gap-4 p-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-        <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+        <button
+          onClick={onBack}
+          className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+        >
           <X className="w-6 h-6 text-slate-500" />
         </button>
-        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Tahfidz Quran</h2>
+        <h2 className="text-xl font-bold text-slate-800 dark:text-white">
+          Tahfidz Quran
+        </h2>
       </header>
       <div className="flex-grow overflow-hidden">
-        <iframe 
-          src="https://litequran.net/" 
+        <iframe
+          src="https://litequran.net/"
           className="w-full h-full border-0"
           title="Lite Quran"
         ></iframe>
@@ -1483,17 +2124,20 @@ function Tahfidz({ onBack }: { onBack: () => void }) {
   );
 }
 
-function Tugas({ user, onBack }: { user: any, onBack: () => void }) {
+function Tugas({ user, onBack }: { user: any; onBack: () => void }) {
   const [tugas, setTugas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const schoolIdentity = useSchoolIdentity();
   const [selectedTugas, setSelectedTugas] = useState<any>(null);
-  const [submissionFile, setSubmissionFile] = useState<string>('');
+  const [submissionFile, setSubmissionFile] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchTugas = async () => {
       try {
-        const res = await fetch(`/api/tugas?kelas=${user.Kelas}&studentId=${user.NISN}`);
+        const res = await fetch(
+          `/api/tugas?kelas=${user.Kelas}&studentId=${user.NISN}`,
+        );
         const result = await res.json();
         if (result.success) {
           setTugas(result.data);
@@ -1512,22 +2156,24 @@ function Tugas({ user, onBack }: { user: any, onBack: () => void }) {
     if (!selectedTugas) return;
     setSubmitting(true);
     try {
-      const res = await fetch('/api/tugas/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/tugas/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tugas_id: selectedTugas.id,
           student_id: user.NISN, // Use NISN consistently
-          content: submissionFile
-        })
+          content: submissionFile,
+        }),
       });
       const result = await res.json();
       if (result.success) {
         alert("Tugas berhasil dikumpulkan!");
         setSelectedTugas(null);
-        setSubmissionFile('');
+        setSubmissionFile("");
         // Refresh list
-        const resList = await fetch(`/api/tugas?kelas=${user.Kelas}&studentId=${user.NISN}`);
+        const resList = await fetch(
+          `/api/tugas?kelas=${user.Kelas}&studentId=${user.NISN}`,
+        );
         const resultList = await resList.json();
         if (resultList.success) setTugas(resultList.data);
       } else {
@@ -1543,12 +2189,19 @@ function Tugas({ user, onBack }: { user: any, onBack: () => void }) {
   return (
     <div className="space-y-6 relative">
       <header className="flex items-center gap-4 mb-6">
-        <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+        <button
+          onClick={onBack}
+          className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+        >
           <X className="w-6 h-6 text-slate-500" />
         </button>
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Tugas Sekolah</h2>
-          <p className="text-slate-500 dark:text-slate-400">Klik 2x untuk melihat detail & mengumpulkan</p>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+            Tugas Sekolah
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400">
+            Klik 2x untuk melihat detail & mengumpulkan
+          </p>
         </div>
       </header>
 
@@ -1560,26 +2213,32 @@ function Tugas({ user, onBack }: { user: any, onBack: () => void }) {
       ) : tugas.length > 0 ? (
         <div className="space-y-4">
           {tugas.map((item) => (
-            <div 
-              key={item.id} 
+            <div
+              key={item.id}
               onDoubleClick={() => setSelectedTugas(item)}
               className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex justify-between items-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors select-none"
             >
               <div>
-                <span className="text-xs font-bold text-slate-500 uppercase">{item.mapel}</span>
-                <h3 className="font-bold text-slate-800 dark:text-white text-lg">{item.judul}</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Tenggat: {item.deadline}</p>
+                <span className="text-xs font-bold text-slate-500 uppercase">
+                  {item.mapel}
+                </span>
+                <h3 className="font-bold text-slate-800 dark:text-white text-lg">
+                  {item.judul}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Tenggat: {item.deadline}
+                </p>
               </div>
               <div>
-                {item.submission?.status === 'Selesai' ? (
+                {item.submission?.status === "Selesai" ? (
                   <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
                     <CheckCircle className="w-3 h-3" /> Selesai
                   </span>
-                ) : item.submission?.status === 'Menunggu Validasi' ? (
+                ) : item.submission?.status === "Menunggu Validasi" ? (
                   <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
                     <Clock className="w-3 h-3" /> Diproses
                   </span>
-                ) : item.submission?.status === 'Revisi' ? (
+                ) : item.submission?.status === "Revisi" ? (
                   <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" /> Revisi
                   </span>
@@ -1608,56 +2267,82 @@ function Tugas({ user, onBack }: { user: any, onBack: () => void }) {
               exit={{ opacity: 0, scale: 0.9 }}
               className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden relative max-h-[90vh] flex flex-col"
             >
-              <button 
+              <button
                 onClick={() => setSelectedTugas(null)}
                 className="absolute top-4 right-4 p-2 bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 rounded-full transition-colors z-10"
               >
                 <X className="w-5 h-5 text-slate-500" />
               </button>
-              
+
               <div className="p-8 overflow-y-auto flex-1">
                 <span className="px-3 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-full text-xs font-bold uppercase mb-4 inline-block">
                   {selectedTugas.mapel}
                 </span>
-                <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">{selectedTugas.judul}</h2>
-                <p className="text-slate-500 dark:text-slate-400 mb-6 whitespace-pre-wrap">{selectedTugas.deskripsi}</p>
-                
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">
+                  {selectedTugas.judul}
+                </h2>
+                <p className="text-slate-500 dark:text-slate-400 mb-6 whitespace-pre-wrap">
+                  {selectedTugas.deskripsi}
+                </p>
+
                 <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl mb-6">
                   <div className="flex justify-between text-sm mb-2">
-                    <span className="text-slate-500 dark:text-slate-400">Guru Pengampu</span>
-                    <span className="font-bold text-slate-700 dark:text-slate-200">{selectedTugas.guru_nama}</span>
+                    <span className="text-slate-500 dark:text-slate-400">
+                      Guru Pengampu
+                    </span>
+                    <span className="font-bold text-slate-700 dark:text-slate-200">
+                      {selectedTugas.guru_nama}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-500 dark:text-slate-400">Tenggat Waktu</span>
-                    <span className="font-bold text-red-600 dark:text-red-400">{selectedTugas.deadline}</span>
+                    <span className="text-slate-500 dark:text-slate-400">
+                      Tenggat Waktu
+                    </span>
+                    <span className="font-bold text-red-600 dark:text-red-400">
+                      {selectedTugas.deadline}
+                    </span>
                   </div>
                 </div>
 
-                {selectedTugas.submission?.status === 'Selesai' ? (
+                {selectedTugas.submission?.status === "Selesai" ? (
                   <div className="bg-green-100 dark:bg-green-900/30 p-4 rounded-xl text-center">
                     <CheckCircle className="w-12 h-12 text-green-600 dark:text-green-400 mx-auto mb-2" />
-                    <h3 className="font-bold text-green-800 dark:text-green-300">Tugas Selesai!</h3>
-                    <p className="text-sm text-green-700 dark:text-green-400">Guru telah memvalidasi tugasmu.</p>
+                    <h3 className="font-bold text-green-800 dark:text-green-300">
+                      Tugas Selesai!
+                    </h3>
+                    <p className="text-sm text-green-700 dark:text-green-400">
+                      Guru telah memvalidasi tugasmu.
+                    </p>
                   </div>
-                ) : selectedTugas.submission?.status === 'Menunggu Validasi' ? (
+                ) : selectedTugas.submission?.status === "Menunggu Validasi" ? (
                   <div className="bg-yellow-100 dark:bg-yellow-900/30 p-4 rounded-xl text-center">
                     <Clock className="w-12 h-12 text-yellow-600 dark:text-yellow-400 mx-auto mb-2" />
-                    <h3 className="font-bold text-yellow-800 dark:text-yellow-300">Tugas Sedang Diperiksa</h3>
-                    <p className="text-sm text-yellow-700 dark:text-yellow-400">Tugasmu sedang menunggu validasi dari guru.</p>
+                    <h3 className="font-bold text-yellow-800 dark:text-yellow-300">
+                      Tugas Sedang Diperiksa
+                    </h3>
+                    <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                      Tugasmu sedang menunggu validasi dari guru.
+                    </p>
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-4">
-                    {selectedTugas.submission?.status === 'Revisi' && (
+                    {selectedTugas.submission?.status === "Revisi" && (
                       <div className="bg-red-100 dark:bg-red-900/30 p-4 rounded-xl text-center mb-4">
                         <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400 mx-auto mb-2" />
-                        <h3 className="font-bold text-red-800 dark:text-red-300">Tugas Perlu Direvisi</h3>
-                        <p className="text-sm text-red-700 dark:text-red-400">Silakan perbaiki dan kumpulkan ulang tugasmu.</p>
+                        <h3 className="font-bold text-red-800 dark:text-red-300">
+                          Tugas Perlu Direvisi
+                        </h3>
+                        <p className="text-sm text-red-700 dark:text-red-400">
+                          Silakan perbaiki dan kumpulkan ulang tugasmu.
+                        </p>
                       </div>
                     )}
                     <div>
-                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Link Tugas / Jawaban</label>
-                      <input 
-                        type="text" 
+                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                        Link Tugas / Jawaban
+                      </label>
+                      <input
+                        type="text"
                         required
                         value={submissionFile}
                         onChange={(e) => setSubmissionFile(e.target.value)}
@@ -1665,12 +2350,12 @@ function Tugas({ user, onBack }: { user: any, onBack: () => void }) {
                         placeholder="Tempel link Google Drive / Dokumen di sini..."
                       />
                     </div>
-                    <button 
-                      type="submit" 
+                    <button
+                      type="submit"
                       disabled={submitting}
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 dark:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                      {submitting ? 'Mengirim...' : 'Kumpulkan Tugas'}
+                      {submitting ? "Mengirim..." : "Kumpulkan Tugas"}
                     </button>
                   </form>
                 )}

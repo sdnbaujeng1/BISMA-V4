@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Heart, CheckCircle, XCircle, Clock, Gift, X } from 'lucide-react';
+import { ArrowLeft, Heart, CheckCircle, XCircle, Clock, Gift, X, BarChart3, Users, Trophy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
+import { supabase } from "../lib/supabase";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 const HABIT_POINTS: Record<string, { points: number, icon: string }> = {
   'Bangun Pagi': { points: 2, icon: '🌅' },
@@ -20,6 +23,7 @@ const HABIT_POINTS: Record<string, { points: number, icon: string }> = {
 };
 
 export default function KasihIbuGuru({ user, onNavigate }: { user: any, onNavigate: (page: string) => void }) {
+  const schoolIdentity = useSchoolIdentity();
   const [selectedClass, setSelectedClass] = useState(user?.waliKelas || 'Kelas 1');
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +38,14 @@ export default function KasihIbuGuru({ user, onNavigate }: { user: any, onNaviga
   });
   const [submitting, setSubmitting] = useState(false);
   const [validatingProgress, setValidatingProgress] = useState<{ current: number, total: number } | null>(null);
+  const [activeTab, setActiveTab] = useState<"validasi" | "analisis" | "peringkat">("validasi");
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [rawData, setRawData] = useState<any[]>([]);
+  const [usersMap, setUsersMap] = useState<Record<string, any>>({});
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [selectedTopClass, setSelectedTopClass] = useState<string>("Semua Kelas");
+  const [topStudents, setTopStudents] = useState<any[]>([]);
+  const [lastClick, setLastClick] = useState<{name: string, time: number} | null>(null);
 
   const getStudentPoints = (studentName: string) => {
     if (!studentName) return 0;
@@ -118,8 +130,88 @@ export default function KasihIbuGuru({ user, onNavigate }: { user: any, onNaviga
     fetchReports();
     fetchStudents();
     fetchConfig();
+    fetchAnalysisData();
   }, [selectedClass]);
 
+  const fetchAnalysisData = async () => {
+    setAnalysisLoading(true);
+    try {
+      const { data: pengaturan } = await supabase.from('pengaturan').select('value').eq('key', 'tahunAjaran').maybeSingle();
+      const ta = pengaturan?.value || "2024/2025";
+      const parts = ta.split("/");
+      const startYear = parseInt(parts[0]) || 2024;
+      const endYear = parseInt(parts[1]) || 2025;
+      const start = `${startYear}-07-01T00:00:00.000Z`;
+      const end = `${endYear}-06-30T23:59:59.999Z`;
+      const { data: pointsData } = await supabase.from("kasih_ibu").select("nisn, jenis_kebiasaan, kelas").gte('timestamp', start).lte('timestamp', end);
+      const { data: users } = await supabase.from("murid").select('"NISN", "Nama Lengkap", "NIS"');
+      const uMap: Record<string, any> = {};
+      if (users) {
+        users.forEach((u: any) => { 
+          if (u.NISN) uMap[u.NISN] = { nama: u["Nama Lengkap"], nis: u.NIS || '-' }; 
+        });
+        setUsersMap(uMap as any);
+      }
+      if (pointsData) {
+        setRawData(pointsData);
+        const classPoints: Record<string, number> = {};
+        pointsData.forEach((entry) => {
+          const habitInfo = HABIT_POINTS[entry.jenis_kebiasaan];
+          if (habitInfo && entry.kelas) {
+            classPoints[entry.kelas] = (classPoints[entry.kelas] || 0) + habitInfo.points;
+          }
+        });
+        const formattedChartData = Object.keys(classPoints).map((cls) => ({ name: cls, total: classPoints[cls] })).sort((a, b) => b.total - a.total);
+        setChartData(formattedChartData);
+        calculateTopStudents("Semua Kelas", pointsData, uMap);
+      }
+    } catch (e) {
+      console.error("Error fetching analysis data", e);
+    } finally {
+      setAnalysisLoading(false);
+    }
+  };
+  
+  const handleBarClick = (data: any) => {
+    const now = new Date().getTime();
+    if (lastClick && lastClick.name === data.name && now - lastClick.time < 500) {
+      setSelectedTopClass(data.name);
+      calculateTopStudents(data.name, rawData, usersMap);
+      setActiveTab("peringkat");
+      setLastClick(null);
+    } else {
+      setLastClick({ name: data.name, time: now });
+    }
+  };
+  
+  const calculateTopStudents = (kelas: string, pointsData = rawData, uMap = usersMap) => {
+    const studentPoints: Record<string, number> = {};
+    pointsData.forEach((entry) => {
+      if ((kelas === "Semua Kelas" || entry.kelas === kelas) && HABIT_POINTS[entry.jenis_kebiasaan]) {
+        const nisn = entry.nisn;
+        if (nisn) {
+          studentPoints[nisn] = (studentPoints[nisn] || 0) + HABIT_POINTS[entry.jenis_kebiasaan].points;
+        }
+      }
+    });
+    const sortedStudents = Object.keys(studentPoints)
+      .map((nisn) => {
+        const userData = uMap[nisn] as any;
+        return {
+          nisn,
+          name: userData ? userData.nama : `NISN: ${nisn}`,
+          nis: userData ? userData.nis : '-',
+          points: studentPoints[nisn],
+        };
+      })
+      .sort((a, b) => b.points - a.points)
+      .slice(0, 10);
+    setTopStudents(sortedStudents);
+  };
+
+  useEffect(() => {
+    calculateTopStudents(selectedTopClass);
+  }, [selectedTopClass]);
   const handleValidate = async (id: number, status: 'Valid' | 'Ditolak') => {
     try {
       const res = await fetch('/api/kasih-ibu/validate', {
@@ -244,7 +336,7 @@ export default function KasihIbuGuru({ user, onNavigate }: { user: any, onNaviga
             <ArrowLeft className="w-6 h-6 text-slate-700 dark:text-slate-200" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Validasi Kasih Ibu</h1>
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Validasi {schoolIdentity.kasihIbuLabel || 'Kasih Ibu'}</h1>
             <p className="text-slate-500 dark:text-slate-400">Monitoring Pembiasaan Karakter Siswa</p>
           </div>
         </div>
@@ -260,6 +352,99 @@ export default function KasihIbuGuru({ user, onNavigate }: { user: any, onNaviga
           </div>
         </div>
       </header>
+      <div className="flex gap-2 mb-8 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
+        <button onClick={() => setActiveTab("validasi")} className={`px-4 py-2 font-bold text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === "validasi" ? "border-pink-600 text-pink-600 dark:text-pink-400" : "border-transparent text-slate-500 hover:text-slate-700"}`}>Validasi</button>
+        <button onClick={() => setActiveTab("analisis")} className={`px-4 py-2 font-bold text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === "analisis" ? "border-pink-600 text-pink-600 dark:text-pink-400" : "border-transparent text-slate-500 hover:text-slate-700"}`}>Analisis Perolehan per Kelas</button>
+        <button onClick={() => setActiveTab("peringkat")} className={`px-4 py-2 font-bold text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === "peringkat" ? "border-pink-600 text-pink-600 dark:text-pink-400" : "border-transparent text-slate-500 hover:text-slate-700"}`}>Peringkat 10 Besar</button>
+      </div>
+      
+      {activeTab === "analisis" && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-xl">
+                <BarChart3 className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Analisa Perolehan Poin</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Total poin yang dikumpulkan per kelas (Klik 2x pada batang grafik untuk melihat Top 10 Siswa)</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex-1 min-h-[300px]">
+            {analysisLoading ? (
+              <div className="flex justify-center items-center h-full"><div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div></div>
+            ) : chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#64748b" }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: "#64748b" }} />
+                  <Tooltip cursor={{ fill: "rgba(236, 72, 153, 0.1)" }} contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }} />
+                  <Bar dataKey="total" fill="#ec4899" radius={[6, 6, 0, 0]} onClick={handleBarClick}>
+                    {chartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={index % 2 === 0 ? "#ec4899" : "#db2777"} className="cursor-pointer" />))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                <BarChart3 className="w-12 h-12 mb-2 opacity-50" />
+                <p>Belum ada data poin siswa</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "peringkat" && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-xl">
+                <Trophy className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Peringkat 10 Besar</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Siswa dengan poin terbanyak</p>
+              </div>
+            </div>
+            <select
+              value={selectedTopClass}
+              onChange={(e) => setSelectedTopClass(e.target.value)}
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-amber-500 outline-none min-w-[150px] text-slate-700 dark:text-white"
+            >
+              <option value="Semua Kelas">Semua Kelas</option>
+              {chartData.map((d) => (<option key={d.name} value={d.name}>{d.name}</option>))}
+            </select>
+          </div>
+          <div className="space-y-3">
+            {topStudents.length > 0 ? (
+              topStudents.map((student, index) => (
+                <div key={student.nisn} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${index === 0 ? "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400" : index === 1 ? "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300" : index === 2 ? "bg-amber-100/50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-500" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"}`}>{index + 1}</div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 dark:text-white">{student.name}</h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">NIS: {student.nis} | NISN: {student.nisn}</p>
+                    </div>
+                  </div>
+                  <div className="font-bold text-pink-600 dark:text-pink-400 text-lg">
+                    {student.points} <span className="text-sm font-medium text-slate-500">Poin</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-12 text-slate-500 dark:text-slate-400">
+                <Trophy className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                <p>Belum ada data peringkat untuk {selectedTopClass}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "validasi" && (
+      <>
 
       <div className="mb-8 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -293,7 +478,7 @@ export default function KasihIbuGuru({ user, onNavigate }: { user: any, onNaviga
                 style={{ width: `${(validatingProgress.current / validatingProgress.total) * 100}%` }}
               ></div>
             </div>
-          )}
+            )}
         </div>
       </div>
 
@@ -375,7 +560,7 @@ export default function KasihIbuGuru({ user, onNavigate }: { user: any, onNaviga
                                   <CheckCircle className="w-5 h-5" />
                                 </button>
                               </>
-                            )}
+                              )}
                           </div>
                         </td>
                       </motion.tr>
@@ -392,8 +577,13 @@ export default function KasihIbuGuru({ user, onNavigate }: { user: any, onNaviga
           <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 mb-2">Belum Ada Laporan</h3>
           <p className="text-slate-500 dark:text-slate-400">Belum ada siswa yang melaporkan kegiatan pembiasaan.</p>
         </div>
-      )}
+      
 
+      
+
+        )}
+      </>
+      )}
       {/* Modal Tukar Poin */}
       <AnimatePresence>
         {showExchangeModal && (
@@ -406,7 +596,7 @@ export default function KasihIbuGuru({ user, onNavigate }: { user: any, onNaviga
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                  <Gift className="w-6 h-6 text-pink-500" /> Tukar Poin Kasih Ibu
+                  <Gift className="w-6 h-6 text-pink-500" /> Tukar Poin {schoolIdentity.kasihIbuLabel || 'Kasih Ibu'}
                 </h3>
                 <button onClick={() => setShowExchangeModal(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors">
                   <X className="w-5 h-5 text-slate-500" />

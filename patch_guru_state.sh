@@ -1,0 +1,9 @@
+sed -i '/const \[validatingProgress, setValidatingProgress\] = useState<{ current: number, total: number } | null>(null);/a \
+  const [activeTab, setActiveTab] = useState<"validasi" | "analisis" | "peringkat">("validasi");\
+  const [chartData, setChartData] = useState<any[]>([]);\
+  const [rawData, setRawData] = useState<any[]>([]);\
+  const [usersMap, setUsersMap] = useState<Record<string, string>>({});\
+  const [analysisLoading, setAnalysisLoading] = useState(false);\
+  const [selectedTopClass, setSelectedTopClass] = useState<string>("Semua Kelas");\
+  const [topStudents, setTopStudents] = useState<any[]>([]);\
+  const [lastClick, setLastClick] = useState<{name: string, time: number} | null>(null);' src/pages/KasihIbuGuru.tsx

@@ -236,11 +236,11 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
   useEffect(() => {
     fetchData();
     fetchKasihIbuStats();
-    const interval = setInterval(fetchData, 3000); // Auto-refresh every 3 seconds
+    // const interval = setInterval(fetchData, 3000); // Auto-refresh every 3 seconds
     const analisaInterval = setInterval(fetchAnalisa, 60000); // Refresh analisa every 60 seconds
     const kasihIbuInterval = setInterval(fetchKasihIbuStats, 60000);
     return () => {
-      clearInterval(interval);
+      // clearInterval(interval);
       clearInterval(analisaInterval);
       clearInterval(kasihIbuInterval);
     };

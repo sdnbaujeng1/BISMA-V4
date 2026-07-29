@@ -5,6 +5,7 @@ export interface SchoolIdentity {
   headmasterName: string;
   headmasterNIP: string;
   schoolLogo: string;
+  kasihIbuLabel: string;
 }
 
 export function useSchoolIdentity() {
@@ -12,7 +13,8 @@ export function useSchoolIdentity() {
     schoolName: "Sekolah",
     headmasterName: "Kepala Sekolah",
     headmasterNIP: "-",
-    schoolLogo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg/800px-Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg.png"
+    schoolLogo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg/800px-Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg.png",
+    kasihIbuLabel: "Kasih Ibu"
   });
 
   useEffect(() => {
@@ -26,7 +28,8 @@ export function useSchoolIdentity() {
             schoolName: data.schoolName || "Sekolah",
             headmasterName: data.headmasterName || "Kepala Sekolah",
             headmasterNIP: data.headmasterNIP || "-",
-            schoolLogo: data.logo1x1 || "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg/800px-Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg.png"
+            schoolLogo: data.logo1x1 || "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg/800px-Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg.png",
+            kasihIbuLabel: data.kasih_ibu_label || "Kasih Ibu"
           };
           setIdentity(newIdentity);
           localStorage.setItem('school_identity_data', JSON.stringify(newIdentity));
@@ -48,7 +51,8 @@ export function useSchoolIdentity() {
           const data = JSON.parse(stored);
           const mappedData = {
             ...data,
-            schoolLogo: data.logo1x1 || data.schoolLogo || "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg/800px-Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg.png"
+            schoolLogo: data.logo1x1 || data.schoolLogo || "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg/800px-Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg.png",
+            kasihIbuLabel: data.kasih_ibu_label || data.kasihIbuLabel || "Kasih Ibu"
           };
           setIdentity(mappedData);
           document.title = mappedData.schoolName || "Sekolah";
