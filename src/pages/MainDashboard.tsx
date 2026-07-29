@@ -124,7 +124,7 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
     { id: 'galeri_kegiatan', icon: GalleryThumbnails, label: 'Galeri', gradient: 'from-violet-400 to-violet-600', shadow: 'shadow-violet-500/40', roles: ['guru', 'tendik'] },
     { id: 'kemendikdasmen', url: 'https://guru.kemendikdasmen.go.id/', img: 'https://lh3.googleusercontent.com/d/1s5VpgdLJFBL5tGDqKCZ3Wem1YnYbH9zt', label: 'E-Kinerja', gradient: 'from-slate-100 to-slate-200', shadow: 'shadow-slate-300/40', roles: ['guru', 'tendik'] },
     { id: 'bangkomar', url: 'https://bangkomar.pasuruankab.go.id/', icon: Globe, label: 'Bangkomar', gradient: 'from-blue-500 to-cyan-500', shadow: 'shadow-blue-500/40', roles: ['guru', 'tendik'] },
-    { id: 'game_generator', url: 'https://sdnbaujeng1.github.io/gamegenerator/', icon: Gamepad2, label: 'Game Generator', gradient: 'from-yellow-400 to-orange-500', shadow: 'shadow-orange-500/40', roles: ['guru'] },
+    { id: 'game_generator', url: 'https://script.google.com/macros/s/AKfycbxg4OScIlFNDzkksUBfb5l6iYZqpRqPOoG94AazQESC0llZS5_nkHQIkJgNIUhNCzy21Q/exec', icon: Gamepad2, label: 'Game Generator', gradient: 'from-yellow-400 to-orange-500', shadow: 'shadow-orange-500/40', roles: ['guru'] },
   ];
 
   const filteredMenuItems = menuItems.filter(item => {
