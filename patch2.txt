@@ -1,0 +1,181 @@
+      {/* Total Siswa Modal */}
+      <AnimatePresence>
+        {showTotalSiswaModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowTotalSiswaModal(false)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col"
+            >
+              <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-700 bg-blue-50 dark:bg-blue-900/10">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+                    <Users className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-800 dark:text-white">Data Siswa per Kelas</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Dot plot distribusi jumlah siswa</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowTotalSiswaModal(false)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+              <div className="p-6 h-64 md:h-80 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} vertical={false} />
+                    <XAxis type="category" dataKey="name" name="Kelas" stroke="#888" tickLine={false} axisLine={false} />
+                    <YAxis type="number" dataKey="value" name="Jumlah" stroke="#888" tickLine={false} axisLine={false} />
+                    <ZAxis type="number" range={[100, 500]} />
+                    <Tooltip cursor={{strokeDasharray: '3 3'}} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <Scatter data={[
+                      { name: 'Kelas 1', value: data?.kelas1 || 0 },
+                      { name: 'Kelas 2', value: data?.kelas2 || 0 },
+                      { name: 'Kelas 3', value: data?.kelas3 || 0 },
+                      { name: 'Kelas 4', value: data?.kelas4 || 0 },
+                      { name: 'Kelas 5', value: data?.kelas5 || 0 },
+                      { name: 'Kelas 6', value: data?.kelas6 || 0 }
+                    ]} fill="#3b82f6" />
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Total JP Modal */}
+      <AnimatePresence>
+        {showTotalJPModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowTotalJPModal(false)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col"
+            >
+              <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-700 bg-emerald-50 dark:bg-emerald-900/10">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg text-emerald-600 dark:text-emerald-400">
+                    <Clock className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-800 dark:text-white">Progres KBM per Kelas</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Jam Pelajaran Terisi vs Belum Terisi</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowTotalJPModal(false)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+              <div className="p-6 grid grid-cols-2 md:grid-cols-3 gap-4">
+                {[1,2,3,4,5,6].map(k => {
+                  const kbm = data?.kbmPerKelas ? data.kbmPerKelas[`Kelas ${k}`] : { terisi: 0, belum: 0 };
+                  const pieData = [
+                    { name: 'Terisi', value: kbm?.terisi || 0 },
+                    { name: 'Belum', value: kbm?.belum || 0 }
+                  ];
+                  return (
+                    <div key={k} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl flex flex-col items-center">
+                      <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Kelas {k}</h3>
+                      <div className="h-24 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={pieData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={25}
+                              outerRadius={40}
+                              dataKey="value"
+                              stroke="none"
+                            >
+                              <Cell key="cell-0" fill="#a855f7" />
+                              <Cell key="cell-1" fill="#e2e8f0" />
+                            </Pie>
+                            <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="flex gap-2 text-xs font-medium">
+                        <span className="text-purple-600">{kbm?.terisi || 0} Terisi</span>
+                        <span className="text-slate-400">{kbm?.belum || 0} Belum</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Class Detail Modal */}
+      <AnimatePresence>
+        {selectedClassData && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedClassData(null)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col"
+            >
+              <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-700 bg-indigo-50 dark:bg-indigo-900/10">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400">
+                    <GraduationCap className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-800 dark:text-white">Detail {selectedClassData}</h2>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedClassData(null)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto max-h-[60vh]">
+                <h3 className="font-bold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-purple-500" /> Jurnal KBM Belum Diisi
+                </h3>
+                <div className="space-y-2 mb-6">
+                  {data?.notYetTaught?.filter((n:any) => n.kelas === selectedClassData).length > 0 ? (
+                    data.notYetTaught.filter((n:any) => n.kelas === selectedClassData).map((n:any, i:number) => (
+                      <div key={i} className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm border border-red-100 dark:border-red-800/30">
+                        <span className="font-medium">{n.guru}</span>
+                        <span>{n.mapel}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-sm font-medium border border-emerald-100 dark:border-emerald-800/30 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" /> Semua jurnal telah diisi
+                    </div>
+                  )}
+                </div>
+
+                <h3 className="font-bold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-orange-500" /> Siswa Tidak Hadir
+                </h3>
+                <div className="space-y-2">
+                  {data?.absentStudents?.filter((s:any) => s.class === selectedClassData).length > 0 ? (
+                    data.absentStudents.filter((s:any) => s.class === selectedClassData).map((student: any, i: number) => (
+                      <div key={i} className="flex justify-between items-center p-3 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 rounded-lg text-sm border border-orange-100 dark:border-orange-800/30">
+                        <span className="font-medium">{student.name}</span>
+                        <span className="bg-orange-200 dark:bg-orange-800/50 px-2 py-1 rounded text-xs font-bold uppercase">{student.reason}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-3 bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-lg text-sm text-center italic">
+                      Semua siswa hadir
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>

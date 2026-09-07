@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Heart, CheckCircle, XCircle, Clock, Gift, X, BarChart3, Users, Trophy, Save } from 'lucide-react';
+import { ArrowLeft, Heart, CheckCircle, XCircle, Clock, Gift, X, BarChart3, Users, Trophy, Save, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
 import { supabase } from "../lib/supabase";
@@ -25,6 +25,8 @@ const HABIT_POINTS: Record<string, { points: number, icon: string }> = {
 export default function KasihIbuAdmin() {
   const schoolIdentity = useSchoolIdentity();
   const [selectedClass, setSelectedClass] = useState('Kelas 1');
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isValidating, setIsValidating] = useState(false);
@@ -118,7 +120,10 @@ const handleSaveConfig = async () => {
   const fetchReports = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/kasih-ibu?kelas=${selectedClass}`);
+      const url = new URL(window.location.origin + '/api/kasih-ibu');
+      url.searchParams.append('kelas', selectedClass);
+      if (selectedDate) url.searchParams.append('tanggal', selectedDate);
+      const res = await fetch(url.toString());
       const result = await res.json();
       if (result.success) {
         setReports(result.data);
@@ -160,7 +165,7 @@ const handleSaveConfig = async () => {
     fetchStudents();
     fetchConfig();
     fetchAnalysisData();
-  }, [selectedClass]);
+  }, [selectedClass, selectedMonth, selectedDate]);
 
   const fetchAnalysisData = async () => {
     setAnalysisLoading(true);
@@ -170,9 +175,43 @@ const handleSaveConfig = async () => {
       const parts = ta.split("/");
       const startYear = parseInt(parts[0]) || 2024;
       const endYear = parseInt(parts[1]) || 2025;
-      const start = `${startYear}-07-01T00:00:00.000Z`;
-      const end = `${endYear}-06-30T23:59:59.999Z`;
-      const { data: pointsData } = await supabase.from("kasih_ibu").select("nisn, jenis_kebiasaan, kelas").gte('timestamp', start).lte('timestamp', end);
+      // Build date filters
+      let startDateStr = `${startYear}-07-01T00:00:00.000Z`;
+      let endDateStr = `${endYear}-06-30T23:59:59.999Z`;
+
+      if (selectedMonth) {
+        startDateStr = `${selectedMonth}-01T00:00:00.000Z`;
+        const [year, m] = String(selectedMonth).split('-');
+        const lastDay = new Date(Number(year), Number(m), 0).getDate();
+        endDateStr = `${selectedMonth}-${lastDay}T23:59:59.999Z`;
+      }
+
+      let pointsData: any[] = [];
+      let hasMore = true;
+      let page = 0;
+      const pageSize = 1000;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("kasih_ibu")
+          .select("nisn, nama_murid, jenis_kebiasaan, kelas")
+          .gte('timestamp', startDateStr)
+          .lte('timestamp', endDateStr)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) {
+           console.error("Error fetching data", error);
+           break;
+        }
+
+        if (data && data.length > 0) {
+          pointsData = [...pointsData, ...data];
+          if (data.length < pageSize) hasMore = false;
+          else page++;
+        } else {
+          hasMore = false;
+        }
+      }
       const { data: users } = await supabase.from("murid").select('"NISN", "Nama Lengkap", "NIS"');
       const uMap: Record<string, any> = {};
       if (users) {
@@ -216,10 +255,18 @@ const handleSaveConfig = async () => {
   const calculateTopStudents = (kelas: string, pointsData = rawData, uMap = usersMap) => {
     const studentPoints: Record<string, number> = {};
     pointsData.forEach((entry) => {
-      if ((kelas === "Semua Kelas" || entry.kelas === kelas) && HABIT_POINTS[entry.jenis_kebiasaan]) {
-        const nisn = entry.nisn;
+      if ((kelas === "Semua Kelas" || entry.kelas === kelas)) {
+        // Use a robust identifier matching how the dashboard ranks them
+        const nisn = entry.nisn || entry.nama_murid;
         if (nisn) {
-          studentPoints[nisn] = (studentPoints[nisn] || 0) + HABIT_POINTS[entry.jenis_kebiasaan].points;
+          if (HABIT_POINTS[entry.jenis_kebiasaan]) {
+             studentPoints[nisn] = (studentPoints[nisn] || 0) + HABIT_POINTS[entry.jenis_kebiasaan].points;
+          } else if (entry.jenis_kebiasaan.startsWith('Tukar Poin')) {
+             const match = entry.jenis_kebiasaan.match(/\(-(\d+)\)/);
+             if (match) {
+               studentPoints[nisn] = (studentPoints[nisn] || 0) - parseInt(match[1], 10);
+             }
+          }
         }
       }
     });
@@ -380,17 +427,56 @@ const handleSaveConfig = async () => {
         </div>
       </header>
       
-      <div className="flex gap-2 mb-8 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
-        <button onClick={() => setActiveTab("konfigurasi")} className={`px-4 py-2 font-bold text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === "konfigurasi" ? "border-pink-600 text-pink-600 dark:text-pink-400" : "border-transparent text-slate-500 hover:text-slate-700"}`}>Konfigurasi</button>
-        <button onClick={() => setActiveTab("validasi")} className={`px-4 py-2 font-bold text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === "validasi" ? "border-pink-600 text-pink-600 dark:text-pink-400" : "border-transparent text-slate-500 hover:text-slate-700"}`}>Validasi</button>
-
-        <button onClick={() => setActiveTab("analisis")} className={`px-4 py-2 font-bold text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === "analisis" ? "border-pink-600 text-pink-600 dark:text-pink-400" : "border-transparent text-slate-500 hover:text-slate-700"}`}>Analisis Perolehan per Kelas</button>
-        <button onClick={() => setActiveTab("peringkat")} className={`px-4 py-2 font-bold text-sm whitespace-nowrap border-b-2 transition-colors ${activeTab === "peringkat" ? "border-pink-600 text-pink-600 dark:text-pink-400" : "border-transparent text-slate-500 hover:text-slate-700"}`}>Peringkat 10 Besar</button>
+      <div className="flex flex-wrap gap-3 mb-8">
+        <button 
+          onClick={() => setActiveTab("konfigurasi")} 
+          className={`px-4 py-2.5 font-semibold text-sm whitespace-nowrap rounded-xl transition-all flex items-center gap-2 border ${
+            activeTab === "konfigurasi" 
+              ? "bg-pink-600 text-white border-pink-600 shadow-md shadow-pink-500/20" 
+              : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+          }`}
+        >
+          <Settings className="w-4 h-4" />
+          Konfigurasi
+        </button>
+        <button 
+          onClick={() => setActiveTab("validasi")} 
+          className={`px-4 py-2.5 font-semibold text-sm whitespace-nowrap rounded-xl transition-all flex items-center gap-2 border ${
+            activeTab === "validasi" 
+              ? "bg-pink-600 text-white border-pink-600 shadow-md shadow-pink-500/20" 
+              : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+          }`}
+        >
+          <CheckCircle className="w-4 h-4" />
+          Validasi
+        </button>
+        <button 
+          onClick={() => setActiveTab("analisis")} 
+          className={`px-4 py-2.5 font-semibold text-sm whitespace-nowrap rounded-xl transition-all flex items-center gap-2 border ${
+            activeTab === "analisis" 
+              ? "bg-pink-600 text-white border-pink-600 shadow-md shadow-pink-500/20" 
+              : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          Analisis Perolehan per Kelas
+        </button>
+        <button 
+          onClick={() => setActiveTab("peringkat")} 
+          className={`px-4 py-2.5 font-semibold text-sm whitespace-nowrap rounded-xl transition-all flex items-center gap-2 border ${
+            activeTab === "peringkat" 
+              ? "bg-pink-600 text-white border-pink-600 shadow-md shadow-pink-500/20" 
+              : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+          }`}
+        >
+          <Trophy className="w-4 h-4" />
+          Peringkat 10 Besar
+        </button>
       </div>
       
       {activeTab === "analisis" && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col mb-8">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-xl">
                 <BarChart3 className="w-6 h-6" />
@@ -399,6 +485,14 @@ const handleSaveConfig = async () => {
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">Analisa Perolehan Poin</h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400">Total poin yang dikumpulkan per kelas (Klik 2x pada batang grafik untuk melihat Top 10 Siswa)</p>
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 text-slate-700 dark:text-white focus:ring-2 focus:ring-pink-500 outline-none font-medium"
+              />
             </div>
           </div>
           <div className="flex-1 min-h-[300px]">
@@ -438,14 +532,22 @@ const handleSaveConfig = async () => {
                 <p className="text-sm text-slate-500 dark:text-slate-400">Siswa dengan poin terbanyak</p>
               </div>
             </div>
-            <select
-              value={selectedTopClass}
-              onChange={(e) => setSelectedTopClass(e.target.value)}
-              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-amber-500 outline-none min-w-[150px] text-slate-700 dark:text-white"
-            >
-              <option value="Semua Kelas">Semua Kelas</option>
-              {chartData.map((d) => (<option key={d.name} value={d.name}>{d.name}</option>))}
-            </select>
+            <div className="flex items-center gap-3">
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 text-slate-700 dark:text-white focus:ring-2 focus:ring-pink-500 outline-none font-medium"
+              />
+              <select
+                value={selectedTopClass}
+                onChange={(e) => setSelectedTopClass(e.target.value)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-amber-500 outline-none min-w-[150px] text-slate-700 dark:text-white"
+              >
+                <option value="Semua Kelas">Semua Kelas</option>
+                {chartData.map((d) => (<option key={d.name} value={d.name}>{d.name}</option>))}
+              </select>
+            </div>
           </div>
           <div className="space-y-3">
             {topStudents.length > 0 ? (
@@ -552,6 +654,7 @@ const handleSaveConfig = async () => {
       <div className="mb-8 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <span className="font-bold text-slate-700 dark:text-slate-300">Pilih Kelas:</span>
+        <div className="flex flex-col sm:flex-row gap-3">
           <select 
             value={selectedClass}
             onChange={(e) => setSelectedClass(e.target.value)}
@@ -564,6 +667,13 @@ const handleSaveConfig = async () => {
             <option>Kelas 5</option>
             <option>Kelas 6</option>
           </select>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 text-slate-700 dark:text-white focus:ring-2 focus:ring-pink-500 outline-none font-medium"
+          />
+        </div>
         </div>
         <div className="flex flex-col items-end gap-2">
           <button

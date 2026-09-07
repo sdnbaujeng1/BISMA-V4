@@ -12,12 +12,30 @@ export default function BankSampahSummaryCard({ user }: { user: any }) {
       if (!nama) return;
       
       try {
-        const { data, error } = await supabase
-          .from('tabungan_sampah')
-          .select('nilai')
-          .eq('siswa', nama);
+        let allData: any[] = [];
+        let hasMore = true;
+        let page = 0;
+        const pageSize = 1000;
 
-        if (error) throw error;
+        while (hasMore) {
+          const { data, error } = await supabase
+            .from('tabungan_sampah')
+            .select('nilai')
+            .ilike('siswa', `%${nama.trim()}%`)
+            .range(page * pageSize, (page + 1) * pageSize - 1);
+
+          if (error) throw error;
+
+          if (data && data.length > 0) {
+            allData = [...allData, ...data];
+            if (data.length < pageSize) hasMore = false;
+            else page++;
+          } else {
+            hasMore = false;
+          }
+        }
+        
+        const data = allData;
         
         if (data) {
           const total = data.reduce((acc, curr) => acc + Number(curr.nilai || 0), 0);

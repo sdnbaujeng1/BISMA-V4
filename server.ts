@@ -298,6 +298,14 @@ app.get('/api/admin/stats', async (req, res) => {
       let completedKBM = 0;
       const notYetTaught: any[] = [];
       const absentStudents: any[] = [];
+      const kbmPerKelas: Record<string, { terisi: number, belum: number }> = {
+        'Kelas 1': { terisi: 0, belum: 0 },
+        'Kelas 2': { terisi: 0, belum: 0 },
+        'Kelas 3': { terisi: 0, belum: 0 },
+        'Kelas 4': { terisi: 0, belum: 0 },
+        'Kelas 5': { terisi: 0, belum: 0 },
+        'Kelas 6': { terisi: 0, belum: 0 },
+      };
 
       if (todaysSchedule) {
         todaysSchedule.forEach(schedule => {
@@ -307,7 +315,13 @@ app.get('/api/admin/stats', async (req, res) => {
 
           if (isDone) {
             completedKBM++;
+            if (kbmPerKelas[schedule.kelas]) {
+              kbmPerKelas[schedule.kelas].terisi++;
+            }
           } else {
+            if (kbmPerKelas[schedule.kelas]) {
+              kbmPerKelas[schedule.kelas].belum++;
+            }
             notYetTaught.push({
               guru: schedule.guru,
               kelas: schedule.kelas,
@@ -370,6 +384,7 @@ app.get('/api/admin/stats', async (req, res) => {
           totalScheduled: totalScheduledKBM,
           completedKBM,
           percentage,
+          kbmPerKelas,
           notYetTaught,
           cleanestClass: '-',
           pengumuman: pengumuman ? pengumuman.isi : 'Tidak ada pengumuman',
@@ -2123,21 +2138,41 @@ app.get('/api/admin/stats', async (req, res) => {
     try {
       const { kelas, nis, nama, tanggal } = req.query;
       const { start, end } = await getTahunAjaranFilter();
-      let query = supabase.from('kasih_ibu').select('*').gte('timestamp', start).lte('timestamp', end).order('timestamp', { ascending: false });
       
-      if (kelas) query = query.eq('kelas', kelas);
-      if (tanggal) query = query.eq('tanggal_kegiatan', tanggal);
+      let allData: any[] = [];
+      let hasMore = true;
+      let page = 0;
+      const pageSize = 1000;
       
-      if (nis && nis !== '' && nama && nama !== '') {
-        query = query.or(`nisn.eq."${nis}",nama_murid.eq."${nama}"`);
-      } else if (nis && nis !== '') {
-        query = query.eq('nisn', nis);
-      } else if (nama && nama !== '') {
-        query = query.eq('nama_murid', nama);
+      while (hasMore) {
+        let query = supabase.from('kasih_ibu').select('*').gte('timestamp', start).lte('timestamp', end).order('timestamp', { ascending: false });
+        
+        if (kelas) query = query.eq('kelas', kelas);
+        if (tanggal) query = query.eq('tanggal_kegiatan', tanggal);
+        
+        if (nis && nis !== '' && nama && nama !== '') {
+          query = query.or(`nisn.eq."${nis}",nama_murid.eq."${nama}"`);
+        } else if (nis && nis !== '') {
+          query = query.eq('nisn', nis);
+        } else if (nama && nama !== '') {
+          query = query.eq('nama_murid', nama);
+        }
+        
+        query = query.range(page * pageSize, (page + 1) * pageSize - 1);
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          if (data.length < pageSize) hasMore = false;
+          else page++;
+        } else {
+          hasMore = false;
+        }
       }
       
-      const { data, error } = await query;
-      if (error) throw error;
+      const data = allData;
       
       const formatted = data?.map(d => {
         let dateStr = d.timestamp;
@@ -2427,7 +2462,18 @@ app.get('/api/admin/stats', async (req, res) => {
 
   app.get('/api/bank-sampah/transactions', async (req, res) => {
     const { start, end } = await getTahunAjaranFilter();
-    const { data, error } = await supabase.from('tabungan_sampah').select('*').gte('tanggal', start).lte('tanggal', end).order('tanggal', { ascending: false });
+    let query = supabase.from('tabungan_sampah').select('*').gte('tanggal', start).lte('tanggal', end).order('tanggal', { ascending: false });
+    
+    const { month } = req.query;
+    if (month) {
+      const startDate = `${month}-01T00:00:00Z`;
+      const [year, m] = String(month).split('-');
+      const lastDay = new Date(Number(year), Number(m), 0).getDate();
+      const endDate = `${month}-${lastDay}T23:59:59Z`;
+      query = query.gte('tanggal', startDate).lte('tanggal', endDate);
+    }
+    
+    const { data, error } = await query;
     if (error) return res.status(500).json({ success: false, message: error.message });
     res.json({ success: true, data });
   });
@@ -2568,7 +2614,18 @@ app.get('/api/admin/stats', async (req, res) => {
   app.get('/api/bank-sampah/stats', async (req, res) => {
     try {
       const { start, end } = await getTahunAjaranFilter();
-      const { data: transactions } = await supabase.from('tabungan_sampah').select('kelas, nilai, berat').gte('tanggal', start).lte('tanggal', end);
+      let query = supabase.from('tabungan_sampah').select('kelas, nilai, berat').gte('tanggal', start).lte('tanggal', end);
+      
+      const { month } = req.query;
+      if (month) {
+        const startDate = `${month}-01T00:00:00Z`;
+        const [year, m] = String(month).split('-');
+        const lastDay = new Date(Number(year), Number(m), 0).getDate();
+        const endDate = `${month}-${lastDay}T23:59:59Z`;
+        query = query.gte('tanggal', startDate).lte('tanggal', endDate);
+      }
+      
+      const { data: transactions } = await query;
       
       let totalSavings = 0;
       let totalWeight = 0;

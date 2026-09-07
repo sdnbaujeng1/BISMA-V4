@@ -24,11 +24,13 @@ export default function TabunganSampahAdmin({ showToast }: { showToast: (msg: st
     harga: ''
   });
 
+  const [selectedMonth, setSelectedMonth] = useState('');
+
   const fetchData = async () => {
     setLoading(true);
     try {
       // Fetch Stats
-      const statsRes = await fetch('/api/bank-sampah/stats');
+      const statsRes = await fetch(`/api/bank-sampah/stats${selectedMonth ? `?month=${selectedMonth}` : ''}`);
       const statsData = await statsRes.json();
       if (statsData.success) setStats(statsData.data);
 
@@ -38,7 +40,7 @@ export default function TabunganSampahAdmin({ showToast }: { showToast: (msg: st
       if (typesData.success) setWasteTypes(typesData.data);
 
       // Fetch Transactions
-      const transRes = await fetch('/api/bank-sampah/transactions');
+      const transRes = await fetch(`/api/bank-sampah/transactions${selectedMonth ? `?month=${selectedMonth}` : ''}`);
       const transData = await transRes.json();
       if (transData.success) setTransactions(transData.data);
 
@@ -59,7 +61,7 @@ export default function TabunganSampahAdmin({ showToast }: { showToast: (msg: st
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedMonth]);
 
   const filterStudentsByClass = (allStudents: any[], kelas: string) => {
     const filtered = allStudents.filter(s => {
@@ -180,16 +182,24 @@ export default function TabunganSampahAdmin({ showToast }: { showToast: (msg: st
           <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Tabungan Sampah</h1>
           <p className="text-slate-500 dark:text-slate-400">Konfigurasi Harga & Monitoring Tabungan</p>
         </div>
-        <button 
-          onClick={() => {
-            setExchangeData({ ...exchangeData, kelas: 'Kelas 1', siswa: '' });
-            filterStudentsByClass(students, 'Kelas 1');
-            setShowExchangeModal(true);
-          }}
-          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg shadow-purple-200 dark:shadow-none transition-all"
-        >
-          <ShoppingCart className="w-4 h-4" /> Tukar ATK
-        </button>
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <input
+            type="month"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 text-slate-700 dark:text-white focus:ring-2 focus:ring-green-500 outline-none font-medium shadow-sm"
+          />
+          <button 
+            onClick={() => {
+              setExchangeData({ ...exchangeData, kelas: 'Kelas 1', siswa: '' });
+              filterStudentsByClass(students, 'Kelas 1');
+              setShowExchangeModal(true);
+            }}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg shadow-purple-200 dark:shadow-none transition-all w-full sm:w-auto"
+          >
+            <ShoppingCart className="w-4 h-4" /> Tukar ATK
+          </button>
+        </div>
       </header>
 
       {/* Stats Cards */}

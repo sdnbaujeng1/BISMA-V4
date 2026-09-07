@@ -143,7 +143,32 @@ export default function KasihIbuGuru({ user, onNavigate }: { user: any, onNaviga
       const endYear = parseInt(parts[1]) || 2025;
       const start = `${startYear}-07-01T00:00:00.000Z`;
       const end = `${endYear}-06-30T23:59:59.999Z`;
-      const { data: pointsData } = await supabase.from("kasih_ibu").select("nisn, jenis_kebiasaan, kelas").gte('timestamp', start).lte('timestamp', end);
+      let pointsData: any[] = [];
+      let hasMore = true;
+      let page = 0;
+      const pageSize = 1000;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("kasih_ibu")
+          .select("nisn, nama_murid, jenis_kebiasaan, kelas")
+          .gte('timestamp', start)
+          .lte('timestamp', end)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) {
+           console.error("Error fetching data", error);
+           break;
+        }
+
+        if (data && data.length > 0) {
+          pointsData = [...pointsData, ...data];
+          if (data.length < pageSize) hasMore = false;
+          else page++;
+        } else {
+          hasMore = false;
+        }
+      }
       const { data: users } = await supabase.from("murid").select('"NISN", "Nama Lengkap", "NIS"');
       const uMap: Record<string, any> = {};
       if (users) {

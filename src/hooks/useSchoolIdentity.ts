@@ -6,6 +6,8 @@ export interface SchoolIdentity {
   headmasterNIP: string;
   schoolLogo: string;
   kasihIbuLabel: string;
+  sloganText?: string;
+  sloganSpeed?: string;
 }
 
 export function useSchoolIdentity() {
@@ -14,7 +16,9 @@ export function useSchoolIdentity() {
     headmasterName: "Kepala Sekolah",
     headmasterNIP: "-",
     schoolLogo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg/800px-Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg.png",
-    kasihIbuLabel: "Kasih Ibu"
+    kasihIbuLabel: "Kasih Ibu",
+    sloganText: "✨ Beriman, Ramah, Mandiri, Unggul dan Tangguh ✨",
+    sloganSpeed: "3"
   });
 
   useEffect(() => {
@@ -29,7 +33,9 @@ export function useSchoolIdentity() {
             headmasterName: data.headmasterName || "Kepala Sekolah",
             headmasterNIP: data.headmasterNIP || "-",
             schoolLogo: data.logo1x1 || "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg/800px-Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg.png",
-            kasihIbuLabel: data.kasih_ibu_label || "Kasih Ibu"
+            kasihIbuLabel: data.kasih_ibu_label || "Kasih Ibu",
+            sloganText: data.sloganText || "✨ Beriman, Ramah, Mandiri, Unggul dan Tangguh ✨",
+            sloganSpeed: data.sloganSpeed || "3"
           };
           setIdentity(newIdentity);
           localStorage.setItem('school_identity_data', JSON.stringify(newIdentity));
@@ -52,7 +58,9 @@ export function useSchoolIdentity() {
           const mappedData = {
             ...data,
             schoolLogo: data.logo1x1 || data.schoolLogo || "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg/800px-Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg.png",
-            kasihIbuLabel: data.kasih_ibu_label || data.kasihIbuLabel || "Kasih Ibu"
+            kasihIbuLabel: data.kasih_ibu_label || data.kasihIbuLabel || "Kasih Ibu",
+            sloganText: data.sloganText || "✨ Beriman, Ramah, Mandiri, Unggul dan Tangguh ✨",
+            sloganSpeed: data.sloganSpeed || "3"
           };
           setIdentity(mappedData);
           document.title = mappedData.schoolName || "Sekolah";

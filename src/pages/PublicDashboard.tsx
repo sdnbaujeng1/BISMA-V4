@@ -1,5 +1,6 @@
+import { ResponsiveContainer, ScatterChart, CartesianGrid, XAxis, YAxis, Scatter, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 import { useEffect, useState } from 'react';
-import { LogIn, Moon, Sun, BookOpen, AlertCircle, X, User, Backpack, Calculator, GraduationCap } from 'lucide-react';
+import { AlertCircle, X, LogIn, BookOpen, Calculator, Sun, Moon, Users, GraduationCap, Clock, Backpack, CheckCircle2, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
 import HelpDeskFloat from '../components/HelpDeskFloat';
@@ -10,6 +11,9 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
   const schoolIdentity = useSchoolIdentity();
   const [time, setTime] = useState(new Date());
   const [showAbsentModal, setShowAbsentModal] = useState(false);
+  const [showTotalSiswaModal, setShowTotalSiswaModal] = useState(false);
+  const [showTotalJPModal, setShowTotalJPModal] = useState(false);
+  const [selectedClassData, setSelectedClassData] = useState<string | null>(null);
   const [fakeVisitor, setFakeVisitor] = useState(0);
   const [realVisitor, setRealVisitor] = useState(0);
 
@@ -214,7 +218,7 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 flex flex-col gap-8">
+      <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 flex flex-col gap-[1.75px]">
         {!data ? (
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
@@ -222,10 +226,15 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
         ) : (
           <>
             {/* Informasi Terkini Card */}
-            <div className="mb-6">
+            <div className="mb-[1.75px]">
               <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 rounded-3xl shadow-lg shadow-blue-200 dark:shadow-none text-white relative overflow-hidden group hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                 <div className="relative z-10">
                   <h3 className="text-lg font-bold mb-1 drop-shadow-md">Informasi Terkini</h3>
+                  <div className="w-full bg-black/10 rounded-full py-1.5 px-3 mb-4 overflow-hidden flex items-center shadow-inner border border-white/10">
+                    <marquee className="text-blue-100 text-xs sm:text-sm italic font-medium tracking-wide" scrollAmount={schoolIdentity.sloganSpeed || "3"}>
+                      {schoolIdentity.sloganText || "✨ Beriman, Ramah, Mandiri, Unggul dan Tangguh ✨"}
+                    </marquee>
+                  </div>
                   <p className="text-blue-100 text-sm mb-4 font-medium">{new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
                   <div className="flex items-center gap-2 text-xs font-bold bg-white/20 w-fit px-3 py-1 rounded-full backdrop-blur-sm shadow-inner border border-white/10">
                     <div className={`w-2 h-2 rounded-full animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.8)] bg-green-400`}></div>
@@ -247,61 +256,78 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-3 gap-2 md:gap-4 mb-[1.75px]">
               {/* Total Siswa */}
-              <div className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center h-40 md:h-48 relative overflow-hidden group hover:shadow-md transition-shadow">
+              <div 
+                className="bg-white dark:bg-slate-800 p-2 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center h-32 md:h-48 relative overflow-hidden group"
+              >
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-2xl mb-3 group-hover:scale-110 transition-transform duration-300">
-                  <User className="w-6 h-6 md:w-8 md:h-8 text-blue-500 dark:text-blue-400" />
+                <div className="p-2 md:p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl md:rounded-2xl mb-1 md:mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <Users className="w-6 h-6 md:w-12 md:h-12 text-blue-500 dark:text-blue-400" />
                 </div>
-                <div className="text-2xl md:text-4xl font-black text-slate-800 dark:text-white mb-1">
+                <div className="text-lg md:text-4xl font-black text-slate-800 dark:text-white mb-0.5 md:mb-1">
                   {data.totalStudents || 0}
                 </div>
-                <p className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Siswa</p>
+                <p className="text-[10px] md:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Siswa</p>
               </div>
-
               {/* Total JP */}
-              <div className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center h-40 md:h-48 relative overflow-hidden group hover:shadow-md transition-shadow">
+              <button 
+                onDoubleClick={() => setShowTotalJPModal(true)}
+                className="bg-white dark:bg-slate-800 p-2 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center h-32 md:h-48 relative overflow-hidden group hover:shadow-md transition-shadow"
+              >
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-emerald-600"></div>
-                <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl mb-3 group-hover:scale-110 transition-transform duration-300">
-                  <Calculator className="w-6 h-6 md:w-8 md:h-8 text-emerald-500 dark:text-emerald-400" />
+                <div className="p-2 md:p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl md:rounded-2xl mb-1 md:mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <Clock className="w-6 h-6 md:w-12 md:h-12 text-emerald-500 dark:text-emerald-400" />
                 </div>
-                <div className="text-2xl md:text-4xl font-black text-slate-800 dark:text-white mb-1">
+                <div className="text-lg md:text-4xl font-black text-slate-800 dark:text-white mb-0.5 md:mb-1">
                   {data.totalJP || 0}
                 </div>
-                <p className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total JP</p>
-              </div>
-
-              {/* KBM Terlaksana */}
-              <div className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center h-40 md:h-48 relative overflow-hidden group hover:shadow-md transition-shadow">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-400 to-purple-600"></div>
-                <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-2xl mb-3 group-hover:scale-110 transition-transform duration-300">
-                  <BookOpen className="w-6 h-6 md:w-8 md:h-8 text-purple-500 dark:text-purple-400" />
-                </div>
-                <div className="text-2xl md:text-4xl font-black text-slate-800 dark:text-white mb-1 flex items-baseline justify-center gap-1">
-                  {data.completedKBM || 0} <span className="text-sm md:text-lg text-slate-400 font-medium">/ {data.totalScheduled || 0}</span>
-                </div>
-                <p className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">KBM Hari Ini</p>
-              </div>
+                <p className="text-[10px] md:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total JP</p>
+              </button>
 
               {/* Ketidakhadiran */}
               <button 
-                onClick={() => setShowAbsentModal(true)}
-                className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center h-40 md:h-48 relative overflow-hidden group hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                onDoubleClick={() => setShowAbsentModal(true)}
+                className="bg-white dark:bg-slate-800 p-2 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center text-center h-32 md:h-48 relative overflow-hidden group hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
               >
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 to-orange-600"></div>
-                <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-2xl mb-3 group-hover:scale-110 transition-transform duration-300">
-                  <AlertCircle className="w-6 h-6 md:w-8 md:h-8 text-orange-500 dark:text-orange-400" />
+                <div className="p-2 md:p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl md:rounded-2xl mb-1 md:mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <AlertCircle className="w-6 h-6 md:w-12 md:h-12 text-orange-500 dark:text-orange-400" />
                 </div>
-                <div className="text-2xl md:text-4xl font-black text-slate-800 dark:text-white mb-1">
+                <div className="text-lg md:text-4xl font-black text-slate-800 dark:text-white mb-0.5 md:mb-1">
                   {data.absentStudents?.length || 0}
                 </div>
-                <p className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Absen Siswa</p>
+                <p className="text-[10px] md:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Absen Siswa</p>
               </button>
             </div>
 
+            {/* Progres KBM (Full Width) */}
+            <div className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 w-full mb-[1.75px] relative overflow-hidden group">
+              <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-purple-400 to-purple-600"></div>
+              <div className="flex justify-between items-center mb-3 md:mb-4">
+                <div className="flex items-center gap-2 md:gap-3">
+                  <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
+                    <CheckCircle2 className="w-5 h-5 md:w-7 md:h-7 text-purple-500 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm md:text-lg">Progres KBM Hari Ini</h3>
+                    <p className="text-[10px] md:text-xs text-slate-500">Keterisian Jurnal Guru</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-2xl md:text-4xl font-black text-slate-800 dark:text-white">{data.completedKBM || 0}</span>
+                  <span className="text-xs md:text-base text-slate-400 font-medium"> / {data.totalScheduled || 0} JP</span>
+                </div>
+              </div>
+              <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-3 md:h-4 overflow-hidden shadow-inner">
+                <div className="bg-gradient-to-r from-purple-400 to-purple-600 h-full rounded-full transition-all duration-1000 ease-out relative" style={{ width: `${data.percentage || 0}%` }}>
+                   <div className="absolute inset-0 bg-white/20 w-full h-full animate-[shimmer_2s_infinite]"></div>
+                </div>
+              </div>
+            </div>
+
             {/* Class Breakdown Section */}
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex items-center gap-3 mt-[1.75px]">
               <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400">
                 <GraduationCap className="w-5 h-5" />
               </div>
@@ -347,14 +373,197 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
         &copy; {new Date().getFullYear()} {schoolIdentity.schoolName}. All rights reserved.
       </footer>
 
-      {/* Absent Modal */}
+{/* Total Siswa Modal */}
       <AnimatePresence>
-        {showAbsentModal && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        {showTotalSiswaModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowTotalSiswaModal(false)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col"
+            >
+              <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-700 bg-blue-50 dark:bg-blue-900/10">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+                    <Users className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-800 dark:text-white">Data Siswa per Kelas</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Dot plot distribusi jumlah siswa</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowTotalSiswaModal(false)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+              <div className="p-6 h-64 md:h-80 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} vertical={false} />
+                    <XAxis type="category" dataKey="name" name="Kelas" stroke="#888" tickLine={false} axisLine={false} />
+                    <YAxis type="number" dataKey="value" name="Jumlah" stroke="#888" tickLine={false} axisLine={false} />
+                    <ZAxis type="number" range={[100, 500]} />
+                    <Tooltip cursor={{strokeDasharray: '3 3'}} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <Scatter data={[
+                      { name: 'Kelas 1', value: data?.kelas1 || 0 },
+                      { name: 'Kelas 2', value: data?.kelas2 || 0 },
+                      { name: 'Kelas 3', value: data?.kelas3 || 0 },
+                      { name: 'Kelas 4', value: data?.kelas4 || 0 },
+                      { name: 'Kelas 5', value: data?.kelas5 || 0 },
+                      { name: 'Kelas 6', value: data?.kelas6 || 0 }
+                    ]} fill="#3b82f6" />
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Total JP Modal */}
+      <AnimatePresence>
+        {showTotalJPModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowTotalJPModal(false)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col"
+            >
+              <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-700 bg-emerald-50 dark:bg-emerald-900/10">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg text-emerald-600 dark:text-emerald-400">
+                    <Clock className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-800 dark:text-white">Progres KBM per Kelas</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Jam Pelajaran Terisi vs Belum Terisi</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowTotalJPModal(false)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+              <div className="p-6 grid grid-cols-2 md:grid-cols-3 gap-4">
+                {[1,2,3,4,5,6].map(k => {
+                  const kbm = data?.kbmPerKelas ? data.kbmPerKelas[`Kelas ${k}`] : { terisi: 0, belum: 0 };
+                  const pieData = [
+                    { name: 'Terisi', value: kbm?.terisi || 0 },
+                    { name: 'Belum', value: kbm?.belum || 0 }
+                  ];
+                  return (
+                    <div key={k} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl flex flex-col items-center">
+                      <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Kelas {k}</h3>
+                      <div className="h-24 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={pieData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={25}
+                              outerRadius={40}
+                              dataKey="value"
+                              stroke="none"
+                            >
+                              <Cell key="cell-0" fill="#a855f7" />
+                              <Cell key="cell-1" fill="#e2e8f0" />
+                            </Pie>
+                            <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="flex gap-2 text-xs font-medium">
+                        <span className="text-purple-600">{kbm?.terisi || 0} Terisi</span>
+                        <span className="text-slate-400">{kbm?.belum || 0} Belum</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Class Detail Modal */}
+      <AnimatePresence>
+        {selectedClassData && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedClassData(null)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col"
+            >
+              <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-700 bg-indigo-50 dark:bg-indigo-900/10">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400">
+                    <GraduationCap className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-800 dark:text-white">Detail {selectedClassData}</h2>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedClassData(null)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto max-h-[60vh]">
+                <h3 className="font-bold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-purple-500" /> Jurnal KBM Belum Diisi
+                </h3>
+                <div className="space-y-2 mb-6">
+                  {data?.notYetTaught?.filter((n:any) => n.kelas === selectedClassData).length > 0 ? (
+                    data.notYetTaught.filter((n:any) => n.kelas === selectedClassData).map((n:any, i:number) => (
+                      <div key={i} className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm border border-red-100 dark:border-red-800/30">
+                        <span className="font-medium">{n.guru}</span>
+                        <span>{n.mapel}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-sm font-medium border border-emerald-100 dark:border-emerald-800/30 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" /> Semua jurnal telah diisi
+                    </div>
+                  )}
+                </div>
+
+                <h3 className="font-bold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-orange-500" /> Siswa Tidak Hadir
+                </h3>
+                <div className="space-y-2">
+                  {data?.absentStudents?.filter((s:any) => s.class === selectedClassData).length > 0 ? (
+                    data.absentStudents.filter((s:any) => s.class === selectedClassData).map((student: any, i: number) => (
+                      <div key={i} className="flex justify-between items-center p-3 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 rounded-lg text-sm border border-orange-100 dark:border-orange-800/30">
+                        <span className="font-medium">{student.name}</span>
+                        <span className="bg-orange-200 dark:bg-orange-800/50 px-2 py-1 rounded text-xs font-bold uppercase">{student.reason}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-3 bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-lg text-sm text-center italic">
+                      Semua siswa hadir
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Absent Modal */}
+      <AnimatePresence>
+        {showAbsentModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowAbsentModal(false)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
               className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col"
             >
               <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-700 bg-orange-50 dark:bg-orange-900/10">
@@ -372,42 +581,54 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
                 </button>
               </div>
               
-              <div className="p-0 max-h-[60vh] overflow-y-auto">
-                {data?.absentStudents && data.absentStudents.length > 0 ? (
-                  <div className="divide-y divide-slate-100 dark:divide-slate-700">
-                    {data.absentStudents.map((student: any, idx: number) => (
-                      <div key={idx} className="p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                        <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 font-bold">
-                          {student.name.charAt(0)}
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-bold text-slate-800 dark:text-white">{student.name}</h4>
-                          <p className="text-xs text-slate-500">Kelas {student.class}</p>
-                        </div>
-                        <span className="px-3 py-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-xs font-bold rounded-full">
-                          {student.reason}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-12 text-center text-slate-500 dark:text-slate-400">
-                    <p>Tidak ada data ketidakhadiran hari ini.</p>
-                  </div>
-                )}
+              <div className="p-4 grid grid-cols-3 gap-3">
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/30 p-3 rounded-xl text-center">
+                  <div className="text-xl font-black text-red-600 dark:text-red-400">{data?.absentStudents?.filter((s:any) => s.reason === 'Alfa' || s.reason === 'A').length || 0}</div>
+                  <div className="text-xs font-bold text-red-500">ALFA</div>
+                </div>
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800/30 p-3 rounded-xl text-center">
+                  <div className="text-xl font-black text-yellow-600 dark:text-yellow-400">{data?.absentStudents?.filter((s:any) => s.reason === 'Izin' || s.reason === 'I').length || 0}</div>
+                  <div className="text-xs font-bold text-yellow-500">IZIN</div>
+                </div>
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 p-3 rounded-xl text-center">
+                  <div className="text-xl font-black text-blue-600 dark:text-blue-400">{data?.absentStudents?.filter((s:any) => s.reason === 'Sakit' || s.reason === 'S').length || 0}</div>
+                  <div className="text-xs font-bold text-blue-500">SAKIT</div>
+                </div>
               </div>
-              
-              <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end">
-                <button onClick={() => setShowAbsentModal(false)} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
-                  Tutup
-                </button>
+
+              <div className="p-6 pt-2 overflow-y-auto max-h-[50vh]">
+                <div className="space-y-3">
+                  {data?.absentStudents && data.absentStudents.length > 0 ? (
+                    data.absentStudents.map((student: any, i: number) => {
+                      const isAlfa = student.reason === 'Alfa' || student.reason === 'A';
+                      const isIzin = student.reason === 'Izin' || student.reason === 'I';
+                      const colorClass = isAlfa ? 'bg-red-50 text-red-700 border-red-100' : isIzin ? 'bg-yellow-50 text-yellow-700 border-yellow-100' : 'bg-blue-50 text-blue-700 border-blue-100';
+                      
+                      return (
+                        <div key={i} className={`flex justify-between items-center p-3 rounded-lg text-sm border ${colorClass} dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200`}>
+                          <div>
+                            <p className="font-bold">{student.name}</p>
+                            <p className="text-xs opacity-75">{student.class}</p>
+                          </div>
+                          <span className="px-2 py-1 rounded text-xs font-black uppercase bg-white/50 dark:bg-black/20">{student.reason}</span>
+                        </div>
+                      )
+                    })
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                      </div>
+                      <h3 className="text-slate-800 dark:text-white font-bold">Semua Hadir</h3>
+                      <p className="text-slate-500 text-sm">Tidak ada catatan ketidakhadiran hari ini</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
-      
-      <HelpDeskFloat />
+      </AnimatePresence>      <HelpDeskFloat />
     </div>
   );
 }

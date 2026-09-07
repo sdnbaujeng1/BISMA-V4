@@ -4092,6 +4092,8 @@ function PengaturanModal({
   const [tahunAjaran, setTahunAjaran] = useState("2024/2025");
   const [semester, setSemester] = useState("Ganjil");
   const [jumlahUlangan, setJumlahUlangan] = useState("3");
+  const [sloganText, setSloganText] = useState("✨ Beriman, Ramah, Mandiri, Unggul dan Tangguh ✨");
+  const [sloganSpeed, setSloganSpeed] = useState("3");
   const [waTemplate, setWaTemplate] = useState(`SDN BAUJENG I BEJI
 BISMA
 =============
@@ -4125,6 +4127,8 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
           if (data.wa_message_template) {
             setWaTemplate(data.wa_message_template);
           }
+          if (data.sloganText) setSloganText(data.sloganText);
+          if (data.sloganSpeed) setSloganSpeed(data.sloganSpeed);
 
           // Also update localStorage for consistency
           localStorage.setItem("school_identity_data", JSON.stringify(data));
@@ -4146,6 +4150,8 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
             if (data.wa_message_template) {
               setWaTemplate(data.wa_message_template);
             }
+          if (data.sloganText) setSloganText(data.sloganText);
+          if (data.sloganSpeed) setSloganSpeed(data.sloganSpeed);
           }
         }
       } catch (error) {
@@ -4167,6 +4173,8 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
           if (data.wa_message_template) {
             setWaTemplate(data.wa_message_template);
           }
+          if (data.sloganText) setSloganText(data.sloganText);
+          if (data.sloganSpeed) setSloganSpeed(data.sloganSpeed);
         }
       }
     };
@@ -4187,6 +4195,8 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
       semester,
       jumlahUlangan,
       wa_message_template: waTemplate,
+      sloganText,
+      sloganSpeed,
     };
 
     try {
@@ -4229,6 +4239,33 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
             </div>
 
             <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                    Slogan (Running Text)
+                  </label>
+                  <input
+                    type="text"
+                    value={sloganText}
+                    onChange={(e) => setSloganText(e.target.value)}
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-slate-500 outline-none"
+                    placeholder="✨ Beriman, Ramah, Mandiri, Unggul dan Tangguh ✨"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                    Kecepatan Running Text (ScrollAmount)
+                  </label>
+                  <input
+                    type="number"
+                    value={sloganSpeed}
+                    onChange={(e) => setSloganSpeed(e.target.value)}
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-slate-500 outline-none"
+                    placeholder="Contoh: 3, 5, 10"
+                    min="1"
+                  />
+                </div>
+              </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
                   Nama Sekolah Resmi
