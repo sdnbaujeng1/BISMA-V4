@@ -43,6 +43,8 @@ import {
   Activity,
   Target,
   IdCard,
+  RotateCcw,
+  BarChart3,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useSchoolIdentity } from "../hooks/useSchoolIdentity";
@@ -78,6 +80,20 @@ export default function AdminDashboard({
   const [isSidebarVisible, setIsSidebarVisible] = useState(
     window.innerWidth >= 1024,
   );
+  const [adminHeaderClicks, setAdminHeaderClicks] = useState(0);
+
+  const handleAdminHeaderClick = () => {
+    const next = adminHeaderClicks + 1;
+    if (next >= 3) {
+      setAdminHeaderClicks(0);
+      showToast("Membuka Pengaturan Fake Konfigurasi!", "success");
+      setActiveView("visitor_config");
+    } else {
+      setAdminHeaderClicks(next);
+      const timer = setTimeout(() => setAdminHeaderClicks(0), 1500);
+      return () => clearTimeout(timer);
+    }
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -304,7 +320,14 @@ export default function AdminDashboard({
                   Admin Dashboard
                 </h1>
                 <p className="text-slate-500 dark:text-slate-400">
-                  Selamat datang kembali, Administrator
+                  Selamat datang kembali,{" "}
+                  <span
+                    onClick={handleAdminHeaderClick}
+                    className="font-semibold cursor-pointer select-none hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+                    title="Klik 3 kali untuk Pengaturan Fake Konfigurasi"
+                  >
+                    Administrator
+                  </span>
                 </p>
               </div>
               <div className="text-right hidden md:block">
@@ -1158,20 +1181,19 @@ function ProfileView({
   const [clickCount, setClickCount] = useState(0);
 
   const handleSecretClick = () => {
-    setClickCount((prev) => prev + 1);
-  };
-
-  useEffect(() => {
-    if (clickCount >= 5) {
-      if (onHiddenConfig) onHiddenConfig();
+    const next = clickCount + 1;
+    if (next >= 3) {
       setClickCount(0);
-    } else if (clickCount > 0) {
+      showToast("Membuka Pengaturan Fake Konfigurasi!", "success");
+      if (onHiddenConfig) onHiddenConfig();
+    } else {
+      setClickCount(next);
       const timer = setTimeout(() => {
         setClickCount(0);
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [clickCount, onHiddenConfig]);
+  };
 
   const handlePasswordChange = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1196,8 +1218,9 @@ function ProfileView({
           </div>
           <div>
             <h2
-              className="text-xl font-bold text-slate-800 dark:text-white cursor-default select-none"
+              className="text-xl font-bold text-slate-800 dark:text-white cursor-pointer select-none hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
               onClick={handleSecretClick}
+              title="Klik 3 kali untuk Pengaturan Fake Konfigurasi"
             >
               Administrator
             </h2>
@@ -4548,19 +4571,18 @@ function VisitorConfigView({
 }) {
   const [loading, setLoading] = useState(false);
   const defaultMonthlyStats = [
-    { month: "Jun 24", visitors: 300 },
-    { month: "Jul 24", visitors: 400 },
-    { month: "Ags 24", visitors: 520 },
-    { month: "Sep 24", visitors: 650 },
-    { month: "Okt 24", visitors: 780 },
-    { month: "Nov 24", visitors: 850 },
-    { month: "Des 24", visitors: 860 },
-    { month: "Jan 25", visitors: 890 },
-    { month: "Feb 25", visitors: 920 },
-    { month: "Mar 25", visitors: 960 },
-    { month: "Apr 25", visitors: 990 },
-    { month: "Mei 25", visitors: 28000 },
-    { month: "Jun 25", visitors: 30000 },
+    { month: "Januari 2026", visitors: 890 },
+    { month: "Februari 2026", visitors: 920 },
+    { month: "Maret 2026", visitors: 960 },
+    { month: "April 2026", visitors: 990 },
+    { month: "Mei 2026", visitors: 1250 },
+    { month: "Juni 2026", visitors: 1400 },
+    { month: "Juli 2026", visitors: 1150 },
+    { month: "Agustus 2026", visitors: 1320 },
+    { month: "September 2026", visitors: 1450 },
+    { month: "Oktober 2026", visitors: 1520 },
+    { month: "November 2026", visitors: 1600 },
+    { month: "Desember 2026", visitors: 1750 },
   ];
 
   const defaultPieData = [
@@ -4623,10 +4645,14 @@ function VisitorConfigView({
         if (res.ok) {
           const resData = await res.json();
           if (resData.success && resData.data) {
+            let loadedMonthly = resData.data.monthly_stats || defaultMonthlyStats;
+            if (Array.isArray(loadedMonthly) && loadedMonthly.some((m: any) => m.month && (m.month.includes('24') || m.month.includes('25')))) {
+              loadedMonthly = defaultMonthlyStats;
+            }
             setConfig((prev: any) => ({
               ...prev,
               ...resData.data,
-              monthly_stats: resData.data.monthly_stats || defaultMonthlyStats,
+              monthly_stats: loadedMonthly,
               pie_data: resData.data.pie_data || defaultPieData,
               word_cloud: resData.data.word_cloud || defaultWordCloud,
               testimonials: resData.data.testimonials || defaultTestimonials,
@@ -4643,10 +4669,14 @@ function VisitorConfigView({
         const local = safeStorage.getItem("visitor_config");
         if (local) {
           const parsed = JSON.parse(local);
+          let loadedMonthly = parsed.monthly_stats || defaultMonthlyStats;
+          if (Array.isArray(loadedMonthly) && loadedMonthly.some((m: any) => m.month && (m.month.includes('24') || m.month.includes('25')))) {
+            loadedMonthly = defaultMonthlyStats;
+          }
           setConfig((prev: any) => ({
             ...prev,
             ...parsed,
-            monthly_stats: parsed.monthly_stats || defaultMonthlyStats,
+            monthly_stats: loadedMonthly,
             pie_data: parsed.pie_data || defaultPieData,
             word_cloud: parsed.word_cloud || defaultWordCloud,
             testimonials: parsed.testimonials || defaultTestimonials,
@@ -4701,10 +4731,56 @@ function VisitorConfigView({
     }
   };
 
-  const handleMonthChange = (index: number, value: string) => {
+  const handleMonthNameChange = (index: number, newName: string) => {
     const newStats = [...config.monthly_stats];
-    newStats[index].visitors = Number(value);
+    newStats[index] = { ...newStats[index], month: newName };
     setConfig({ ...config, monthly_stats: newStats });
+  };
+
+  const handleMonthVisitorChange = (index: number, value: string) => {
+    const newStats = [...config.monthly_stats];
+    newStats[index] = { ...newStats[index], visitors: Math.max(0, Number(value) || 0) };
+    setConfig({ ...config, monthly_stats: newStats });
+  };
+
+  const handleAddMonth = () => {
+    const nextIdx = config.monthly_stats.length + 1;
+    const newStats = [
+      ...config.monthly_stats,
+      { month: `Bulan ${nextIdx} 2026`, visitors: 1000 },
+    ];
+    setConfig({ ...config, monthly_stats: newStats });
+  };
+
+  const handleRemoveMonth = (index: number) => {
+    if (config.monthly_stats.length <= 1) {
+      showToast("Minimal harus ada 1 bulan dalam bagan", "error");
+      return;
+    }
+    const newStats = config.monthly_stats.filter((_, i) => i !== index);
+    setConfig({ ...config, monthly_stats: newStats });
+  };
+
+  const handleResetTo2026 = (format: "full" | "short" = "full") => {
+    const fullMonths = [
+      "Januari 2026", "Februari 2026", "Maret 2026", "April 2026",
+      "Mei 2026", "Juni 2026", "Juli 2026", "Agustus 2026",
+      "September 2026", "Oktober 2026", "November 2026", "Desember 2026"
+    ];
+    const shortMonths = [
+      "Jan 26", "Feb 26", "Mar 26", "Apr 26",
+      "Mei 26", "Jun 26", "Jul 26", "Ags 26",
+      "Sep 26", "Okt 26", "Nov 26", "Des 26"
+    ];
+    const monthsToUse = format === "short" ? shortMonths : fullMonths;
+    const defaultVisitors = [890, 920, 960, 990, 1250, 1400, 1150, 1320, 1450, 1520, 1600, 1750];
+
+    const newStats = monthsToUse.map((m, idx) => ({
+      month: m,
+      visitors: config.monthly_stats[idx]?.visitors || defaultVisitors[idx] || 1000,
+    }));
+    setConfig({ ...config, monthly_stats: newStats });
+    showToast(`Bagan direset ke Januari 2026 - Desember 2026 (${format === 'short' ? 'Format Singkat' : 'Format Lengkap'})`, "success");
   };
 
   const handlePieChange = (index: number, field: string, value: any) => {
@@ -4828,33 +4904,113 @@ function VisitorConfigView({
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-4">
-              Konfigurasi Pengunjung per Bulan (Bagan Monitoring)
-            </label>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* --- BAGAN PER BULAN (CUSTOM & EDIT NAMA BULAN) --- */}
+          <div className="p-5 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-teal-500" />
+                  Menu Custom Bagan Per Bulan (Januari 2026 - Desember 2026)
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Edit nama bulan dan angka estimasi pengunjung untuk grafik pemantauan dashboard.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleResetTo2026("full")}
+                  className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 transition-all shadow-sm"
+                  title="Reset ke 12 Bulan (Januari 2026 - Desember 2026)"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-teal-500" />
+                  Reset Jan - Des 2026
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleResetTo2026("short")}
+                  className="px-2.5 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 transition-all shadow-sm"
+                  title="Ubah format nama bulan jadi singkat (Jan 26, Feb 26...)"
+                >
+                  Format Singkat (Jan 26)
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddMonth}
+                  className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all shadow-sm shadow-teal-500/20"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Tambah Bulan
+                </button>
+              </div>
+            </div>
+
+            {/* List / Grid of Months */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {config.monthly_stats.map((stat, idx) => (
                 <div
-                  key={stat.month}
-                  className="bg-slate-50 dark:bg-slate-800 p-2 lg:p-3 rounded-xl border border-slate-200 dark:border-slate-700"
+                  key={idx}
+                  className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative group hover:border-teal-300 dark:hover:border-teal-700 transition-all"
                 >
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">
-                    {stat.month}
-                  </label>
-                  <input
-                    type="number"
-                    value={stat.visitors}
-                    onChange={(e) => handleMonthChange(idx, e.target.value)}
-                    className="w-full border border-slate-300 dark:border-slate-600 p-2 text-sm rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-1 focus:ring-teal-500 outline-none"
-                  />
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border border-teal-200 dark:border-teal-800">
+                      Bulan #{idx + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveMonth(idx)}
+                      className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                      title="Hapus bulan ini"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                        Edit Nama Bulan
+                      </label>
+                      <input
+                        type="text"
+                        value={stat.month}
+                        onChange={(e) => handleMonthNameChange(idx, e.target.value)}
+                        placeholder="Contoh: Januari 2026"
+                        className="w-full border border-slate-200 dark:border-slate-600 p-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white font-medium focus:ring-2 focus:ring-teal-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                        Jumlah Pengunjung
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={stat.visitors}
+                        onChange={(e) => handleMonthVisitorChange(idx, e.target.value)}
+                        placeholder="0"
+                        className="w-full border border-slate-200 dark:border-slate-600 p-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white font-bold text-teal-700 dark:text-teal-400 focus:ring-2 focus:ring-teal-500 outline-none"
+                      />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
-            <p className="text-xs mt-3 text-slate-500 dark:text-slate-400 border-l-2 border-teal-500 pl-3">
-              Nilai di atas akan digunakan untuk Chart Statistik Pengunjung di
-              halaman Monitoring Dashboard. Untuk lonjakan prediksi Mei-Juni
-              yang drastis, disajikan dalam tooltip yang lebih informatif.
-            </p>
+
+            <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 dark:text-slate-400 gap-2">
+              <span className="flex items-center gap-1.5">
+                <BarChart3 className="w-4 h-4 text-teal-500" />
+                Total terdaftar: <strong className="text-slate-700 dark:text-slate-200">{config.monthly_stats.length} Bulan</strong>
+                {" • "}
+                Total Estimasi: <strong className="text-teal-600 dark:text-teal-400">
+                  {config.monthly_stats.reduce((acc, curr) => acc + (Number(curr.visitors) || 0), 0).toLocaleString('id-ID')} Pengunjung
+                </strong>
+              </span>
+              <span className="text-[11px] text-slate-400 dark:text-slate-500 italic">
+                Data bagan akan langsung disinkronkan ke halaman Monitoring Dashboard.
+              </span>
+            </div>
           </div>
 
           <div className="border-t border-slate-200 dark:border-slate-700 my-6"></div>

@@ -30,6 +30,21 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
+const defaultVisitorStats2026 = [
+  { month: "Januari 2026", visitors: 890 },
+  { month: "Februari 2026", visitors: 920 },
+  { month: "Maret 2026", visitors: 960 },
+  { month: "April 2026", visitors: 990 },
+  { month: "Mei 2026", visitors: 1250 },
+  { month: "Juni 2026", visitors: 1400 },
+  { month: "Juli 2026", visitors: 1150 },
+  { month: "Agustus 2026", visitors: 1320 },
+  { month: "September 2026", visitors: 1450 },
+  { month: "Oktober 2026", visitors: 1520 },
+  { month: "November 2026", visitors: 1600 },
+  { month: "Desember 2026", visitors: 1750 },
+];
+
 export default function MonitoringDashboard({ onLogout }: { onLogout: () => void }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -44,7 +59,7 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
   const [analisaMonth, setAnalisaMonth] = useState(new Date().toISOString().slice(0, 7));
   const [kasihIbuStats, setKasihIbuStats] = useState<any[]>([]);
   const [showConclusion, setShowConclusion] = useState(false);
-  const [visitorStats, setVisitorStats] = useState<{ month: string, visitors: number }[]>([]);
+  const [visitorStats, setVisitorStats] = useState<{ month: string, visitors: number }[]>(defaultVisitorStats2026);
 
   // Telemetry config state
   const [pieData, setPieData] = useState([{ name: 'SD/MI', value: 45 }, { name: 'SMP/MTs', value: 25 }, { name: 'SMA/SMK/MA', value: 15 }, { name: 'Lainnya', value: 15 }]);
@@ -349,10 +364,12 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
             <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
               <Users className="w-5 h-5 text-teal-500" /> Statistik Pengunjung Dashboard Publik
             </h2>
-            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">Grafik Tren Pengunjung Halaman Publik (Juni 2024 - Juni 2025)</p>
+            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Grafik Tren Pengunjung Halaman Publik {visitorStats.length > 0 ? `(${visitorStats[0].month} - ${visitorStats[visitorStats.length - 1].month})` : '(Januari 2026 - Desember 2026)'}
+            </p>
           </div>
           <div className="text-xs bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 px-3 py-1.5 rounded-full font-medium border border-teal-100 dark:border-teal-800">
-            Prediksi Lonjakan: Mei & Juni (±1000 Kunjungan Hari)
+            Tahun Berjalan 2026
           </div>
         </div>
         
