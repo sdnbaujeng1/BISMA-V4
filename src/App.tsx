@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Download, Share, X, Check, Smartphone, Monitor } from 'lucide-react';
 import { useSchoolIdentity } from './hooks/useSchoolIdentity';
 import { safeStorage } from './lib/storage';
 import PublicDashboard from './pages/PublicDashboard';
@@ -36,6 +37,9 @@ export default function App() {
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
+  const [showIOSModal, setShowIOSModal] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
     // Global tracking of Visitors
@@ -71,32 +75,57 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    const checkStandalone = 
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: fullscreen)').matches ||
+      (window.navigator as any).standalone === true;
+    setIsStandalone(checkStandalone);
+
+    const ua = window.navigator.userAgent.toLowerCase();
+    const isIOSDevice = /iphone|ipad|ipod/.test(ua);
+    setIsIOS(isIOSDevice);
+
+    // If on iOS and not yet installed to home screen, offer install button
+    if (isIOSDevice && !checkStandalone) {
+      setShowInstallButton(true);
+    }
+
     const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setShowInstallButton(true);
-      
-      // Auto hide after 15 seconds
-      timer = setTimeout(() => {
-        setShowInstallButton(false);
-      }, 15000);
+      if (!checkStandalone) {
+        setShowInstallButton(true);
+      }
     };
+
+    const handleInstalled = () => {
+      setIsStandalone(true);
+      setShowInstallButton(false);
+      setDeferredPrompt(null);
+    };
+
     window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', handleInstalled);
+
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
-      if (timer) clearTimeout(timer);
+      window.removeEventListener('appinstalled', handleInstalled);
     };
   }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setDeferredPrompt(null);
+    if (isIOS) {
+      setShowIOSModal(true);
+      return;
     }
-    setShowInstallButton(false);
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+        setShowInstallButton(false);
+      }
+    }
   };
 
   useEffect(() => {
@@ -259,21 +288,74 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans text-slate-800 dark:text-slate-200 transition-colors relative">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 print:bg-white print:dark:bg-white print:min-h-0 font-sans text-slate-800 dark:text-slate-200 transition-colors relative">
       <AnimatePresence>
         {showInstallButton && (
           <motion.button
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.9 }}
             onClick={handleInstallClick}
-            className="fixed bottom-6 right-6 z-[100] bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 font-bold transition-all transform hover:scale-105"
+            className="fixed bottom-6 right-6 z-[100] bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-5 py-3 rounded-full shadow-[0_10px_25px_rgba(16,185,129,0.4)] flex items-center gap-3 font-bold transition-all transform hover:scale-105 print:hidden border border-emerald-400/40"
           >
             <div className="bg-white/20 p-1.5 rounded-full">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+              <Download className="w-5 h-5 text-white" />
             </div>
-            Install Aplikasi
+            <span>Install Aplikasi</span>
           </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* iOS Safari Guided Install Modal */}
+      <AnimatePresence>
+        {showIOSModal && (
+          <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm print:hidden">
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              className="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-700 relative"
+            >
+              <button
+                onClick={() => setShowIOSModal(false)}
+                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                  <Smartphone className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white">Install di iPhone / iPad</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Tambahkan ke Layar Utama</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 text-sm text-slate-600 dark:text-slate-300 mb-6">
+                <div className="flex items-start gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-700/50">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">1</span>
+                  <p>Ketuk tombol <strong>Bagikan (Share)</strong> <Share className="w-4 h-4 inline-block text-blue-500 mx-1 align-text-bottom" /> pada bilah menu Safari di bagian bawah.</p>
+                </div>
+                <div className="flex items-start gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-700/50">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">2</span>
+                  <p>Gulir ke bawah dan pilih <strong>"Tambahkan ke Layar Utama"</strong> (Add to Home Screen).</p>
+                </div>
+                <div className="flex items-start gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-700/50">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">3</span>
+                  <p>Buka ikon <strong>BISMA</strong> dari Layar Utama untuk akses instan!</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowIOSModal(false)}
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-colors shadow-lg shadow-emerald-600/30"
+              >
+                Mengerti
+              </button>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

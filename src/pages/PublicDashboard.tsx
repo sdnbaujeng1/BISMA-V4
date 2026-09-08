@@ -165,29 +165,36 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 flex flex-col font-sans relative">
       <header className="w-full bg-white/90 dark:bg-slate-800/90 backdrop-blur shadow-sm border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img 
-              src={schoolIdentity.schoolLogo} 
-              alt="Logo" 
-              className="h-12 w-12 object-contain drop-shadow-xl rounded-lg transform hover:scale-110 transition-transform duration-500" 
-              style={{
-                filter: 'drop-shadow(0 10px 8px rgb(0 0 0 / 0.2)) drop-shadow(0 4px 3px rgb(0 0 0 / 0.1))',
-                transform: 'perspective(500px) rotateY(15deg)'
-              }}
-            />
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Logo with clean 1.5pt subtle glow */}
+            <div className="relative group cursor-pointer flex-shrink-0">
+              <div className="relative p-1.5 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-emerald-400/60 shadow-[0_0_1.5pt_rgba(16,185,129,0.85)] group-hover:shadow-[0_0_2.5pt_rgba(16,185,129,1)] transition-all duration-300 flex items-center justify-center">
+                <img 
+                  src={schoolIdentity.schoolLogo} 
+                  alt={data?.appName || schoolIdentity.appName || "Logo BISMA"} 
+                  className="h-10 w-10 sm:h-11 sm:w-11 object-contain rounded-lg transform group-hover:scale-105 transition-transform duration-300" 
+                  style={{
+                    filter: 'drop-shadow(0 0 1.5pt rgba(16, 185, 129, 0.9))'
+                  }}
+                />
+              </div>
+            </div>
+
             <div>
-              <h1 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight leading-tight uppercase">
-                {data?.appName || "BISMA"}
+              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-800 dark:text-white tracking-tight leading-tight uppercase flex items-center gap-1.5">
+                <span className="bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent">
+                  {data?.appName || schoolIdentity.appName || "BISMA"}
+                </span>
               </h1>
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase">
+              <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">
                 {schoolIdentity.schoolName}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 sm:gap-4 md:gap-6">
             {(fakeVisitor > 0 || realVisitor > 0) && (
-              <div className="flex flex-col items-end border-r border-slate-200 dark:border-slate-700 pr-4 md:pr-6">
+              <div className="hidden sm:flex flex-col items-end border-r border-slate-200 dark:border-slate-700 pr-3 md:pr-6">
                 <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-0.5">Live</span>
                 <span className="font-mono text-lg font-light text-slate-800 dark:text-slate-200 leading-none flex items-center">
                   {(fakeVisitor + realVisitor).toLocaleString('id-ID')}
@@ -196,7 +203,7 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
               </div>
             )}
             
-             <div className="hidden md:flex flex-col items-end mr-4">
+             <div className="hidden md:flex flex-col items-end mr-2">
                 <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
                   {time.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                 </span>
@@ -205,15 +212,18 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
                 </span>
              </div>
 
-            <button 
+             <button 
               onClick={toggleDarkMode}
-              className="hidden md:block p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+              className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+              title="Ganti Tema"
+              aria-label="Toggle Theme"
             >
-              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              {darkMode ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5" />}
             </button>
+
             <button 
               onClick={() => onNavigate('login')}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors shadow-sm text-sm"
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2 rounded-lg font-semibold transition-colors shadow-sm text-sm"
             >
               <LogIn className="w-4 h-4" /> <span className="hidden sm:inline">Login</span>
             </button>

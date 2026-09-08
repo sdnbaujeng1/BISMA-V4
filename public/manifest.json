@@ -1,14 +1,21 @@
 {
-  "name": "BISMA V4 - SDN Baujeng 1",
-  "short_name": "BISMA V4",
+  "name": "BISMA - SDN BAUJENG I BEJI",
+  "short_name": "BISMA",
   "id": "/",
   "start_url": "/",
   "scope": "/",
-  "display": "standalone",
+  "display": "fullscreen",
+  "display_override": [
+    "fullscreen",
+    "standalone",
+    "window-controls-overlay",
+    "minimal-ui"
+  ],
   "background_color": "#ffffff",
   "theme_color": "#10b981",
-  "orientation": "portrait",
+  "orientation": "any",
   "description": "Sistem Informasi Manajemen Sekolah Terpadu SDN Baujeng 1",
+  "categories": ["education", "productivity"],
   "icons": [
     {
       "src": "https://lh3.googleusercontent.com/d/1FV7EmCnGHRbpQvbbdrRv-t0KZCUXbIqk",
@@ -21,6 +28,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "https://lh3.googleusercontent.com/d/1FV7EmCnGHRbpQvbbdrRv-t0KZCUXbIqk",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

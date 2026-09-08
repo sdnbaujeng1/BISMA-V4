@@ -29,10 +29,62 @@
   }
 }
 
+/* PWA Fullscreen & Safe Area Support for Android, iPhone, iPad, Tablet, Desktop */
+html, body, #root {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@supports (padding-top: env(safe-area-inset-top)) {
+  body {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+}
+
 @media print {
-  html, body, #root, #root > div, main {
+  @page {
+    margin: 8mm;
+    size: A4 portrait;
+  }
+
+  /* Force pure white background on all structural layout containers */
+  html,
+  html.dark,
+  body,
+  body.dark,
+  #root,
+  #root > div,
+  main,
+  div:not(.id-card-element):not(.id-card-element *) {
     background: #ffffff !important;
     background-color: #ffffff !important;
+    background-image: none !important;
     color: #000000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
   }
+
+  /* Hide app navigation, buttons, modals, and backdrop overlays */
+  .print\\:hidden,
+  aside,
+  nav,
+  header:not(.print-header),
+  footer,
+  button,
+  [role="dialog"],
+  .backdrop-blur-sm,
+  .bg-black\\/50 {
+    display: none !important;
+  }
+
+  /* Sharp print graphics rendering */
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
 }

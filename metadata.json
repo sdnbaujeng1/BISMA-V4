@@ -1,6 +1,6 @@
 {
-  "name": "BISMA V4",
-  "description": "Sistem Informasi Manajemen Sekolah Terpadu SDN Baujeng 1",
+  "name": "BISMA - SDN BAUJENG I BEJI",
+  "description": "Sistem Informasi dan Manajemen Administrasi SDN Baujeng 1 Beji",
   "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

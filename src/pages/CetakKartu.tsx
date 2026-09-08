@@ -80,12 +80,26 @@ export default function CetakKartu() {
   };
 
   const handlePrint = () => {
+    const isDark = document.documentElement.classList.contains('dark');
+    if (isDark) {
+      document.documentElement.classList.remove('dark');
+    }
     const originalTitle = document.title;
-    document.title = `Kartu_Pelajar_${(schoolIdentity.schoolName || 'SDN_Baujeng_1').replace(/[^a-zA-Z0-9]/g, '_')}`;
-    window.print();
-    setTimeout(() => {
-      document.title = originalTitle;
-    }, 1000);
+    document.title = `Kartu_Pelajar_${(schoolIdentity.appName || 'BISMA')}_${(schoolIdentity.schoolName || 'SDN_Baujeng_1').replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+    // Request animation frame so browser renders clean light theme before print dialog
+    requestAnimationFrame(() => {
+      window.print();
+      const restore = () => {
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        }
+        document.title = originalTitle;
+        window.removeEventListener('afterprint', restore);
+      };
+      window.addEventListener('afterprint', restore);
+      setTimeout(restore, 1500);
+    });
   };
 
   const uniqueClasses = Array.from(new Set(muridList.map(m => m['Kelas']))).filter(Boolean).sort();
@@ -106,11 +120,18 @@ export default function CetakKartu() {
       {/* Header Bar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 print:hidden">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-            Cetak Kartu Pelajar
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
+            {schoolIdentity.schoolLogo && (
+              <img 
+                src={schoolIdentity.schoolLogo} 
+                alt="Logo" 
+                className="w-8 h-8 object-contain rounded-full bg-white p-0.5 border border-slate-200 shadow-sm" 
+              />
+            )}
+            Cetak Kartu Pelajar {schoolIdentity.appName ? `- ${schoolIdentity.appName}` : ''}
           </h2>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            Ukuran Standar ID Card: <span className="font-bold text-blue-600 dark:text-blue-400">9,0 × 5,5 cm (90 × 55 mm)</span>. Bersih & bebas lapisan gelap/hitam saat dicetak atau disimpan ke PDF.
+            {schoolIdentity.schoolName} &bull; Ukuran Standar ID Card: <span className="font-bold text-blue-600 dark:text-blue-400">9,0 × 5,5 cm (90 × 55 mm)</span>. Format cetak bersih latar putih murni tanpa lapisan abu-abu/hitam.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -257,7 +278,7 @@ export default function CetakKartu() {
         </div>
       </div>
 
-      {/* Print Area: Optimized for High Resolution, Sharp Borders, Solid Backgrounds, and Bold Fonts */}
+      {/* Print Area: Clean White Background, Zero Shadow, Zero Dark Layers */}
       <div className="hidden print:block print:w-full print:bg-white" ref={printRef} id="printable-cards-area">
         <style dangerouslySetInnerHTML={{__html: `
           @media print {
@@ -266,11 +287,7 @@ export default function CetakKartu() {
               size: A4 portrait; 
             }
             html, 
-            body, 
-            #root, 
-            #root > div, 
-            main,
-            .print-clean-bg { 
+            body { 
               margin: 0 !important; 
               padding: 0 !important;
               background: #ffffff !important;
@@ -282,20 +299,25 @@ export default function CetakKartu() {
               max-height: none !important;
               box-shadow: none !important;
               border: none !important;
-              -webkit-print-color-adjust: exact !important; 
-              print-color-adjust: exact !important; 
-              color-adjust: exact !important; 
             }
-            .print\\:hidden, aside, nav, header, footer, button, [role="dialog"] {
-              display: none !important;
+            /* Hide all other DOM elements from print output */
+            body * {
+              visibility: hidden;
+            }
+            #printable-cards-area, #printable-cards-area * {
+              visibility: visible !important;
             }
             #printable-cards-area {
               display: block !important;
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
               background: #ffffff !important;
               background-color: #ffffff !important;
-              width: 100% !important;
               margin: 0 !important;
               padding: 0 !important;
+              box-shadow: none !important;
             }
             .print-card-grid {
               display: flex !important;
@@ -304,6 +326,7 @@ export default function CetakKartu() {
               background: #ffffff !important;
               background-color: #ffffff !important;
               align-items: flex-start !important;
+              box-shadow: none !important;
             }
             .print-card-wrapper {
               page-break-inside: avoid !important;
@@ -330,6 +353,14 @@ export default function CetakKartu() {
               page-break-inside: avoid !important;
               break-inside: avoid !important;
               background-color: #ffffff !important;
+              -webkit-print-color-adjust: exact !important; 
+              print-color-adjust: exact !important; 
+            }
+            .id-card-element * {
+              -webkit-print-color-adjust: exact !important; 
+              print-color-adjust: exact !important; 
+              box-shadow: none !important;
+              text-shadow: none !important;
             }
           }
         `}} />
@@ -349,6 +380,9 @@ export default function CetakKartu() {
 
 // Sub-Component: Bagian Depan Kartu (Ukuran Standar ID Card: 55 × 90 mm)
 function CardFront({ murid, schoolIdentity, formatTTL }: { murid: any, schoolIdentity: any, formatTTL: (m: any) => string }) {
+  const namaSiswa = murid['Nama Lengkap'] || '-';
+  const isNamaPanjang = namaSiswa.length > 20;
+
   return (
     <div 
       className="id-card-element rounded-xl"
@@ -370,123 +404,129 @@ function CardFront({ murid, schoolIdentity, formatTTL }: { murid: any, schoolIde
       }}
     >
       {/* Top Header Background Shapes */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '35mm', background: 'linear-gradient(135deg, #0284c7, #1d4ed8)', borderBottomLeftRadius: '50% 25%', borderBottomRightRadius: '50% 15%', zIndex: 1 }} />
-      <div style={{ position: 'absolute', top: '30mm', left: '-10mm', right: '-10mm', height: '10mm', background: '#38bdf8', opacity: 0.9, borderBottomLeftRadius: '50% 100%', borderBottomRightRadius: '50% 100%', transform: 'rotate(-8deg)', zIndex: 2 }} />
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '33mm', background: 'linear-gradient(140deg, #0284c7, #1d4ed8)', borderBottomLeftRadius: '50% 25%', borderBottomRightRadius: '50% 15%', zIndex: 1 }} />
+      <div style={{ position: 'absolute', top: '28mm', left: '-10mm', right: '-10mm', height: '9mm', background: '#38bdf8', opacity: 0.9, borderBottomLeftRadius: '50% 100%', borderBottomRightRadius: '50% 100%', transform: 'rotate(-7deg)', zIndex: 2 }} />
       
-      {/* Bottom Decorative Trim Shapes (Kept low so they never overlap text) */}
+      {/* Bottom Decorative Trim Shapes */}
       <div style={{ position: 'absolute', bottom: '-8mm', left: '-6mm', width: '22mm', height: '22mm', background: '#22c55e', borderRadius: '50%', zIndex: 3 }} />
       <div style={{ position: 'absolute', bottom: '-10mm', left: '12mm', width: '22mm', height: '22mm', background: '#fbbf24', borderRadius: '50%', zIndex: 3 }} />
       <div style={{ position: 'absolute', bottom: '-8mm', right: '-7mm', width: '22mm', height: '22mm', background: '#ec4899', borderRadius: '50%', zIndex: 3 }} />
       <div style={{ position: 'absolute', bottom: '-7mm', right: '5mm', width: '18mm', height: '18mm', background: '#f97316', borderRadius: '50%', zIndex: 3 }} />
 
       {/* Main Content Layout */}
-      <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box' }}>
         
         {/* Header Content */}
         <div style={{ textAlign: 'center', color: '#ffffff', paddingTop: '2.5mm', paddingLeft: '2mm', paddingRight: '2mm' }}>
-          <div style={{ background: '#ffffff', padding: '2px', borderRadius: '50%', marginBottom: '2px', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }}>
+          <div style={{ background: '#ffffff', padding: '1.5px', borderRadius: '50%', marginBottom: '2px', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>
             <img 
-              src={schoolIdentity.schoolLogo || "https://upload.wikimedia.org/wikipedia/commons/9/9e/Tut_Wuri_Handayani.svg"} 
-              alt="Logo Sekolah" 
+              src={schoolIdentity.schoolLogo || "https://lh3.googleusercontent.com/d/1VSxiSJ43i0sOp-hjn2QaqlFPqRl3A5AL"} 
+              alt={schoolIdentity.schoolName || "Logo"} 
               style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} 
             />
           </div>
-          <h1 style={{ fontSize: '9.5px', fontWeight: '900', margin: '0', textTransform: 'uppercase', letterSpacing: '0.2px', textShadow: '0 1px 2px rgba(0,0,0,0.35)', lineHeight: '1.2' }}>
+          <h1 style={{ fontSize: '9px', fontWeight: '900', margin: '0', textTransform: 'uppercase', letterSpacing: '0.2px', textShadow: '0 1px 2px rgba(0,0,0,0.4)', lineHeight: '1.15' }}>
             {schoolIdentity.schoolName || "SDN BAUJENG I BEJI"}
           </h1>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', margin: '1px 0 2px' }}>
-            <div style={{ height: '1px', width: '14px', background: 'rgba(255,255,255,0.85)' }} />
-            <div style={{ fontSize: '5.5px', letterSpacing: '1.5px', fontWeight: '900', color: '#ffffff' }}>BERMUTU</div>
-            <div style={{ height: '1px', width: '14px', background: 'rgba(255,255,255,0.85)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', margin: '1px 0 1px' }}>
+            <div style={{ height: '0.8px', width: '12px', background: 'rgba(255,255,255,0.85)' }} />
+            <div style={{ fontSize: '5.2px', letterSpacing: '1.2px', fontWeight: '900', color: '#ffffff' }}>
+              {schoolIdentity.appName ? `${schoolIdentity.appName} • ` : ''}BERMUTU
+            </div>
+            <div style={{ height: '0.8px', width: '12px', background: 'rgba(255,255,255,0.85)' }} />
           </div>
-          <p style={{ fontSize: '4.8px', margin: 0, fontWeight: '600', opacity: 0.95, letterSpacing: '0.1px', lineHeight: '1.1' }}>
+          <p style={{ fontSize: '4.5px', margin: 0, fontWeight: '600', opacity: 0.95, letterSpacing: '0.1px', lineHeight: '1.1' }}>
             {schoolIdentity.sloganText || "Beriman, Ramah, Mandiri, Unggul dan Tangguh"}
           </p>
         </div>
 
         {/* Photo Area */}
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5mm' }}>
-          <div style={{ width: '42px', height: '42px', backgroundColor: '#f8fafc', borderRadius: '50%', border: '2px solid #ffffff', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.15)', position: 'relative' }}>
+          <div style={{ width: '42px', height: '42px', backgroundColor: '#f8fafc', borderRadius: '50%', border: '2.5px solid #ffffff', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.18)', position: 'relative' }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '28px', height: '28px', color: '#94a3b8', marginBottom: '-3px' }}>
               <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
           </div>
         </div>
-        <div style={{ textAlign: 'center', marginTop: '1.5px', fontSize: '5px', fontWeight: '800', color: '#475569', letterSpacing: '0.6px' }}>
-          FOTO SISWA
+
+        {/* TAMPILAN NAMA TEPAT DI BAWAH FOTO SISWA */}
+        <div style={{ textAlign: 'center', marginTop: '2px', padding: '0 2mm' }}>
+          <h2 
+            style={{ 
+              fontSize: isNamaPanjang ? '8.5px' : '9.8px', 
+              fontWeight: '900', 
+              textTransform: 'uppercase', 
+              color: '#0f172a', 
+              letterSpacing: '0.15px', 
+              lineHeight: '1.2', 
+              margin: '0 0 2px 0',
+              wordBreak: 'break-word',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden'
+            }}
+          >
+            {namaSiswa}
+          </h2>
+          
+          {/* Elegant Pill Badge */}
+          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #1d4ed8, #2563eb)', color: '#ffffff', fontSize: '5.2px', fontWeight: '900', letterSpacing: '0.8px', padding: '1.2px 8px', borderRadius: '10px', boxShadow: '0 1px 2px rgba(29, 78, 216, 0.25)', textTransform: 'uppercase' }}>
+            KARTU PELAJAR {schoolIdentity.appName || "BISMA"}
+          </div>
         </div>
 
-        {/* Student Data Box (SOLID WHITE BACKGROUND - TIDAK BENING, SANGAT BERSIH & TEBAL/BOLD) */}
+        {/* Student Data Box (Di Tengah, Seimbang & Proporsional) */}
         <div 
           style={{ 
-            margin: '0 3mm', 
-            marginTop: 'auto', 
-            marginBottom: '4.8mm',
+            margin: '2mm 3mm 0 3mm', 
             backgroundColor: '#ffffff',
             borderRadius: '6px',
-            padding: '3px 5px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+            padding: '3.5px 5.5px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
             border: '1.2px solid #cbd5e1',
             position: 'relative',
             zIndex: 10
           }}
         >
-          {/* NISN & NIS Header with Bold Highlights */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '7.5px', marginBottom: '2px' }}>
+          {/* NISN & NIS Bar */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '7.2px', marginBottom: '2.5px', borderBottom: '1px solid #f1f5f9', paddingBottom: '2px' }}>
             <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
               <span style={{ color: '#1e40af', fontWeight: '900' }}>NISN :</span>
-              <span style={{ color: '#000000', fontWeight: '900', borderBottom: '1px solid #94a3b8', paddingBottom: '0.5px' }}>
+              <span style={{ color: '#000000', fontWeight: '900' }}>
                 {murid['NISN'] || '-'}
               </span>
             </div>
             <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
               <span style={{ color: '#1e40af', fontWeight: '900' }}>NIS :</span>
-              <span style={{ color: '#000000', fontWeight: '900', borderBottom: '1px solid #94a3b8', paddingBottom: '0.5px' }}>
+              <span style={{ color: '#000000', fontWeight: '900' }}>
                 {murid['NIS'] || '-'}
               </span>
             </div>
           </div>
           
-          {/* Student Name: Extra Bold, Solid Black, Crystal Clear */}
-          <div 
-            style={{ 
-              fontSize: '10px', 
-              fontWeight: '900', 
-              textAlign: 'center', 
-              margin: '2px 0 3px 0', 
-              textTransform: 'uppercase', 
-              color: '#000000', 
-              borderBottom: '1px solid #cbd5e1', 
-              paddingBottom: '2px',
-              letterSpacing: '0.2px',
-              lineHeight: '1.2'
-            }}
-          >
-            {murid['Nama Lengkap']}
-          </div>
-          
-          {/* Detailed Info Table: Bold font for Kelas and Tempat Tanggal Lahir */}
-          <table style={{ width: '100%', fontSize: '7px', color: '#000000', lineHeight: '1.35', borderCollapse: 'collapse' }}>
+          {/* Detailed Info Table */}
+          <table style={{ width: '100%', fontSize: '6.8px', color: '#000000', lineHeight: '1.35', borderCollapse: 'collapse' }}>
             <tbody>
               <tr>
-                <td style={{ width: '38%', padding: '1px 0', fontWeight: '900', color: '#0f172a' }}>Kelas</td>
+                <td style={{ width: '38%', padding: '1px 0', fontWeight: '800', color: '#334155' }}>Kelas</td>
                 <td style={{ width: '5%', fontWeight: '900', color: '#000000' }}>:</td>
-                <td style={{ fontWeight: '900', color: '#000000', fontSize: '8px', borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ fontWeight: '900', color: '#0f172a', fontSize: '7.5px' }}>
                   {murid['Kelas'] || '-'}
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: '1px 0', fontWeight: '900', color: '#0f172a' }}>Tempat, Tgl Lahir</td>
+                <td style={{ padding: '1px 0', fontWeight: '800', color: '#334155' }}>Tempat, Tgl Lahir</td>
                 <td style={{ fontWeight: '900', color: '#000000' }}>:</td>
-                <td style={{ fontWeight: '900', color: '#000000', fontSize: '7px', borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ fontWeight: '800', color: '#0f172a', fontSize: '6.8px' }}>
                   {formatTTL(murid)}
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: '1px 0', fontWeight: '800', color: '#0f172a' }}>Jenis Kelamin</td>
-                <td style={{ fontWeight: '800', color: '#000000' }}>:</td>
-                <td style={{ fontWeight: '800', color: '#000000', fontSize: '7px' }}>
+                <td style={{ padding: '1px 0', fontWeight: '800', color: '#334155' }}>Jenis Kelamin</td>
+                <td style={{ fontWeight: '900', color: '#000000' }}>:</td>
+                <td style={{ fontWeight: '800', color: '#0f172a', fontSize: '6.8px' }}>
                   {murid['Jenis Kelamin (L/P)'] === 'L' ? 'Laki-laki (L)' : murid['Jenis Kelamin (L/P)'] === 'P' ? 'Perempuan (P)' : (murid['Jenis Kelamin (L/P)'] || '-')}
                 </td>
               </tr>
@@ -497,10 +537,8 @@ function CardFront({ murid, schoolIdentity, formatTTL }: { murid: any, schoolIde
         {/* Footer Motto Text with High Contrast Halo */}
         <div 
           style={{ 
-            position: 'absolute', 
-            bottom: '1.5mm', 
-            left: 0, 
-            right: 0, 
+            marginTop: 'auto', 
+            marginBottom: '2mm', 
             textAlign: 'center', 
             fontSize: '4.8px', 
             fontWeight: '900', 
@@ -556,7 +594,7 @@ function CardBack({ murid, schoolIdentity }: { murid: any, schoolIdentity: any }
         {/* Kontak Sekolah Header Pill */}
         <div style={{ textAlign: 'center', marginBottom: '2.5px' }}>
           <span style={{ background: '#1d4ed8', color: '#ffffff', padding: '2px 10px', borderRadius: '10px', fontSize: '6.8px', fontWeight: '900', letterSpacing: '0.3px', boxShadow: '0 1px 3px rgba(29, 78, 216, 0.3)' }}>
-            Kontak Sekolah
+            Kontak {schoolIdentity.appName || "Sekolah"}
           </span>
         </div>
 
@@ -566,7 +604,13 @@ function CardBack({ murid, schoolIdentity }: { murid: any, schoolIdentity: any }
             <tbody>
               <tr>
                 <td style={{ width: '14px', verticalAlign: 'top', paddingTop: '1px', color: '#1d4ed8', textAlign: 'center' }}>
-                  <User style={{ width: '9px', height: '9px', margin: '0 auto' }} />
+                  <div style={{ width: '11px', height: '11px', borderRadius: '50%', overflow: 'hidden', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff', border: '0.5px solid #cbd5e1' }}>
+                    <img 
+                      src={schoolIdentity.schoolLogo || "https://lh3.googleusercontent.com/d/1VSxiSJ43i0sOp-hjn2QaqlFPqRl3A5AL"} 
+                      alt="Logo" 
+                      style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+                    />
+                  </div>
                 </td>
                 <td style={{ fontWeight: '900', paddingBottom: '1px', fontSize: '6.8px', color: '#000000' }}>
                   {schoolIdentity.schoolName || "SDN BAUJENG I BEJI"}
@@ -604,7 +648,7 @@ function CardBack({ murid, schoolIdentity }: { murid: any, schoolIdentity: any }
             <QRCode value={murid['NISN'] || murid['NIS'] || "INVALID"} size={48} />
           </div>
           <div style={{ fontSize: '5.2px', fontWeight: '900', color: '#1d4ed8', marginTop: '2px', textAlign: 'center', letterSpacing: '0.3px' }}>
-            SCAN UNTUK INFORMASI SISWA
+            SCAN UNTUK PRESENSI & INFORMASI SISWA
           </div>
         </div>
 
@@ -621,8 +665,13 @@ function CardBack({ murid, schoolIdentity }: { murid: any, schoolIdentity: any }
         <div style={{ textAlign: 'right', fontSize: '6px', marginTop: 'auto', marginBottom: '1.5mm', paddingRight: '2mm' }}>
           <div style={{ marginBottom: '12px', fontWeight: '700', color: '#000000' }}>Kepala Sekolah</div>
           <div style={{ fontWeight: '900', color: '#000000', borderBottom: '1.2px solid #000000', display: 'inline-block', paddingBottom: '1px', minWidth: '70px', textAlign: 'center', fontSize: '6.8px' }}>
-            {schoolIdentity.headmasterName || "Akhmad Nasor, S.Pd., M.Pd."}
+            {schoolIdentity.headmasterName || "AKHMAD NASOR, S.Pd"}
           </div>
+          {schoolIdentity.headmasterNIP && schoolIdentity.headmasterNIP !== '-' && (
+            <div style={{ fontSize: '5.2px', color: '#000000', fontWeight: '700', marginTop: '1px' }}>
+              NIP. {schoolIdentity.headmasterNIP}
+            </div>
+          )}
         </div>
 
       </div>

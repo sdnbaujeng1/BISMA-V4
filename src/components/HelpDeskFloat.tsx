@@ -127,7 +127,7 @@ export default function HelpDeskFloat() {
 
   return (
     <>
-      <div className="fixed bottom-6 right-6 z-50 flex items-end justify-end">
+      <div className="fixed bottom-6 right-6 z-50 flex items-end justify-end print:hidden">
         <AnimatePresence>
           {isOpen && (
             <motion.div

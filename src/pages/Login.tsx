@@ -77,17 +77,30 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="w-full max-w-xl z-10 relative"
       >
-        <div className="text-center mb-6">
-          <motion.img 
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-            src={schoolIdentity.schoolLogo} 
-            alt="Logo" 
-            className="mx-auto h-28 w-auto mb-4 drop-shadow-2xl hover:scale-105 transition-transform duration-300" 
-          />
-          <h1 className="text-3xl font-bold text-slate-800 dark:text-white drop-shadow-md">LOGIN BISMA</h1>
-          <p className="text-slate-800 font-medium dark:text-slate-200 mt-1 drop-shadow">{schoolIdentity.schoolName}</p>
+        <div className="text-center mb-6 flex flex-col items-center">
+          {/* Logo with clean frame border only, no glow on image */}
+          <div className="relative group cursor-pointer mb-3">
+            <motion.div 
+              initial={{ y: -15, opacity: 0 }}
+              animate={{ y: [0, -4, 0], opacity: 1 }}
+              transition={{ 
+                y: { repeat: Infinity, duration: 3.5, ease: "easeInOut" },
+                opacity: { duration: 0.4 }
+              }}
+              className="relative p-3 sm:p-4 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-2 border-emerald-500/80 dark:border-emerald-400/80 shadow-[0_0_1.5pt_rgba(16,185,129,0.8)] transition-all duration-300 flex items-center justify-center"
+            >
+              <img 
+                src={schoolIdentity.schoolLogo} 
+                alt={schoolIdentity.appName || "Logo BISMA"} 
+                className="h-20 sm:h-24 w-auto object-contain transition-transform duration-300 group-hover:scale-105" 
+              />
+            </motion.div>
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-black text-black dark:text-white tracking-tight flex items-center justify-center gap-2">
+            LOGIN <span>{schoolIdentity.appName || "BISMA"}</span>
+          </h1>
+          <p className="text-slate-800 font-semibold dark:text-slate-200 mt-1 text-xs sm:text-sm">{schoolIdentity.schoolName}</p>
         </div>
         
         <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/50 dark:border-slate-700/50">

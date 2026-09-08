@@ -552,7 +552,7 @@ export default function AdminDashboard({
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -50 }}
-            className={`fixed top-4 right-4 z-[60] px-6 py-3 rounded-xl shadow-xl flex items-center gap-3 ${
+            className={`fixed top-4 right-4 z-[60] px-6 py-3 rounded-xl shadow-xl flex items-center gap-3 print:hidden ${
               toast.type === "success"
                 ? "bg-green-500 text-white"
                 : "bg-red-500 text-white"
@@ -578,7 +578,7 @@ export default function AdminDashboard({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsSidebarVisible(false)}
-            className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+            className="fixed inset-0 bg-black/50 z-30 lg:hidden print:hidden"
           />
         )}
       </AnimatePresence>
@@ -673,7 +673,7 @@ export default function AdminDashboard({
               <Menu className="w-6 h-6" />
             </button>
             <h1 className="font-bold text-slate-800 dark:text-white">
-              Admin BISMA
+              Admin {schoolIdentity.appName || "BISMA"}
             </h1>
           </div>
           <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm">
@@ -687,7 +687,7 @@ export default function AdminDashboard({
       {/* Modals */}
       <AnimatePresence>
         {activeModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm print:hidden">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
