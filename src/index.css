@@ -28,3 +28,11 @@
     display: none;
   }
 }
+
+@media print {
+  html, body, #root, #root > div, main {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+}

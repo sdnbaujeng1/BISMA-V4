@@ -3,10 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SDN BAUJENG I BEJI</title>
+    <title>BISMA V4 - SDN Baujeng 1</title>
     <meta name="description" content="Sistem Informasi Manajemen Sekolah Terpadu SDN Baujeng 1" />
-    <meta property="og:title" content="SDN BAUJENG I BEJI" />
+    <meta property="og:title" content="BISMA V4 - SDN Baujeng 1" />
     <meta property="og:description" content="Sistem Informasi Manajemen Sekolah Terpadu SDN Baujeng 1" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#10b981" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="BISMA V4" />
     <script>
       (function() {
         function makeSafeStorage() {
@@ -98,6 +104,13 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js').catch(function() {});
+        });
+      }
+    </script>
   </body>
 </html>
 

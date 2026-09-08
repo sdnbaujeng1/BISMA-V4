@@ -109,6 +109,7 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
 
   const menuItems = [
     { id: 'jurnal', icon: FilePenLine, label: 'Isi Jurnal', gradient: 'from-green-400 to-green-600', shadow: 'shadow-green-500/40', roles: ['guru'] },
+    { id: 'presensi_qr', icon: QrCode, label: 'Scan QR', gradient: 'from-purple-400 to-purple-600', shadow: 'shadow-purple-500/40', roles: ['guru', 'tendik'] },
     { id: 'tugas_guru', icon: ClipboardCheck, label: 'Tugas', gradient: 'from-blue-400 to-blue-600', shadow: 'shadow-blue-500/40', roles: ['guru'] },
     { id: 'nilai_guru', icon: FileSpreadsheet, label: 'Nilai', gradient: 'from-fuchsia-400 to-fuchsia-600', shadow: 'shadow-fuchsia-500/40', roles: ['guru'] },
     { id: 'jadwal_mengajar', icon: CalendarCheck, label: 'Jadwal', gradient: 'from-cyan-400 to-cyan-600', shadow: 'shadow-cyan-500/40', roles: ['guru'] },
@@ -120,7 +121,6 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
     // Hidden by default
     { id: 'laporan', icon: Printer, label: 'Cetak', gradient: 'from-teal-400 to-teal-600', shadow: 'shadow-teal-500/40', roles: ['guru', 'tendik'] },
     { id: 'keterlaksanaan_kbm', icon: ClipboardCheck, label: 'Keterlaksanaan', gradient: 'from-blue-400 to-blue-600', shadow: 'shadow-blue-500/40', roles: ['guru'] },
-    { id: 'presensi_qr', icon: QrCode, label: 'Scan QR', gradient: 'from-purple-400 to-purple-600', shadow: 'shadow-purple-500/40', roles: ['guru', 'tendik'] },
     { id: 'rpp_generator', icon: NotebookPen, label: 'RPP', gradient: 'from-indigo-400 to-indigo-600', shadow: 'shadow-indigo-500/40', roles: ['guru'] },
     { id: 'galeri_kegiatan', icon: GalleryThumbnails, label: 'Galeri', gradient: 'from-violet-400 to-violet-600', shadow: 'shadow-violet-500/40', roles: ['guru', 'tendik'] },
     { id: 'kemendikdasmen', url: 'https://guru.kemendikdasmen.go.id/', img: 'https://lh3.googleusercontent.com/d/1s5VpgdLJFBL5tGDqKCZ3Wem1YnYbH9zt', label: 'E-Kinerja', gradient: 'from-slate-100 to-slate-200', shadow: 'shadow-slate-300/40', roles: ['guru', 'tendik'] },
@@ -231,6 +231,25 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
                     )}
                   </div>
 
+                  {/* Tendik Quick Action: Presensi QR */}
+                  <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl shadow-md p-4 text-white flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-white/20 rounded-xl">
+                        <QrCode className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm">Scan QR Presensi Siswa</h4>
+                        <p className="text-xs text-purple-100">Buka kamera untuk scan kartu kehadiran & pembiasaan</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => onNavigate('presensi_qr')}
+                      className="bg-white text-purple-700 hover:bg-purple-50 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer shrink-0 ml-2"
+                    >
+                      Buka Pemindai
+                    </button>
+                  </div>
+
                   <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-5 border border-slate-100 dark:border-slate-700">
                     <h3 className="font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2">
                       <FilePenLine className={`w-5 h-5 ${currentTheme.text}`} /> Aktivitas Harian
@@ -303,9 +322,18 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
                   </div>
 
                   <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-5 border border-slate-100 dark:border-slate-700">
-                    <h3 className="font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2">
-                      <CalendarCheck className={`w-5 h-5 ${currentTheme.text}`} /> Jadwal Hari Ini
-                    </h3>
+                    <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                      <h3 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                        <CalendarCheck className={`w-5 h-5 ${currentTheme.text}`} /> Jadwal Hari Ini
+                      </h3>
+                      <button
+                        onClick={() => onNavigate('presensi_qr')}
+                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 dark:hover:bg-purple-900/60 transition-colors cursor-pointer"
+                      >
+                        <QrCode className="w-3.5 h-3.5" />
+                        Scan Presensi Siswa
+                      </button>
+                    </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {!stats ? (
                         <div className="col-span-full text-center py-4 text-slate-400 italic text-sm">Memuat jadwal...</div>

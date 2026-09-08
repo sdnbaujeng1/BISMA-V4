@@ -80,7 +80,12 @@ export default function CetakKartu() {
   };
 
   const handlePrint = () => {
+    const originalTitle = document.title;
+    document.title = `Kartu_Pelajar_${(schoolIdentity.schoolName || 'SDN_Baujeng_1').replace(/[^a-zA-Z0-9]/g, '_')}`;
     window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
   };
 
   const uniqueClasses = Array.from(new Set(muridList.map(m => m['Kelas']))).filter(Boolean).sort();
@@ -105,7 +110,7 @@ export default function CetakKartu() {
             Cetak Kartu Pelajar
           </h2>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            Format cetak tajam, bersih, solid tidak transparan, dengan teks tebal (bold) untuk Nama, Kelas, dan TTL.
+            Ukuran Standar ID Card: <span className="font-bold text-blue-600 dark:text-blue-400">9,0 × 5,5 cm (90 × 55 mm)</span>. Bersih & bebas lapisan gelap/hitam saat dicetak atau disimpan ke PDF.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -115,7 +120,7 @@ export default function CetakKartu() {
             className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-colors shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
           >
             <Printer className="w-5 h-5" />
-            Cetak Kartu ({selectedMurid.size})
+            Cetak / Simpan PDF ({selectedMurid.size})
           </button>
         </div>
       </div>
@@ -129,28 +134,28 @@ export default function CetakKartu() {
                 <Eye className="w-5 h-5" />
               </span>
               <div>
-                <h3 className="font-bold text-slate-800 dark:text-white text-base">Pratinjau Hasil Cetak Kartu</h3>
+                <h3 className="font-bold text-slate-800 dark:text-white text-base">Pratinjau Hasil Cetak Kartu (Ukuran 9,0 × 5,5 cm)</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Menampilkan kartu siswa: <span className="font-semibold text-blue-600 dark:text-blue-400">{previewMurid['Nama Lengkap']}</span>
+                  Siswa: <span className="font-semibold text-blue-600 dark:text-blue-400">{previewMurid['Nama Lengkap']}</span> &bull; Kelas: <span className="font-bold text-slate-700 dark:text-slate-300">{previewMurid['Kelas']}</span>
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
               <Sparkles className="w-4 h-4" />
-              Solid Background & Teks Tebal (Bold) Aktif
+              Presisi 90 × 55 mm & Bebas Lapisan Hitam
             </div>
           </div>
 
           <div className="flex flex-wrap justify-center gap-8 py-2">
             {/* Front Card Preview */}
             <div className="flex flex-col items-center">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Bagian Depan</span>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Bagian Depan (55 × 90 mm)</span>
               <CardFront murid={previewMurid} schoolIdentity={schoolIdentity} formatTTL={formatTTL} />
             </div>
 
             {/* Back Card Preview */}
             <div className="flex flex-col items-center">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Bagian Belakang</span>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Bagian Belakang (55 × 90 mm)</span>
               <CardBack murid={previewMurid} schoolIdentity={schoolIdentity} />
             </div>
           </div>
@@ -253,34 +258,85 @@ export default function CetakKartu() {
       </div>
 
       {/* Print Area: Optimized for High Resolution, Sharp Borders, Solid Backgrounds, and Bold Fonts */}
-      <div className="hidden print:block" ref={printRef}>
+      <div className="hidden print:block print:w-full print:bg-white" ref={printRef} id="printable-cards-area">
         <style dangerouslySetInnerHTML={{__html: `
           @media print {
             @page { 
               margin: 8mm; 
               size: A4 portrait; 
             }
-            body { 
-              margin: 0; 
-              padding: 0;
+            html, 
+            body, 
+            #root, 
+            #root > div, 
+            main,
+            .print-clean-bg { 
+              margin: 0 !important; 
+              padding: 0 !important;
+              background: #ffffff !important;
               background-color: #ffffff !important;
+              color: #000000 !important;
+              overflow: visible !important;
+              height: auto !important;
+              min-height: 0 !important;
+              max-height: none !important;
+              box-shadow: none !important;
+              border: none !important;
               -webkit-print-color-adjust: exact !important; 
               print-color-adjust: exact !important; 
               color-adjust: exact !important; 
             }
+            .print\\:hidden, aside, nav, header, footer, button, [role="dialog"] {
+              display: none !important;
+            }
+            #printable-cards-area {
+              display: block !important;
+              background: #ffffff !important;
+              background-color: #ffffff !important;
+              width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            .print-card-grid {
+              display: flex !important;
+              flex-wrap: wrap !important;
+              gap: 6mm !important;
+              background: #ffffff !important;
+              background-color: #ffffff !important;
+              align-items: flex-start !important;
+            }
             .print-card-wrapper {
-              page-break-inside: avoid;
-              break-inside: avoid;
-              margin-bottom: 16px;
-              margin-right: 16px;
-              display: inline-flex;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+              margin-bottom: 6mm !important;
+              display: inline-flex !important;
+              flex-direction: row !important;
+              gap: 6mm !important;
+              align-items: center !important;
+              background: #ffffff !important;
+              background-color: #ffffff !important;
+              box-shadow: none !important;
+            }
+            .id-card-element {
+              width: 55mm !important;
+              height: 90mm !important;
+              min-width: 55mm !important;
+              max-width: 55mm !important;
+              min-height: 90mm !important;
+              max-height: 90mm !important;
+              box-sizing: border-box !important;
+              box-shadow: none !important;
+              border: 1px solid #cbd5e1 !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+              background-color: #ffffff !important;
             }
           }
         `}} />
         
-        <div className="print:block">
+        <div className="print-card-grid">
           {muridList.filter(m => selectedMurid.has(m.id)).map(murid => (
-            <div key={murid.id} className="print-card-wrapper flex gap-4 items-center">
+            <div key={murid.id} className="print-card-wrapper">
               <CardFront murid={murid} schoolIdentity={schoolIdentity} formatTTL={formatTTL} />
               <CardBack murid={murid} schoolIdentity={schoolIdentity} />
             </div>
@@ -291,97 +347,102 @@ export default function CetakKartu() {
   );
 }
 
-// Sub-Component: Bagian Depan Kartu
+// Sub-Component: Bagian Depan Kartu (Ukuran Standar ID Card: 55 × 90 mm)
 function CardFront({ murid, schoolIdentity, formatTTL }: { murid: any, schoolIdentity: any, formatTTL: (m: any) => string }) {
   return (
     <div 
+      className="id-card-element rounded-xl"
       style={{ 
-        width: '250px', 
-        height: '396px', 
+        width: '55mm', 
+        height: '90mm', 
+        minWidth: '55mm',
+        maxWidth: '55mm',
+        minHeight: '90mm',
+        maxHeight: '90mm',
         position: 'relative', 
         overflow: 'hidden', 
-        borderRadius: '12px', 
-        border: '1.5px solid #cbd5e1', 
+        borderRadius: '3.5mm', 
+        border: '1.2px solid #cbd5e1', 
         backgroundColor: '#ffffff', 
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         boxSizing: 'border-box',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.08)'
       }}
     >
       {/* Top Header Background Shapes */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '170px', background: 'linear-gradient(135deg, #0284c7, #1d4ed8)', borderBottomLeftRadius: '50% 25%', borderBottomRightRadius: '50% 15%', zIndex: 1 }} />
-      <div style={{ position: 'absolute', top: '148px', left: '-30px', right: '-10px', height: '48px', background: '#38bdf8', opacity: 0.9, borderBottomLeftRadius: '50% 100%', borderBottomRightRadius: '50% 100%', transform: 'rotate(-8deg)', zIndex: 2 }} />
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '35mm', background: 'linear-gradient(135deg, #0284c7, #1d4ed8)', borderBottomLeftRadius: '50% 25%', borderBottomRightRadius: '50% 15%', zIndex: 1 }} />
+      <div style={{ position: 'absolute', top: '30mm', left: '-10mm', right: '-10mm', height: '10mm', background: '#38bdf8', opacity: 0.9, borderBottomLeftRadius: '50% 100%', borderBottomRightRadius: '50% 100%', transform: 'rotate(-8deg)', zIndex: 2 }} />
       
-      {/* Bottom Decorative Trim Shapes (Kept low so they do not overlap text) */}
-      <div style={{ position: 'absolute', bottom: '-45px', left: '-30px', width: '110px', height: '110px', background: '#22c55e', borderRadius: '50%', zIndex: 3 }} />
-      <div style={{ position: 'absolute', bottom: '-55px', left: '60px', width: '110px', height: '110px', background: '#fbbf24', borderRadius: '50%', zIndex: 3 }} />
-      <div style={{ position: 'absolute', bottom: '-45px', right: '-35px', width: '110px', height: '110px', background: '#ec4899', borderRadius: '50%', zIndex: 3 }} />
-      <div style={{ position: 'absolute', bottom: '-40px', right: '25px', width: '90px', height: '90px', background: '#f97316', borderRadius: '50%', zIndex: 3 }} />
+      {/* Bottom Decorative Trim Shapes (Kept low so they never overlap text) */}
+      <div style={{ position: 'absolute', bottom: '-8mm', left: '-6mm', width: '22mm', height: '22mm', background: '#22c55e', borderRadius: '50%', zIndex: 3 }} />
+      <div style={{ position: 'absolute', bottom: '-10mm', left: '12mm', width: '22mm', height: '22mm', background: '#fbbf24', borderRadius: '50%', zIndex: 3 }} />
+      <div style={{ position: 'absolute', bottom: '-8mm', right: '-7mm', width: '22mm', height: '22mm', background: '#ec4899', borderRadius: '50%', zIndex: 3 }} />
+      <div style={{ position: 'absolute', bottom: '-7mm', right: '5mm', width: '18mm', height: '18mm', background: '#f97316', borderRadius: '50%', zIndex: 3 }} />
 
       {/* Main Content Layout */}
       <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', height: '100%' }}>
         
         {/* Header Content */}
-        <div style={{ textAlign: 'center', color: '#ffffff', paddingTop: '14px', paddingLeft: '8px', paddingRight: '8px' }}>
-          <div style={{ background: '#ffffff', padding: '3px', borderRadius: '50%', marginBottom: '4px', width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', boxShadow: '0 2px 4px rgba(0,0,0,0.15)' }}>
+        <div style={{ textAlign: 'center', color: '#ffffff', paddingTop: '2.5mm', paddingLeft: '2mm', paddingRight: '2mm' }}>
+          <div style={{ background: '#ffffff', padding: '2px', borderRadius: '50%', marginBottom: '2px', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }}>
             <img 
               src={schoolIdentity.schoolLogo || "https://upload.wikimedia.org/wikipedia/commons/9/9e/Tut_Wuri_Handayani.svg"} 
               alt="Logo Sekolah" 
               style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} 
             />
           </div>
-          <h1 style={{ fontSize: '14px', fontWeight: '900', margin: '0', textTransform: 'uppercase', letterSpacing: '0.4px', textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+          <h1 style={{ fontSize: '9.5px', fontWeight: '900', margin: '0', textTransform: 'uppercase', letterSpacing: '0.2px', textShadow: '0 1px 2px rgba(0,0,0,0.35)', lineHeight: '1.2' }}>
             {schoolIdentity.schoolName || "SDN BAUJENG I BEJI"}
           </h1>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', margin: '2px 0 3px' }}>
-            <div style={{ height: '1.5px', width: '22px', background: 'rgba(255,255,255,0.85)' }} />
-            <div style={{ fontSize: '7.5px', letterSpacing: '2px', fontWeight: '900', color: '#ffffff' }}>BERMUTU</div>
-            <div style={{ height: '1.5px', width: '22px', background: 'rgba(255,255,255,0.85)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', margin: '1px 0 2px' }}>
+            <div style={{ height: '1px', width: '14px', background: 'rgba(255,255,255,0.85)' }} />
+            <div style={{ fontSize: '5.5px', letterSpacing: '1.5px', fontWeight: '900', color: '#ffffff' }}>BERMUTU</div>
+            <div style={{ height: '1px', width: '14px', background: 'rgba(255,255,255,0.85)' }} />
           </div>
-          <p style={{ fontSize: '6.5px', margin: 0, fontWeight: '600', opacity: 0.95, letterSpacing: '0.2px' }}>
+          <p style={{ fontSize: '4.8px', margin: 0, fontWeight: '600', opacity: 0.95, letterSpacing: '0.1px', lineHeight: '1.1' }}>
             {schoolIdentity.sloganText || "Beriman, Ramah, Mandiri, Unggul dan Tangguh"}
           </p>
         </div>
 
         {/* Photo Area */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
-          <div style={{ width: '72px', height: '72px', backgroundColor: '#f1f5f9', borderRadius: '50%', border: '3px solid #ffffff', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.15)', position: 'relative' }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '46px', height: '46px', color: '#94a3b8', marginBottom: '-4px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5mm' }}>
+          <div style={{ width: '42px', height: '42px', backgroundColor: '#f8fafc', borderRadius: '50%', border: '2px solid #ffffff', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.15)', position: 'relative' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '28px', height: '28px', color: '#94a3b8', marginBottom: '-3px' }}>
               <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
           </div>
         </div>
-        <div style={{ textAlign: 'center', marginTop: '3px', fontSize: '6.5px', fontWeight: '800', color: '#475569', letterSpacing: '1px' }}>
+        <div style={{ textAlign: 'center', marginTop: '1.5px', fontSize: '5px', fontWeight: '800', color: '#475569', letterSpacing: '0.6px' }}>
           FOTO SISWA
         </div>
 
         {/* Student Data Box (SOLID WHITE BACKGROUND - TIDAK BENING, SANGAT BERSIH & TEBAL/BOLD) */}
         <div 
           style={{ 
-            margin: '0 12px', 
+            margin: '0 3mm', 
             marginTop: 'auto', 
-            marginBottom: '26px',
+            marginBottom: '4.8mm',
             backgroundColor: '#ffffff',
-            borderRadius: '10px',
-            padding: '8px 10px',
-            boxShadow: '0 2px 5px rgba(0,0,0,0.08)',
-            border: '1.5px solid #cbd5e1',
+            borderRadius: '6px',
+            padding: '3px 5px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+            border: '1.2px solid #cbd5e1',
             position: 'relative',
             zIndex: 10
           }}
         >
           {/* NISN & NIS Header with Bold Highlights */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9.5px', marginBottom: '5px' }}>
-            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-              <span style={{ color: '#1e40af', fontWeight: '800' }}>NISN :</span>
-              <span style={{ color: '#000000', fontWeight: '900', borderBottom: '1.5px solid #94a3b8', paddingBottom: '1px', minWidth: '45px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '7.5px', marginBottom: '2px' }}>
+            <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+              <span style={{ color: '#1e40af', fontWeight: '900' }}>NISN :</span>
+              <span style={{ color: '#000000', fontWeight: '900', borderBottom: '1px solid #94a3b8', paddingBottom: '0.5px' }}>
                 {murid['NISN'] || '-'}
               </span>
             </div>
-            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-              <span style={{ color: '#1e40af', fontWeight: '800' }}>NIS :</span>
-              <span style={{ color: '#000000', fontWeight: '900', borderBottom: '1.5px solid #94a3b8', paddingBottom: '1px', minWidth: '38px' }}>
+            <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+              <span style={{ color: '#1e40af', fontWeight: '900' }}>NIS :</span>
+              <span style={{ color: '#000000', fontWeight: '900', borderBottom: '1px solid #94a3b8', paddingBottom: '0.5px' }}>
                 {murid['NIS'] || '-'}
               </span>
             </div>
@@ -390,42 +451,42 @@ function CardFront({ murid, schoolIdentity, formatTTL }: { murid: any, schoolIde
           {/* Student Name: Extra Bold, Solid Black, Crystal Clear */}
           <div 
             style={{ 
-              fontSize: '13px', 
+              fontSize: '10px', 
               fontWeight: '900', 
               textAlign: 'center', 
-              margin: '3px 0 6px 0', 
+              margin: '2px 0 3px 0', 
               textTransform: 'uppercase', 
               color: '#000000', 
-              borderBottom: '1.5px solid #cbd5e1', 
-              paddingBottom: '5px',
-              letterSpacing: '0.3px',
-              lineHeight: '1.25'
+              borderBottom: '1px solid #cbd5e1', 
+              paddingBottom: '2px',
+              letterSpacing: '0.2px',
+              lineHeight: '1.2'
             }}
           >
             {murid['Nama Lengkap']}
           </div>
           
           {/* Detailed Info Table: Bold font for Kelas and Tempat Tanggal Lahir */}
-          <table style={{ width: '100%', fontSize: '8.5px', color: '#000000', lineHeight: '1.45', borderCollapse: 'collapse' }}>
+          <table style={{ width: '100%', fontSize: '7px', color: '#000000', lineHeight: '1.35', borderCollapse: 'collapse' }}>
             <tbody>
               <tr>
-                <td style={{ width: '40%', padding: '2px 0', fontWeight: 'bold', color: '#1e293b' }}>Kelas</td>
-                <td style={{ width: '5%', fontWeight: 'bold', color: '#000000' }}>:</td>
-                <td style={{ fontWeight: '900', color: '#000000', fontSize: '9.5px', borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ width: '38%', padding: '1px 0', fontWeight: '900', color: '#0f172a' }}>Kelas</td>
+                <td style={{ width: '5%', fontWeight: '900', color: '#000000' }}>:</td>
+                <td style={{ fontWeight: '900', color: '#000000', fontSize: '8px', borderBottom: '1px solid #f1f5f9' }}>
                   {murid['Kelas'] || '-'}
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: '2px 0', fontWeight: 'bold', color: '#1e293b' }}>Tempat, Tgl Lahir</td>
-                <td style={{ fontWeight: 'bold', color: '#000000' }}>:</td>
-                <td style={{ fontWeight: '900', color: '#000000', fontSize: '8.5px', borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ padding: '1px 0', fontWeight: '900', color: '#0f172a' }}>Tempat, Tgl Lahir</td>
+                <td style={{ fontWeight: '900', color: '#000000' }}>:</td>
+                <td style={{ fontWeight: '900', color: '#000000', fontSize: '7px', borderBottom: '1px solid #f1f5f9' }}>
                   {formatTTL(murid)}
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: '2px 0', fontWeight: 'bold', color: '#1e293b' }}>Jenis Kelamin</td>
-                <td style={{ fontWeight: 'bold', color: '#000000' }}>:</td>
-                <td style={{ fontWeight: '800', color: '#000000', fontSize: '8.5px' }}>
+                <td style={{ padding: '1px 0', fontWeight: '800', color: '#0f172a' }}>Jenis Kelamin</td>
+                <td style={{ fontWeight: '800', color: '#000000' }}>:</td>
+                <td style={{ fontWeight: '800', color: '#000000', fontSize: '7px' }}>
                   {murid['Jenis Kelamin (L/P)'] === 'L' ? 'Laki-laki (L)' : murid['Jenis Kelamin (L/P)'] === 'P' ? 'Perempuan (P)' : (murid['Jenis Kelamin (L/P)'] || '-')}
                 </td>
               </tr>
@@ -437,15 +498,15 @@ function CardFront({ murid, schoolIdentity, formatTTL }: { murid: any, schoolIde
         <div 
           style={{ 
             position: 'absolute', 
-            bottom: '7px', 
+            bottom: '1.5mm', 
             left: 0, 
             right: 0, 
             textAlign: 'center', 
-            fontSize: '6.5px', 
+            fontSize: '4.8px', 
             fontWeight: '900', 
             color: '#1e40af', 
-            letterSpacing: '0.8px',
-            textShadow: '0 0 3px #ffffff, 0 0 5px #ffffff',
+            letterSpacing: '0.4px',
+            textShadow: '0 0 2px #ffffff, 0 0 4px #ffffff',
             lineHeight: '1.2',
             zIndex: 15
           }}
@@ -457,73 +518,78 @@ function CardFront({ murid, schoolIdentity, formatTTL }: { murid: any, schoolIde
   );
 }
 
-// Sub-Component: Bagian Belakang Kartu
+// Sub-Component: Bagian Belakang Kartu (Ukuran Standar ID Card: 55 × 90 mm)
 function CardBack({ murid, schoolIdentity }: { murid: any, schoolIdentity: any }) {
   return (
     <div 
+      className="id-card-element rounded-xl"
       style={{ 
-        width: '250px', 
-        height: '396px', 
+        width: '55mm', 
+        height: '90mm', 
+        minWidth: '55mm',
+        maxWidth: '55mm',
+        minHeight: '90mm',
+        maxHeight: '90mm',
         position: 'relative', 
         overflow: 'hidden', 
-        borderRadius: '12px', 
-        border: '1.5px solid #cbd5e1', 
+        borderRadius: '3.5mm', 
+        border: '1.2px solid #cbd5e1', 
         backgroundColor: '#ffffff', 
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         boxSizing: 'border-box',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.08)'
       }}
     >
       {/* Top Header Shapes */}
-      <div style={{ position: 'absolute', top: '-45px', left: '-40px', width: '120px', height: '120px', background: '#22c55e', borderRadius: '50%', zIndex: 1 }} />
-      <div style={{ position: 'absolute', top: '-60px', left: '40px', width: '140px', height: '140px', background: '#fbbf24', borderRadius: '50%', zIndex: 1 }} />
-      <div style={{ position: 'absolute', top: '-35px', right: '-30px', width: '120px', height: '120px', background: '#ec4899', borderRadius: '50%', zIndex: 1 }} />
+      <div style={{ position: 'absolute', top: '-8mm', left: '-6mm', width: '24mm', height: '24mm', background: '#22c55e', borderRadius: '50%', zIndex: 1 }} />
+      <div style={{ position: 'absolute', top: '-11mm', left: '10mm', width: '28mm', height: '28mm', background: '#fbbf24', borderRadius: '50%', zIndex: 1 }} />
+      <div style={{ position: 'absolute', top: '-6mm', right: '-5mm', width: '24mm', height: '24mm', background: '#ec4899', borderRadius: '50%', zIndex: 1 }} />
 
       {/* Bottom Header Shapes */}
-      <div style={{ position: 'absolute', bottom: '-45px', left: '-30px', right: '-30px', height: '100px', background: 'linear-gradient(135deg, #0284c7, #1d4ed8)', borderTopLeftRadius: '50% 100%', borderTopRightRadius: '50% 100%', zIndex: 1 }} />
-      <div style={{ position: 'absolute', bottom: '-25px', left: '-10px', width: '90px', height: '90px', background: '#22c55e', borderRadius: '50%', zIndex: 2 }} />
-      <div style={{ position: 'absolute', bottom: '-35px', right: '-10px', width: '110px', height: '110px', background: '#ec4899', borderRadius: '50%', zIndex: 2 }} />
-      <div style={{ position: 'absolute', bottom: '-45px', left: '60px', width: '110px', height: '110px', background: '#fbbf24', borderRadius: '50%', zIndex: 2 }} />
+      <div style={{ position: 'absolute', bottom: '-8mm', left: '-5mm', right: '-5mm', height: '22mm', background: 'linear-gradient(135deg, #0284c7, #1d4ed8)', borderTopLeftRadius: '50% 100%', borderTopRightRadius: '50% 100%', zIndex: 1 }} />
+      <div style={{ position: 'absolute', bottom: '-4mm', left: '-2mm', width: '18mm', height: '18mm', background: '#22c55e', borderRadius: '50%', zIndex: 2 }} />
+      <div style={{ position: 'absolute', bottom: '-6mm', right: '-2mm', width: '22mm', height: '22mm', background: '#ec4899', borderRadius: '50%', zIndex: 2 }} />
+      <div style={{ position: 'absolute', bottom: '-8mm', left: '12mm', width: '22mm', height: '22mm', background: '#fbbf24', borderRadius: '50%', zIndex: 2 }} />
 
-      <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', height: '100%', padding: '16px', paddingTop: '36px' }}>
+      <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', height: '100%', padding: '2.5mm 3mm', boxSizing: 'border-box' }}>
         
         {/* Kontak Sekolah Header Pill */}
-        <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-          <span style={{ background: '#1d4ed8', color: '#ffffff', padding: '4px 18px', borderRadius: '16px', fontSize: '9px', fontWeight: '900', letterSpacing: '0.4px', boxShadow: '0 2px 4px rgba(29, 78, 216, 0.3)' }}>
+        <div style={{ textAlign: 'center', marginBottom: '2.5px' }}>
+          <span style={{ background: '#1d4ed8', color: '#ffffff', padding: '2px 10px', borderRadius: '10px', fontSize: '6.8px', fontWeight: '900', letterSpacing: '0.3px', boxShadow: '0 1px 3px rgba(29, 78, 216, 0.3)' }}>
             Kontak Sekolah
           </span>
         </div>
 
         {/* Contact Info */}
-        <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '8px', padding: '6px 8px', marginBottom: '10px', border: '1px solid #e2e8f0' }}>
-          <table style={{ width: '100%', fontSize: '7.5px', color: '#0f172a', lineHeight: '1.4' }}>
+        <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.96)', borderRadius: '5px', padding: '3px 5px', marginBottom: '3px', border: '1px solid #e2e8f0' }}>
+          <table style={{ width: '100%', fontSize: '6px', color: '#0f172a', lineHeight: '1.3' }}>
             <tbody>
               <tr>
-                <td style={{ width: '18px', verticalAlign: 'top', paddingTop: '2px', color: '#1d4ed8', textAlign: 'center' }}>
-                  <User style={{ width: '11px', height: '11px', margin: '0 auto' }} />
+                <td style={{ width: '14px', verticalAlign: 'top', paddingTop: '1px', color: '#1d4ed8', textAlign: 'center' }}>
+                  <User style={{ width: '9px', height: '9px', margin: '0 auto' }} />
                 </td>
-                <td style={{ fontWeight: '900', paddingBottom: '3px', fontSize: '8.5px', color: '#000000' }}>
+                <td style={{ fontWeight: '900', paddingBottom: '1px', fontSize: '6.8px', color: '#000000' }}>
                   {schoolIdentity.schoolName || "SDN BAUJENG I BEJI"}
                 </td>
               </tr>
               <tr>
-                <td style={{ verticalAlign: 'top', paddingTop: '2px', color: '#1d4ed8', textAlign: 'center' }}>
+                <td style={{ verticalAlign: 'top', paddingTop: '1px', color: '#1d4ed8', textAlign: 'center' }}>
                   <MapPinIcon />
                 </td>
-                <td style={{ paddingBottom: '3px', fontWeight: '600', color: '#334155' }}>
-                  Jl. Balai Desa Baujeng No. 01 Desa Baujeng, Kecamatan Beji, Kabupaten Pasuruan
+                <td style={{ paddingBottom: '1px', fontWeight: '600', color: '#334155' }}>
+                  Jl. Balai Desa Baujeng No. 01 Beji, Pasuruan
                 </td>
               </tr>
               <tr>
-                <td style={{ verticalAlign: 'top', paddingTop: '2px', color: '#1d4ed8', textAlign: 'center' }}>
+                <td style={{ verticalAlign: 'top', paddingTop: '1px', color: '#1d4ed8', textAlign: 'center' }}>
                   <MailIcon />
                 </td>
-                <td style={{ paddingBottom: '3px', fontWeight: '600', color: '#334155' }}>
+                <td style={{ paddingBottom: '1px', fontWeight: '600', color: '#334155' }}>
                   sdn.baujeng1beji@gmail.com
                 </td>
               </tr>
               <tr>
-                <td style={{ verticalAlign: 'top', paddingTop: '2px', color: '#1d4ed8', textAlign: 'center' }}>
+                <td style={{ verticalAlign: 'top', paddingTop: '1px', color: '#1d4ed8', textAlign: 'center' }}>
                   <GlobeIcon />
                 </td>
                 <td style={{ fontWeight: '700', color: '#334155' }}>Kode Pos 67154</td>
@@ -533,28 +599,28 @@ function CardBack({ murid, schoolIdentity }: { murid: any, schoolIdentity: any }
         </div>
 
         {/* QR Code Section with Solid Crisp White Plate */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '10px' }}>
-          <div style={{ background: '#ffffff', padding: '6px', border: '2px solid #93c5fd', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-            <QRCode value={murid['NISN'] || murid['NIS'] || "INVALID"} size={68} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '3px' }}>
+          <div style={{ background: '#ffffff', padding: '3px', border: '1.5px solid #93c5fd', borderRadius: '6px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <QRCode value={murid['NISN'] || murid['NIS'] || "INVALID"} size={48} />
           </div>
-          <div style={{ fontSize: '7px', fontWeight: '900', color: '#1d4ed8', marginTop: '4px', textAlign: 'center', letterSpacing: '0.4px' }}>
+          <div style={{ fontSize: '5.2px', fontWeight: '900', color: '#1d4ed8', marginTop: '2px', textAlign: 'center', letterSpacing: '0.3px' }}>
             SCAN UNTUK INFORMASI SISWA
           </div>
         </div>
 
         {/* Rules Box: Clean solid box */}
-        <div style={{ background: '#eff6ff', borderRadius: '8px', padding: '6px 10px', fontSize: '6.5px', color: '#0f172a', marginBottom: '10px', border: '1px solid #bfdbfe' }}>
-          <ol style={{ margin: 0, paddingLeft: '12px', lineHeight: '1.45', fontWeight: '600' }}>
-            <li style={{ marginBottom: '2px' }}>Kartu ini milik siswa dan tidak dapat dipindahtangankan.</li>
-            <li style={{ marginBottom: '2px' }}>Harap menjaga dan menggunakan kartu ini dengan baik.</li>
+        <div style={{ background: '#eff6ff', borderRadius: '5px', padding: '3px 5px', fontSize: '4.8px', color: '#0f172a', marginBottom: '2.5px', border: '1px solid #bfdbfe' }}>
+          <ol style={{ margin: 0, paddingLeft: '10px', lineHeight: '1.35', fontWeight: '600' }}>
+            <li>Kartu ini milik siswa dan tidak dapat dipindahtangankan.</li>
+            <li>Harap menjaga dan menggunakan kartu ini dengan baik.</li>
             <li>Jika kartu hilang, segera lapor ke pihak sekolah.</li>
           </ol>
         </div>
 
         {/* Signature Box */}
-        <div style={{ textAlign: 'right', fontSize: '7.5px', marginTop: 'auto', marginBottom: '14px', paddingRight: '12px' }}>
-          <div style={{ marginBottom: '24px', fontWeight: '700', color: '#000000' }}>Kepala Sekolah</div>
-          <div style={{ fontWeight: '900', color: '#000000', borderBottom: '1.5px solid #000000', display: 'inline-block', paddingBottom: '2px', minWidth: '95px', textAlign: 'center' }}>
+        <div style={{ textAlign: 'right', fontSize: '6px', marginTop: 'auto', marginBottom: '1.5mm', paddingRight: '2mm' }}>
+          <div style={{ marginBottom: '12px', fontWeight: '700', color: '#000000' }}>Kepala Sekolah</div>
+          <div style={{ fontWeight: '900', color: '#000000', borderBottom: '1.2px solid #000000', display: 'inline-block', paddingBottom: '1px', minWidth: '70px', textAlign: 'center', fontSize: '6.8px' }}>
             {schoolIdentity.headmasterName || "Akhmad Nasor, S.Pd., M.Pd."}
           </div>
         </div>

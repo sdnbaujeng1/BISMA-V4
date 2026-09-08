@@ -12,8 +12,16 @@ import {
   AlertCircle, 
   Play, 
   Square,
-  Sparkles,
-  Check
+  Sparkles, 
+  Check,
+  Smartphone,
+  ShieldAlert,
+  Settings,
+  HelpCircle,
+  Copy,
+  Upload,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { supabase } from '../lib/supabase';
@@ -31,13 +39,20 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
   const [ekskulOptions, setEkskulOptions] = useState<string[]>(['Pramuka', 'PMR', 'Paskibra', 'Seni Tari', 'Bulu Tangkis']);
   const [ekstra, setEkstra] = useState('Pramuka');
   
-  // Camera active by default
+  // Camera & PWA Permission States
   const [scanning, setScanning] = useState(true);
   const [cameraFacing, setCameraFacing] = useState<'environment' | 'user'>('environment');
   const [cameraKey, setCameraKey] = useState(0);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraBlocked, setCameraBlocked] = useState(false);
+  const [isRequestingPermission, setIsRequestingPermission] = useState(false);
+  const [permissionState, setPermissionState] = useState<'unknown' | 'granted' | 'prompt' | 'denied'>('unknown');
+  const [isPwa, setIsPwa] = useState(false);
+  const [showAndroidGuide, setShowAndroidGuide] = useState(true);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [isDecodingFile, setIsDecodingFile] = useState(false);
+
   const [soundEnabled, setSoundEnabled] = useState(true);
-  
   const [nisn, setNisn] = useState('');
   const [rekap, setRekap] = useState<any[]>([]);
   const [successMsg, setSuccessMsg] = useState('');
@@ -45,8 +60,50 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
   const [lastScanned, setLastScanned] = useState<any | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // File input ref for native camera capture fallback
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Cooldown tracker to prevent duplicate multi-scans of identical QR
   const lastScannedRef = useRef<{ nisn: string; time: number }>({ nisn: '', time: 0 });
+
+  // Detect PWA mode and query permissions on mount
+  useEffect(() => {
+    // 1. Detect PWA Standalone Mode
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || 
+      (window.navigator as any).standalone === true ||
+      document.referrer.includes('android-app://');
+    setIsPwa(standalone);
+
+    // 2. Query Camera Permissions if supported by browser/PWA
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'camera' as PermissionName })
+        .then((permissionStatus) => {
+          setPermissionState(permissionStatus.state as any);
+          if (permissionStatus.state === 'denied') {
+            setCameraBlocked(true);
+            setCameraError("Izin akses kamera saat ini diblokir di HP Android/Browser.");
+          } else if (permissionStatus.state === 'granted') {
+            setCameraBlocked(false);
+          }
+
+          permissionStatus.onchange = () => {
+            setPermissionState(permissionStatus.state as any);
+            if (permissionStatus.state === 'granted') {
+              setCameraBlocked(false);
+              setCameraError(null);
+              setScanning(true);
+              setCameraKey(k => k + 1);
+            } else if (permissionStatus.state === 'denied') {
+              setCameraBlocked(true);
+              setCameraError("Izin akses kamera diblokir di HP Android/Browser.");
+            }
+          };
+        })
+        .catch(() => {
+          // Permissions API for camera not implemented on older Android WebViews
+        });
+    }
+  }, []);
 
   useEffect(() => {
     fetch('/api/pengaturan?keys=qr_jenis_presensi,qr_ekskul_options')
@@ -74,8 +131,16 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
       .catch(err => console.warn('Could not load QR categories:', err));
   }, []);
 
-  // Web Audio synthesizer beep for instant audio feedback
+  // Web Audio synthesizer beep + vibration for mobile haptic feedback
   const playBeep = () => {
+    // 1. Vibration feedback (Haptic for Android)
+    if ('vibrate' in navigator) {
+      try {
+        navigator.vibrate(100);
+      } catch (e) {}
+    }
+
+    // 2. Audio Beep feedback
     if (!soundEnabled) return;
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -177,11 +242,14 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
       const activeJenis = jenisPresensi || 'Pembiasaan Sholat';
       const detailText = activeJenis === 'Ekstrakurikuler' ? (ekstra || 'Ekskul') : activeJenis;
 
+      const petugasNip = user?.nip || user?.NIP || user?.username || user?.Username || 'PETUGAS';
+      const petugasNama = user?.['Nama Guru'] || user?.Nama_Tendik || user?.nama || user?.name || user?.Nama || (user?.role === 'tendik' ? 'Tendik' : 'Guru');
+
       // 2. Insert into official 'presensi' table
       const presensiPayload = {
         timestamp: timestampToSave.toISOString(),
-        nip: user?.nip || user?.username || 'PETUGAS',
-        nama_guru: user?.nama || user?.name || 'Petugas Scan QR',
+        nip: petugasNip,
+        nama_guru: petugasNama,
         nisn: actualNisn,
         nama_murid: namaSiswa,
         kelas: kelasSiswa,
@@ -257,8 +325,111 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
 
   const restartCamera = () => {
     setCameraError(null);
+    setCameraBlocked(false);
     setScanning(true);
     setCameraKey(k => k + 1);
+  };
+
+  // Direct user gesture camera permission request for Android PWA & mobile browsers
+  const requestCameraPermission = async () => {
+    setIsRequestingPermission(true);
+    setCameraError(null);
+    try {
+      // Calling getUserMedia directly on user tap triggers the Android OS permission dialog
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: cameraFacing }
+        }
+      });
+      // Permission granted! Stop test track and restart scanner
+      stream.getTracks().forEach(t => t.stop());
+      setCameraBlocked(false);
+      setPermissionState('granted');
+      setScanning(true);
+      setCameraKey(k => k + 1);
+      setSuccessMsg('Izin kamera berhasil dibuka!');
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err: any) {
+      console.error("Camera permission request error:", err);
+      if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+        setCameraBlocked(true);
+        setPermissionState('denied');
+        setCameraError("Izin kamera diblokir di HP Android. Harap izinkan melalui Pengaturan HP seperti panduan di bawah.");
+      } else if (err?.name === 'OverconstrainedError' || err?.name === 'NotFoundError') {
+        setCameraFacing(prev => prev === 'environment' ? 'user' : 'environment');
+        setCameraKey(k => k + 1);
+      } else {
+        setCameraError("Gagal membuka kamera: " + (err?.message || "Perangkat belum siap"));
+      }
+    } finally {
+      setIsRequestingPermission(false);
+    }
+  };
+
+  // Native Android camera capture fallback (reads QR from photo directly - 100% reliable)
+  const handleFileCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsDecodingFile(true);
+    try {
+      let detectedText: string | null = null;
+
+      // Check for BarcodeDetector support (native or polyfill)
+      let DetectorClass = (window as any).BarcodeDetector;
+      if (!DetectorClass) {
+        try {
+          const poly = await import('barcode-detector');
+          DetectorClass = poly.BarcodeDetector;
+        } catch (e) {
+          console.warn('Polyfill load error:', e);
+        }
+      }
+
+      if (DetectorClass) {
+        const detector = new DetectorClass({ formats: ['qr_code'] });
+        let source: any;
+        if (typeof createImageBitmap === 'function') {
+          source = await createImageBitmap(file);
+        } else {
+          source = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = URL.createObjectURL(file);
+          });
+        }
+        const codes = await detector.detect(source);
+        if (codes && codes.length > 0 && codes[0].rawValue) {
+          detectedText = codes[0].rawValue;
+        }
+      }
+
+      if (detectedText) {
+        playBeep();
+        await processPresensi(detectedText);
+      } else {
+        setErrorMsg('QR Code tidak terdeteksi pada foto. Pastikan foto kartu tegak, tidak blur, dan pencahayaan cukup.');
+        setTimeout(() => setErrorMsg(''), 4000);
+      }
+    } catch (err: any) {
+      console.error("Failed to decode image:", err);
+      setErrorMsg('Gagal membaca foto QR: ' + (err?.message || 'Format tidak didukung'));
+      setTimeout(() => setErrorMsg(''), 3500);
+    } finally {
+      setIsDecodingFile(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const copyAppUrl = () => {
+    try {
+      navigator.clipboard.writeText(window.location.href);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
+    } catch (e) {}
   };
 
   return (
@@ -349,15 +520,26 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
             {/* Scanner Viewport (Active by Default) */}
             <div className="space-y-4">
               
+              {/* Hidden file input for native camera capture fallback */}
+              <input 
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileCapture}
+                className="hidden"
+                id="native-qr-file-input"
+              />
+
               {/* Viewfinder Frame */}
               <div className="relative border-4 border-emerald-500 rounded-2xl overflow-hidden aspect-square sm:aspect-4/3 max-w-md mx-auto bg-slate-950 flex items-center justify-center shadow-md">
-                {scanning ? (
+                {scanning && !cameraBlocked ? (
                   <div className="w-full h-full object-cover relative">
                     <Scanner
                       key={`scanner-${cameraKey}-${cameraFacing}`}
                       onScan={handleScanResult}
                       constraints={{
-                        facingMode: cameraFacing
+                        facingMode: { ideal: cameraFacing }
                       }}
                       styles={{
                         container: { width: '100%', height: '100%' },
@@ -365,10 +547,26 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
                       }}
                       onError={(error: any) => {
                         console.error("Camera error:", error);
-                        const msg = error?.name === 'NotAllowedError'
-                          ? "Izin akses kamera diblokir. Harap izinkan kamera di ikon gembok 🔒 address bar browser."
-                          : "Gagal mengakses perangkat kamera. " + (error?.message || "");
-                        setCameraError(msg);
+                        // If environment camera fails due to constraints or lack of back camera on device, fallback to user camera
+                        if (cameraFacing === 'environment' && (
+                          error?.name === 'OverconstrainedError' || 
+                          error?.name === 'ConstraintNotSatisfiedError' || 
+                          error?.name === 'NotFoundError' || 
+                          error?.name === 'DevicesNotFoundError'
+                        )) {
+                          console.info("Switching to user camera fallback...");
+                          setCameraFacing('user');
+                          setCameraKey(k => k + 1);
+                          return;
+                        }
+                        const isDenied = error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError';
+                        if (isDenied) {
+                          setCameraBlocked(true);
+                          setPermissionState('denied');
+                          setCameraError("Izin akses kamera diblokir di HP Android/Browser.");
+                        } else {
+                          setCameraError("Gagal mengakses kamera (" + (error?.name || error?.message || "Perangkat tidak siap") + "). Pastikan kamera tidak dipakai aplikasi lain.");
+                        }
                       }}
                       components={{
                         onOff: false,
@@ -387,7 +585,61 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
                       
                       <div className="text-[11px] text-white/80 bg-black/60 px-3 py-1 rounded-md">
                         Kamera: {cameraFacing === 'environment' ? 'Belakang (Utama)' : 'Depan'}
+                        {isPwa && ' • Mode PWA'}
                       </div>
+                    </div>
+                  </div>
+                ) : cameraBlocked ? (
+                  /* Dedicated Android PWA Blocked State UI */
+                  <div className="absolute inset-0 bg-slate-900 text-white p-5 flex flex-col items-center justify-center text-center z-30">
+                    <div className="w-12 h-12 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center mb-3">
+                      <ShieldAlert className="w-7 h-7" />
+                    </div>
+                    <h3 className="text-sm font-bold text-amber-300 mb-1">
+                      Izin Akses Kamera Diblokir
+                    </h3>
+                    <p className="text-xs text-slate-300 max-w-xs mb-4 leading-relaxed">
+                      Sistem HP Android atau browser memblokir kamera. Gunakan salah satu opsi di bawah:
+                    </p>
+
+                    <div className="w-full max-w-xs space-y-2">
+                      {/* Solution 1: Direct Request Gesture */}
+                      <button 
+                        onClick={requestCameraPermission}
+                        disabled={isRequestingPermission}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+                      >
+                        {isRequestingPermission ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            Meminta Izin Sistem...
+                          </>
+                        ) : (
+                          <>
+                            <Camera className="w-3.5 h-3.5" />
+                            Minta Izin Kamera Ulang
+                          </>
+                        )}
+                      </button>
+
+                      {/* Solution 2: Native Android Photo Capture Fallback */}
+                      <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isDecodingFile}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+                      >
+                        {isDecodingFile ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            Membaca Foto QR...
+                          </>
+                        ) : (
+                          <>
+                            <Smartphone className="w-3.5 h-3.5" />
+                            Foto QR Kartu (Kamera Bawaan HP)
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -400,8 +652,8 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
                   </div>
                 )}
 
-                {/* Error Banner Overlay */}
-                {cameraError && (
+                {/* Error Banner Overlay (Non-blocked errors) */}
+                {cameraError && !cameraBlocked && (
                   <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center text-white p-5 text-center z-30">
                     <AlertCircle className="w-12 h-12 text-amber-400 mb-2" />
                     <p className="text-sm font-bold text-amber-200 mb-1">Akses Kamera Terkendala</p>
@@ -453,23 +705,29 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
               </div>
 
               {/* Camera Action Control Bar */}
-              <div className="max-w-md mx-auto grid grid-cols-2 gap-2.5">
+              <div className="max-w-md mx-auto grid grid-cols-3 gap-2">
                 <button 
-                  onClick={() => setScanning(!scanning)}
-                  className={`min-h-[48px] py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] cursor-pointer ${
-                    scanning 
+                  onClick={() => {
+                    if (cameraBlocked) {
+                      requestCameraPermission();
+                    } else {
+                      setScanning(!scanning);
+                    }
+                  }}
+                  className={`min-h-[44px] py-2 px-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-[0.99] cursor-pointer ${
+                    scanning && !cameraBlocked
                       ? 'bg-amber-600 hover:bg-amber-700 text-white' 
                       : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                   }`}
                 >
-                  {scanning ? (
+                  {scanning && !cameraBlocked ? (
                     <>
-                      <Square className="w-4 h-4 fill-current" />
-                      Jeda Kamera
+                      <Square className="w-3.5 h-3.5 fill-current" />
+                      Jeda
                     </>
                   ) : (
                     <>
-                      <Play className="w-4 h-4 fill-current" />
+                      <Play className="w-3.5 h-3.5 fill-current" />
                       Buka Kamera
                     </>
                   )}
@@ -477,12 +735,87 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
 
                 <button 
                   onClick={toggleCameraFacing}
-                  className="min-h-[48px] py-3 px-4 rounded-xl font-bold text-sm bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-white flex items-center justify-center gap-2 transition-colors cursor-pointer border border-slate-200 dark:border-slate-600"
+                  disabled={cameraBlocked}
+                  className="min-h-[44px] py-2 px-2.5 rounded-xl font-bold text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-50 text-slate-700 dark:text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-slate-200 dark:border-slate-600"
                 >
-                  <SwitchCamera className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  Ganti Kamera
+                  <SwitchCamera className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  Ganti Lensa
+                </button>
+
+                {/* Native Camera Capture Button (Always accessible) */}
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isDecodingFile}
+                  title="Ambil foto kartu siswa dengan kamera bawaan HP (100% Berhasil)"
+                  className="min-h-[44px] py-2 px-2.5 rounded-xl font-bold text-xs bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-blue-200 dark:border-blue-800"
+                >
+                  {isDecodingFile ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      Scan Foto...
+                    </>
+                  ) : (
+                    <>
+                      <Smartphone className="w-3.5 h-3.5" />
+                      Foto QR HP
+                    </>
+                  )}
                 </button>
               </div>
+
+              {/* Android PWA Camera Unblock Guide (Prominent & Clear) */}
+              {cameraBlocked && (
+                <div className="max-w-md mx-auto bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700 rounded-2xl p-4 shadow-sm text-slate-800 dark:text-slate-100">
+                  <div className="flex items-center justify-between pb-2 border-b border-amber-200 dark:border-amber-800">
+                    <div className="flex items-center gap-2">
+                      <Settings className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <h4 className="text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-200">
+                        Cara Buka Blokir Kamera di HP Android
+                      </h4>
+                    </div>
+                    <button 
+                      onClick={() => setShowAndroidGuide(!showAndroidGuide)}
+                      className="p-1 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg cursor-pointer"
+                    >
+                      {showAndroidGuide ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                  </div>
+
+                  {showAndroidGuide && (
+                    <div className="mt-3 text-xs space-y-2.5 leading-relaxed text-slate-700 dark:text-slate-300">
+                      <p className="text-[11px] text-amber-800 dark:text-amber-300/90 font-medium">
+                        Pada aplikasi terpasang di HP (PWA), tidak ada ikon gembok browser. Buka izin melalui setelan Android:
+                      </p>
+
+                      <ol className="list-decimal list-inside space-y-1.5 pl-1 font-medium">
+                        <li>Buka menu <span className="font-bold text-slate-900 dark:text-white">Pengaturan (Settings) ⚙️</span> di HP Android Anda.</li>
+                        <li>Pilih menu <span className="font-bold text-slate-900 dark:text-white">Aplikasi / Kelola Aplikasi</span>.</li>
+                        <li>Cari dan pilih aplikasi <span className="font-bold text-emerald-700 dark:text-emerald-400">BISMA</span> (atau browser <span className="font-bold text-blue-600">Chrome</span> jika membuka lewat shortcut).</li>
+                        <li>Pilih menu <span className="font-bold text-slate-900 dark:text-white">Izin Aplikasi (Permissions)</span> ➔ Ketuk <span className="font-bold text-slate-900 dark:text-white">Kamera</span>.</li>
+                        <li>Ubah pilihan menjadi <span className="font-bold text-emerald-700 dark:text-emerald-400">"Izinkan saat aplikasi digunakan" (Allow)</span>.</li>
+                      </ol>
+
+                      <div className="pt-2 flex flex-col sm:flex-row gap-2">
+                        <button
+                          onClick={restartCamera}
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-xs cursor-pointer text-xs"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          Sudah Diizinkan, Muat Ulang Pemindai
+                        </button>
+
+                        <button
+                          onClick={copyAppUrl}
+                          className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 font-semibold py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+                        >
+                          {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                          {copiedLink ? 'Tautan Disalin!' : 'Salin Tautan'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Latest Scanned Student Quick Card */}
               {lastScanned && (

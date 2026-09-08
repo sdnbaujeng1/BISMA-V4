@@ -544,7 +544,7 @@ export default function AdminDashboard({
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 transition-colors font-sans overflow-hidden">
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 print:bg-white print:dark:bg-white print:h-auto print:overflow-visible transition-colors font-sans overflow-hidden">
       {/* Toast Notification */}
       <AnimatePresence>
         {toast && (
@@ -662,7 +662,7 @@ export default function AdminDashboard({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto relative flex flex-col print:overflow-visible">
+      <main className="flex-1 overflow-y-auto relative flex flex-col print:overflow-visible print:bg-white print:dark:bg-white print:h-auto">
         {/* Mobile Header */}
         <div className="lg:hidden bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-4 flex items-center justify-between sticky top-0 z-20 print:hidden">
           <div className="flex items-center gap-3">
@@ -681,7 +681,7 @@ export default function AdminDashboard({
           </div>
         </div>
 
-        <div className="p-4 md:p-8 print:p-0">{renderContent()}</div>
+        <div className="p-4 md:p-8 print:p-0 print:bg-white print:dark:bg-white">{renderContent()}</div>
       </main>
 
       {/* Modals */}
