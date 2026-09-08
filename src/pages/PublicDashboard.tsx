@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
 import HelpDeskFloat from '../components/HelpDeskFloat';
 import { supabase } from '../lib/supabase';
+import { safeStorage } from '../lib/storage';
 
 const Marquee = "marquee" as any;
 
@@ -89,13 +90,13 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
     
     // Load Public Dashboard Data
     const loadPublicData = () => {
-      const storedData = localStorage.getItem('public_dashboard_data');
+      const storedData = safeStorage.getItem('public_dashboard_data');
       if (storedData) {
         try {
           setData(JSON.parse(storedData));
         } catch (e) {
           console.error("Failed to parse public dashboard data", e);
-          localStorage.removeItem('public_dashboard_data');
+          safeStorage.removeItem('public_dashboard_data');
         }
       }
       
@@ -131,7 +132,7 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
   useEffect(() => {
     const handleStorageChange = async () => {
       let localData = {};
-      const storedData = localStorage.getItem('public_dashboard_data');
+      const storedData = safeStorage.getItem('public_dashboard_data');
       if (storedData) {
         try {
           localData = JSON.parse(storedData);
@@ -187,7 +188,7 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
           <div className="flex items-center gap-6">
             {(fakeVisitor > 0 || realVisitor > 0) && (
               <div className="flex flex-col items-end border-r border-slate-200 dark:border-slate-700 pr-4 md:pr-6">
-                <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-0.5">Live Visitors</span>
+                <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-0.5">Live</span>
                 <span className="font-mono text-lg font-light text-slate-800 dark:text-slate-200 leading-none flex items-center">
                   {(fakeVisitor + realVisitor).toLocaleString('id-ID')}
                   <span className="inline-block w-1.5 h-1.5 bg-green-500 rounded-full ml-2 animate-pulse"></span>
@@ -233,7 +234,7 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
                 <div className="relative z-10">
                   <h3 className="text-lg font-bold mb-1 drop-shadow-md">Informasi Terkini</h3>
                   <div className="w-full bg-black/10 rounded-full py-1.5 px-3 mb-4 overflow-hidden flex items-center shadow-inner border border-white/10">
-                    <Marquee className="text-blue-100 text-xs sm:text-sm italic font-medium tracking-wide" scrollAmount={schoolIdentity.sloganSpeed || "3"}>
+                    <Marquee className="text-blue-100 text-xs sm:text-sm italic font-medium tracking-wide" scrollamount={schoolIdentity.sloganSpeed || "3"}>
                       {schoolIdentity.sloganText || "✨ Beriman, Ramah, Mandiri, Unggul dan Tangguh ✨"}
                     </Marquee>
                   </div>

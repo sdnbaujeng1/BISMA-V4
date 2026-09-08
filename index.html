@@ -1,51 +1,103 @@
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
-    <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
-    <title>UPT Satuan Pendidikan SDN Baujeng 1</title>
+    <title>SDN BAUJENG I BEJI</title>
+    <meta name="description" content="Sistem Informasi Manajemen Sekolah Terpadu SDN Baujeng 1" />
+    <meta property="og:title" content="SDN BAUJENG I BEJI" />
+    <meta property="og:description" content="Sistem Informasi Manajemen Sekolah Terpadu SDN Baujeng 1" />
+    <script>
+      (function() {
+        function makeSafeStorage() {
+          var store = {};
+          return {
+            getItem: function(key) {
+              return Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null;
+            },
+            setItem: function(key, val) {
+              store[key] = String(val);
+            },
+            removeItem: function(key) {
+              delete store[key];
+            },
+            clear: function() {
+              store = {};
+            },
+            key: function(i) {
+              return Object.keys(store)[i] || null;
+            },
+            get length() {
+              return Object.keys(store).length;
+            }
+          };
+        }
+
+        var localWorks = false;
+        try {
+          var testL = '__t_' + Math.random();
+          window.localStorage.setItem(testL, '1');
+          window.localStorage.removeItem(testL);
+          localWorks = true;
+        } catch (e) {
+          localWorks = false;
+        }
+
+        if (!localWorks) {
+          var safeLocal = makeSafeStorage();
+          try {
+            Object.defineProperty(window, 'localStorage', {
+              get: function() { return safeLocal; },
+              configurable: true,
+              enumerable: true
+            });
+          } catch (e1) {}
+          try {
+            if (window.Window && window.Window.prototype) {
+              Object.defineProperty(window.Window.prototype, 'localStorage', {
+                get: function() { return safeLocal; },
+                configurable: true,
+                enumerable: true
+              });
+            }
+          } catch (e2) {}
+        }
+
+        var sessionWorks = false;
+        try {
+          var testS = '__s_' + Math.random();
+          window.sessionStorage.setItem(testS, '1');
+          window.sessionStorage.removeItem(testS);
+          sessionWorks = true;
+        } catch (e) {
+          sessionWorks = false;
+        }
+
+        if (!sessionWorks) {
+          var safeSession = makeSafeStorage();
+          try {
+            Object.defineProperty(window, 'sessionStorage', {
+              get: function() { return safeSession; },
+              configurable: true,
+              enumerable: true
+            });
+          } catch (e1) {}
+          try {
+            if (window.Window && window.Window.prototype) {
+              Object.defineProperty(window.Window.prototype, 'sessionStorage', {
+                get: function() { return safeSession; },
+                configurable: true,
+                enumerable: true
+              });
+            }
+          } catch (e2) {}
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
-    <script>
-      // Prevent "Cannot set property fetch of #<Window> which has only a getter"
-      // when some library tries to polyfill fetch
-      try {
-        const originalFetch = window.fetch;
-        Object.defineProperty(window, 'fetch', {
-          get: function() { return originalFetch; },
-          set: function(val) { /* ignore */ },
-          configurable: true
-        });
-      } catch (e) {}
-    </script>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      // Unregister service workers and clear caches to ensure users always get the latest version
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.getRegistrations().then(function(registrations) {
-            for(let registration of registrations) {
-              registration.unregister();
-              console.log('ServiceWorker unregistered');
-            }
-          });
-        });
-      }
-      
-      if ('caches' in window) {
-        caches.keys().then((names) => {
-          for (const name of names) {
-            caches.delete(name);
-            console.log('Cache deleted:', name);
-          }
-        });
-      }
-    </script>
   </body>
 </html>
 

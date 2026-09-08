@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { safeStorage } from '../lib/storage';
 
 export interface SchoolIdentity {
   schoolName: string;
@@ -38,7 +39,7 @@ export function useSchoolIdentity() {
             sloganSpeed: data.sloganSpeed || "3"
           };
           setIdentity(newIdentity);
-          localStorage.setItem('school_identity_data', JSON.stringify(newIdentity));
+          safeStorage.setItem('school_identity_data', JSON.stringify(newIdentity));
           
           // Update document title and favicon
           document.title = newIdentity.schoolName;
@@ -48,11 +49,13 @@ export function useSchoolIdentity() {
             link.rel = 'icon';
             document.head.appendChild(link);
           }
-          link.href = newIdentity.schoolLogo;
+          if (newIdentity.schoolLogo) {
+            link.href = newIdentity.schoolLogo;
+          }
         }
       } catch (error) {
         console.error("Failed to fetch school identity", error);
-        const stored = localStorage.getItem('school_identity_data');
+        const stored = safeStorage.getItem('school_identity_data');
         if (stored) {
           const data = JSON.parse(stored);
           const mappedData = {

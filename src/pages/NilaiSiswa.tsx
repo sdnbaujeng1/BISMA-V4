@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, BookOpen } from 'lucide-react';
+import { safeStorage } from '../lib/storage';
 
 export default function NilaiSiswa({ user, onBack }: { user: any, onBack: () => void }) {
   const [nilaiData, setNilaiData] = useState<any>({});
@@ -17,7 +18,7 @@ export default function NilaiSiswa({ user, onBack }: { user: any, onBack: () => 
         if (result.success && result.data && result.data.jumlahUlangan) {
           setJumlahUlangan(parseInt(result.data.jumlahUlangan));
         } else {
-          const stored = localStorage.getItem('school_identity_data');
+          const stored = safeStorage.getItem('school_identity_data');
           if (stored) {
             const data = JSON.parse(stored);
             if (data.jumlahUlangan) setJumlahUlangan(parseInt(data.jumlahUlangan));

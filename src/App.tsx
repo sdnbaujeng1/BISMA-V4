@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSchoolIdentity } from './hooks/useSchoolIdentity';
+import { safeStorage } from './lib/storage';
 import PublicDashboard from './pages/PublicDashboard';
 import Login from './pages/Login';
 import MainDashboard from './pages/MainDashboard';
@@ -30,7 +31,7 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState('public');
   const [user, setUser] = useState<any>(null);
   const [darkMode, setDarkMode] = useState(() => {
-    return localStorage.getItem('theme') === 'dark';
+    return safeStorage.getItem('theme') === 'dark';
   });
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -47,16 +48,20 @@ export default function App() {
     });
 
     globalRoom.subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
-        const storedUser = localStorage.getItem('userData');
-        let role = 'visitor';
-        if (storedUser) {
-          try {
-            const parsed = JSON.parse(storedUser);
-            role = parsed.role || 'visitor';
-          } catch(e) {}
+      try {
+        if (status === 'SUBSCRIBED') {
+          const storedUser = safeStorage.getItem('bisma_user') || safeStorage.getItem('userData');
+          let role = 'visitor';
+          if (storedUser) {
+            try {
+              const parsed = JSON.parse(storedUser);
+              role = parsed.role || 'visitor';
+            } catch(e) {}
+          }
+          await globalRoom.track({ online_at: new Date().toISOString(), role });
         }
-        await globalRoom.track({ online_at: new Date().toISOString(), role });
+      } catch (e) {
+        console.warn("Visitor tracking skipped:", e);
       }
     });
 
@@ -97,17 +102,17 @@ export default function App() {
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+      safeStorage.setItem('theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+      safeStorage.setItem('theme', 'light');
     }
   }, [darkMode]);
 
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('bisma_user');
+    const storedUser = safeStorage.getItem('bisma_user');
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
@@ -124,15 +129,15 @@ export default function App() {
           }
         }
       } catch (e) {
-        console.error("Failed to parse user data from localStorage", e);
-        localStorage.removeItem('bisma_user');
+        console.error("Failed to parse user data from safeStorage", e);
+        safeStorage.removeItem('bisma_user');
       }
     }
   }, []);
 
   const handleLogin = (userData: any) => {
     setUser(userData);
-    localStorage.setItem('bisma_user', JSON.stringify(userData));
+    safeStorage.setItem('bisma_user', JSON.stringify(userData));
     if (userData.role === 'admin') {
       setCurrentPage('admin');
     } else if (userData.role === 'siswa') {
@@ -146,12 +151,111 @@ export default function App() {
 
   const handleLogout = () => {
     setUser(null);
-    localStorage.removeItem('bisma_user');
+    safeStorage.removeItem('bisma_user');
     setCurrentPage('public');
   };
 
   const navigate = (page: string) => {
     setCurrentPage(page);
+  };
+
+  const renderContent = () => {
+    switch (currentPage) {
+      case 'public':
+        return <PublicDashboard onNavigate={navigate} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />;
+      case 'login':
+        return <Login onLogin={handleLogin} onNavigate={navigate} />;
+      case 'main':
+        return <MainDashboard user={user} onLogout={handleLogout} onNavigate={navigate} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />;
+      case 'admin':
+        return <AdminDashboard user={user} onLogout={handleLogout} darkMode={darkMode} toggleDarkMode={toggleDarkMode} onNavigate={navigate} />;
+      case 'monitoring':
+        return <MonitoringDashboard onLogout={handleLogout} />;
+      case 'siswa':
+        return <StudentDashboard user={user} onLogout={handleLogout} darkMode={darkMode} toggleDarkMode={toggleDarkMode} onNavigate={navigate} />;
+      case 'jurnal':
+        return <Jurnal user={user} onNavigate={navigate} />;
+      case 'tugas_guru':
+      case 'tugas':
+        if (user?.role === 'siswa') {
+          return <StudentDashboard user={user} onLogout={handleLogout} darkMode={darkMode} toggleDarkMode={toggleDarkMode} onNavigate={navigate} />;
+        }
+        return <TugasGuru user={user} onNavigate={navigate} />;
+      case 'jadwal_mengajar':
+      case 'jadwal':
+        if (user?.role === 'siswa') {
+          return <StudentDashboard user={user} onLogout={handleLogout} darkMode={darkMode} toggleDarkMode={toggleDarkMode} onNavigate={navigate} />;
+        }
+        return <JadwalMengajar user={user} onNavigate={navigate} />;
+      case 'laporan':
+        return <Laporan user={user} onNavigate={navigate} />;
+      case 'rekap_absensi':
+      case 'kehadiran':
+      case 'absensi':
+        if (user?.role === 'siswa') {
+          return <StudentDashboard user={user} onLogout={handleLogout} darkMode={darkMode} toggleDarkMode={toggleDarkMode} onNavigate={navigate} />;
+        }
+        return <RekapAbsensi user={user} onNavigate={navigate} />;
+      case 'keterlaksanaan_kbm':
+        return <Keterlaksanaan onNavigate={navigate} />;
+      case 'kedisiplinan':
+      case 'pelanggaran':
+        if (user?.role === 'siswa') {
+          return <StudentDashboard user={user} onLogout={handleLogout} darkMode={darkMode} toggleDarkMode={toggleDarkMode} onNavigate={navigate} />;
+        }
+        return <Kedisiplinan user={user} onNavigate={navigate} />;
+      case 'presensi_qr':
+        return <PresensiQR user={user} onNavigate={navigate} />;
+      case 'bank_sampah_guru':
+      case 'bank_sampah':
+        if (user?.role === 'siswa') {
+          return <StudentDashboard user={user} onLogout={handleLogout} darkMode={darkMode} toggleDarkMode={toggleDarkMode} onNavigate={navigate} />;
+        }
+        return <BankSampahGuru user={user} onNavigate={navigate} />;
+      case 'kasih_ibu_guru':
+        return <KasihIbuGuru user={user} onNavigate={navigate} />;
+      case 'nilai_guru':
+      case 'nilai':
+      case 'nilai_siswa':
+        if (user?.role === 'siswa') {
+          return <StudentDashboard user={user} onLogout={handleLogout} darkMode={darkMode} toggleDarkMode={toggleDarkMode} onNavigate={navigate} />;
+        }
+        return <NilaiGuru user={user} onNavigate={navigate} />;
+      case 'chatbot':
+        return <ChatbotPage onNavigate={navigate} />;
+      case 'rpp_generator':
+        return <IframePage title="RPP Generator AI" src="https://sigmabai.netlify.app/" onNavigate={navigate} backTo={user?.role === 'siswa' ? 'siswa' : 'main'} />;
+      case 'kasih_ibu':
+        if (user?.role === 'guru' || user?.role === 'tendik' || user?.role === 'walikelas') {
+          return <KasihIbuGuru user={user} onNavigate={navigate} />;
+        }
+        return <IframePage title="Kasih Ibu" src="https://script.google.com/macros/s/AKfycbwcbvTOoHrgsoWsLgu9db49Po6R7NkqE5BfjCbInPUw2mz9uiDbRCOxesqbh4xT1k7M/exec" onNavigate={navigate} backTo={user?.role === 'siswa' ? 'siswa' : 'main'} />;
+      case 'galeri_kegiatan':
+        return <IframePage title="Galeri Kegiatan" src="https://www.sdnbaujeng1.sch.id/" onNavigate={navigate} backTo={user?.role === 'siswa' ? 'siswa' : 'main'} />;
+      case 'rumah_pendidikan':
+        return <IframePage title="Rumah Pendidikan" src="https://rumah.pendidikan.go.id/ruang/murid" onNavigate={navigate} backTo={user?.role === 'siswa' ? 'siswa' : 'main'} />;
+      case 'bangkomar':
+        return <IframePage title="Bangkomar" src="https://bangkomar.pasuruankab.go.id/" onNavigate={navigate} backTo={user?.role === 'siswa' ? 'siswa' : 'main'} />;
+      case 'game_generator':
+        return <IframePage title="Game Generator" src="https://script.google.com/macros/s/AKfycbxg4OScIlFNDzkksUBfb5l6iYZqpRqPOoG94AazQESC0llZS5_nkHQIkJgNIUhNCzy21Q/exec" onNavigate={navigate} backTo={user?.role === 'siswa' ? 'siswa' : 'main'} />;
+      case 'edugame':
+        return <IframePage title="Edugame" src="https://edugamev2.netlify.app/" onNavigate={navigate} backTo={user?.role === 'siswa' ? 'siswa' : 'main'} />;
+      default:
+        // Absolute fallback to ensure the screen NEVER displays blank
+        if (user?.role === 'admin') {
+          return <AdminDashboard user={user} onLogout={handleLogout} darkMode={darkMode} toggleDarkMode={toggleDarkMode} onNavigate={navigate} />;
+        }
+        if (user?.role === 'siswa') {
+          return <StudentDashboard user={user} onLogout={handleLogout} darkMode={darkMode} toggleDarkMode={toggleDarkMode} onNavigate={navigate} />;
+        }
+        if (user?.role === 'monitoring') {
+          return <MonitoringDashboard onLogout={handleLogout} />;
+        }
+        if (user) {
+          return <MainDashboard user={user} onLogout={handleLogout} onNavigate={navigate} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />;
+        }
+        return <PublicDashboard onNavigate={navigate} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />;
+    }
   };
 
   return (
@@ -173,31 +277,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {currentPage === 'public' && <PublicDashboard onNavigate={navigate} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />}
-      {currentPage === 'login' && <Login onLogin={handleLogin} onNavigate={navigate} />}
-      {currentPage === 'main' && <MainDashboard user={user} onLogout={handleLogout} onNavigate={navigate} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />}
-      {currentPage === 'admin' && <AdminDashboard user={user} onLogout={handleLogout} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />}
-      {currentPage === 'monitoring' && <MonitoringDashboard onLogout={handleLogout} />}
-      {currentPage === 'siswa' && <StudentDashboard user={user} onLogout={handleLogout} darkMode={darkMode} toggleDarkMode={toggleDarkMode} onNavigate={navigate} />}
-      {currentPage === 'jurnal' && <Jurnal user={user} onNavigate={navigate} />}
-      {currentPage === 'tugas_guru' && <TugasGuru user={user} onNavigate={navigate} />}
-      {currentPage === 'jadwal_mengajar' && <JadwalMengajar user={user} onNavigate={navigate} />}
-      {currentPage === 'laporan' && <Laporan user={user} onNavigate={navigate} />}
-      {currentPage === 'rekap_absensi' && <RekapAbsensi user={user} onNavigate={navigate} />}
-      {currentPage === 'keterlaksanaan_kbm' && <Keterlaksanaan onNavigate={navigate} />}
-      {currentPage === 'kedisiplinan' && <Kedisiplinan user={user} onNavigate={navigate} />}
-      {currentPage === 'presensi_qr' && <PresensiQR user={user} onNavigate={navigate} />}
-      {currentPage === 'bank_sampah_guru' && <BankSampahGuru user={user} onNavigate={navigate} />}
-      {currentPage === 'kasih_ibu_guru' && <KasihIbuGuru user={user} onNavigate={navigate} />}
-      {currentPage === 'nilai_guru' && <NilaiGuru user={user} onNavigate={navigate} />}
-      {currentPage === 'chatbot' && <ChatbotPage onNavigate={navigate} />}
-      {currentPage === 'rpp_generator' && <IframePage title="RPP Generator AI" src="https://sigmabai.netlify.app/" onNavigate={navigate} backTo="main" />}
-      {currentPage === 'kasih_ibu' && <IframePage title="Kasih Ibu" src="https://script.google.com/macros/s/AKfycbwcbvTOoHrgsoWsLgu9db49Po6R7NkqE5BfjCbInPUw2mz9uiDbRCOxesqbh4xT1k7M/exec" onNavigate={navigate} backTo="siswa" />}
-      {currentPage === 'galeri_kegiatan' && <IframePage title="Galeri Kegiatan" src="https://www.sdnbaujeng1.sch.id/" onNavigate={navigate} backTo="main" />}
-      {currentPage === 'rumah_pendidikan' && <IframePage title="Rumah Pendidikan" src="https://rumah.pendidikan.go.id/ruang/murid" onNavigate={navigate} backTo="siswa" />}
-      {currentPage === 'bangkomar' && <IframePage title="Bangkomar" src="https://bangkomar.pasuruankab.go.id/" onNavigate={navigate} backTo="main" />}
-      {currentPage === 'game_generator' && <IframePage title="Game Generator" src="https://script.google.com/macros/s/AKfycbxg4OScIlFNDzkksUBfb5l6iYZqpRqPOoG94AazQESC0llZS5_nkHQIkJgNIUhNCzy21Q/exec" onNavigate={navigate} backTo="main" />}
-      {currentPage === 'edugame' && <IframePage title="Edugame" src="https://edugamev2.netlify.app/" onNavigate={navigate} backTo={user?.role === 'siswa' ? 'siswa' : 'main'} />}
+      {renderContent()}
     </div>
   );
 }

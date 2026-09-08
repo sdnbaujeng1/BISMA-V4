@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { HelpCircle, MessageCircle, Mail, ShieldAlert, Youtube, MapPin, MessageSquarePlus, X, Star, CheckCircle2, Instagram, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { safeStorage } from '../lib/storage';
 
 export default function HelpDeskFloat() {
   const [isOpen, setIsOpen] = useState(false);
@@ -53,7 +54,7 @@ export default function HelpDeskFloat() {
 
       // Fallback
       try {
-        const stored = localStorage.getItem('helpdesk_config');
+        const stored = safeStorage.getItem('helpdesk_config');
         if (stored) {
           setConfig(prev => ({ ...prev, ...JSON.parse(stored) }));
         }
@@ -64,7 +65,7 @@ export default function HelpDeskFloat() {
 
     const handleStorage = () => {
       try {
-        const stored = localStorage.getItem('helpdesk_config');
+        const stored = safeStorage.getItem('helpdesk_config');
         if (stored) {
           setConfig(prev => ({ ...prev, ...JSON.parse(stored) }));
         }

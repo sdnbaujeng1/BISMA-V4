@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { safeStorage } from "../lib/storage";
 import TabunganSampahAdmin from "./TabunganSampahAdmin";
 import KalenderAkademik from "./KalenderAkademik";
 import GeofencingAdmin from "./GeofencingAdmin";
@@ -51,6 +52,7 @@ interface AdminDashboardProps {
   onLogout: () => void;
   darkMode: boolean;
   toggleDarkMode: () => void;
+  onNavigate?: (page: string) => void;
 }
 
 export default function AdminDashboard({
@@ -58,6 +60,7 @@ export default function AdminDashboard({
   onLogout,
   darkMode,
   toggleDarkMode,
+  onNavigate,
 }: AdminDashboardProps) {
   const schoolIdentity = useSchoolIdentity();
   const [activeView, setActiveView] = useState("dashboard"); // 'monitoring', 'dashboard', 'input_guru', 'profile', 'color_config'
@@ -190,6 +193,15 @@ export default function AdminDashboard({
       shadow: "shadow-teal-200 dark:shadow-teal-900/20",
       action: () => setActiveView("cetak_kartu"),
     },
+    {
+      id: "pengaturan_qr_card",
+      title: "Pengaturan QR",
+      subtitle: "KATEGORI PRESENSI",
+      icon: Settings,
+      color: "bg-amber-500",
+      shadow: "shadow-amber-200 dark:shadow-amber-900/20",
+      action: () => setActiveView("pengaturan_qr"),
+    },
 
     {
       id: "import_master",
@@ -278,9 +290,12 @@ export default function AdminDashboard({
     switch (activeView) {
       case "cetak_kartu":
         return <CetakKartu />;
+      case "pengaturan_qr":
+        return <PengaturanQRView showToast={showToast} />;
       case "monitoring":
         return <MonitoringKBMView showToast={showToast} />;
       case "dashboard":
+      default:
         return (
           <div className="max-w-7xl mx-auto">
             <header className="mb-8 flex justify-between items-end">
@@ -446,8 +461,6 @@ export default function AdminDashboard({
             onHiddenConfig={() => setActiveView("visitor_config")}
           />
         );
-      default:
-        return null;
     }
   };
 
@@ -549,7 +562,7 @@ export default function AdminDashboard({
 
       {/* Sidebar */}
       <aside
-        className={`w-20 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col items-center py-6 z-40 shadow-sm transition-transform duration-300 fixed lg:relative h-full ${
+        className={`w-20 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col items-center py-6 z-40 shadow-sm transition-transform duration-300 fixed lg:relative h-full print:hidden ${
           isSidebarVisible
             ? "translate-x-0"
             : "-translate-x-full lg:translate-x-0"
@@ -626,9 +639,9 @@ export default function AdminDashboard({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto relative flex flex-col">
+      <main className="flex-1 overflow-y-auto relative flex flex-col print:overflow-visible">
         {/* Mobile Header */}
-        <div className="lg:hidden bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-4 flex items-center justify-between sticky top-0 z-20">
+        <div className="lg:hidden bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-4 flex items-center justify-between sticky top-0 z-20 print:hidden">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarVisible(true)}
@@ -645,7 +658,7 @@ export default function AdminDashboard({
           </div>
         </div>
 
-        <div className="p-4 md:p-8">{renderContent()}</div>
+        <div className="p-4 md:p-8 print:p-0">{renderContent()}</div>
       </main>
 
       {/* Modals */}
@@ -1272,7 +1285,7 @@ function ColorConfigView({
 
   useEffect(() => {
     // Load current color
-    const storedColor = localStorage.getItem("app_theme_color");
+    const storedColor = safeStorage.getItem("app_theme_color");
     if (storedColor) {
       setSelectedColor(storedColor);
     }
@@ -1300,8 +1313,8 @@ function ColorConfigView({
     setSelectedColor(colorId);
     setLoading(true);
 
-    // Save to localStorage
-    localStorage.setItem("app_theme_color", colorId);
+    // Save to safeStorage
+    safeStorage.setItem("app_theme_color", colorId);
 
     // Dispatch event for real-time updates in same window
     window.dispatchEvent(new Event("theme-color-change"));
@@ -3751,7 +3764,7 @@ function PengumumanModal({
   useEffect(() => {
     fetchAnnouncements();
 
-    const stored = localStorage.getItem("public_dashboard_data");
+    const stored = safeStorage.getItem("public_dashboard_data");
     if (stored) {
       const data = JSON.parse(stored);
       setAppName(data.appName || "BISMA");
@@ -3786,7 +3799,7 @@ function PengumumanModal({
   };
 
   const handleSaveApp = () => {
-    const stored = localStorage.getItem("public_dashboard_data");
+    const stored = safeStorage.getItem("public_dashboard_data");
     let data = stored
       ? JSON.parse(stored)
       : { kelas1: 0, kelas2: 0, kelas3: 0, kelas4: 0, kelas5: 0, kelas6: 0 };
@@ -3794,7 +3807,7 @@ function PengumumanModal({
     data.appName = appName;
     data.landingDesc = landingDesc;
 
-    localStorage.setItem("public_dashboard_data", JSON.stringify(data));
+    safeStorage.setItem("public_dashboard_data", JSON.stringify(data));
     showToast("Pengaturan aplikasi disimpan", "success");
     window.dispatchEvent(new Event("public-data-update"));
   };
@@ -4145,11 +4158,11 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
           if (data.sloganText) setSloganText(data.sloganText);
           if (data.sloganSpeed) setSloganSpeed(data.sloganSpeed);
 
-          // Also update localStorage for consistency
-          localStorage.setItem("school_identity_data", JSON.stringify(data));
+          // Also update safeStorage for consistency
+          safeStorage.setItem("school_identity_data", JSON.stringify(data));
         } else {
-          // Fallback to localStorage if API fails or returns empty
-          const stored = localStorage.getItem("school_identity_data");
+          // Fallback to safeStorage if API fails or returns empty
+          const stored = safeStorage.getItem("school_identity_data");
           if (stored) {
             const data = JSON.parse(stored);
             setSchoolName(data.schoolName || "Sekolah");
@@ -4171,8 +4184,8 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
         }
       } catch (error) {
         console.error("Failed to fetch settings", error);
-        // Fallback to localStorage on error
-        const stored = localStorage.getItem("school_identity_data");
+        // Fallback to safeStorage on error
+        const stored = safeStorage.getItem("school_identity_data");
         if (stored) {
           const data = JSON.parse(stored);
           setSchoolName(data.schoolName || "Sekolah");
@@ -4224,8 +4237,8 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
 
       const result = await res.json();
       if (result.success) {
-        // Update localStorage and dispatch event
-        localStorage.setItem("school_identity_data", JSON.stringify(data));
+        // Update safeStorage and dispatch event
+        safeStorage.setItem("school_identity_data", JSON.stringify(data));
         window.dispatchEvent(new Event("school-identity-update"));
         showToast("Pengaturan sekolah berhasil disimpan!");
         onClose();
@@ -4627,7 +4640,7 @@ function VisitorConfigView({
 
       // Fallback
       try {
-        const local = localStorage.getItem("visitor_config");
+        const local = safeStorage.getItem("visitor_config");
         if (local) {
           const parsed = JSON.parse(local);
           setConfig((prev: any) => ({
@@ -4649,7 +4662,7 @@ function VisitorConfigView({
   const handleSave = async () => {
     setLoading(true);
     try {
-      localStorage.setItem("visitor_config", JSON.stringify(config));
+      safeStorage.setItem("visitor_config", JSON.stringify(config));
       window.dispatchEvent(new Event("storage"));
 
       const fetchCurrent = await fetch("/api/helpdesk-config");
@@ -5056,7 +5069,7 @@ function HelpDeskConfigView({
       }
 
       try {
-        const stored = localStorage.getItem("helpdesk_config");
+        const stored = safeStorage.getItem("helpdesk_config");
         if (stored) {
           const parsed = JSON.parse(stored);
           setConfig((prev) => ({
@@ -5074,7 +5087,7 @@ function HelpDeskConfigView({
   const handleSave = async () => {
     setLoading(true);
     try {
-      localStorage.setItem("helpdesk_config", JSON.stringify(config));
+      safeStorage.setItem("helpdesk_config", JSON.stringify(config));
       window.dispatchEvent(new Event("storage"));
 
       const fetchCurrent = await fetch("/api/helpdesk-config");
@@ -5296,3 +5309,102 @@ function HelpDeskConfigView({
     </div>
   );
 }
+
+function PengaturanQRView({ showToast }: { showToast: (msg: string, type?: 'success' | 'error') => void }) {
+  const [jenisPresensiOptions, setJenisPresensiOptions] = React.useState<string[]>(['Pembiasaan Sholat', 'Ekstrakurikuler']);
+  const [ekskulOptions, setEkskulOptions] = React.useState<string[]>(['Pramuka', 'PMR', 'Paskibra']);
+  const [newJenis, setNewJenis] = React.useState('');
+  const [newEkskul, setNewEkskul] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    fetch('/api/pengaturan')
+      .then(res => res.json())
+      .then(res => {
+         if (res.success && res.data) {
+           try {
+             if (res.data.qr_jenis_presensi) setJenisPresensiOptions(JSON.parse(res.data.qr_jenis_presensi));
+             if (res.data.qr_ekskul_options) setEkskulOptions(JSON.parse(res.data.qr_ekskul_options));
+           } catch(e) {}
+         }
+      });
+  }, []);
+
+  const handleSave = async () => {
+     setLoading(true);
+     try {
+       await fetch('/api/pengaturan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+             qr_jenis_presensi: JSON.stringify(jenisPresensiOptions),
+             qr_ekskul_options: JSON.stringify(ekskulOptions)
+          })
+       });
+       showToast('Mapping Kategori Presensi berhasil disimpan!', 'success');
+     } catch(e) {
+       showToast('Gagal menyimpan mapping', 'error');
+     } finally {
+       setLoading(false);
+     }
+  };
+
+  const addJenis = () => { if (newJenis && !jenisPresensiOptions.includes(newJenis)) { setJenisPresensiOptions([...jenisPresensiOptions, newJenis]); setNewJenis(''); } };
+  const removeJenis = (j: string) => setJenisPresensiOptions(jenisPresensiOptions.filter(x => x !== j));
+
+  const addEkskul = () => { if (newEkskul && !ekskulOptions.includes(newEkskul)) { setEkskulOptions([...ekskulOptions, newEkskul]); setNewEkskul(''); } };
+  const removeEkskul = (e: string) => setEkskulOptions(ekskulOptions.filter(x => x !== e));
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
+      <header className="mb-8">
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Kategori Presensi QR Code</h2>
+        <p className="text-slate-500 dark:text-slate-400">Atur daftar aktivitas dan ekstrakurikuler yang muncul di menu Presensi QR</p>
+      </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Jenis Presensi */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+          <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Jenis Presensi Utama</h3>
+          <div className="flex gap-2 mb-4">
+            <input type="text" value={newJenis} onChange={(e) => setNewJenis(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addJenis()} placeholder="Contoh: Sholat Dhuha" className="flex-1 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2 bg-slate-50 dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
+            <button onClick={addJenis} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold transition-colors">Tambah</button>
+          </div>
+          <ul className="space-y-2 max-h-60 overflow-y-auto pr-2">
+            {jenisPresensiOptions.map(j => (
+              <li key={j} className="flex justify-between items-center bg-slate-50 dark:bg-slate-700/50 p-3 rounded-lg border border-slate-100 dark:border-slate-600">
+                <span className="text-slate-700 dark:text-slate-300 font-medium">{j}</span>
+                <button onClick={() => removeJenis(j)} className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 p-1.5 rounded-lg transition-colors"><X className="w-4 h-4" /></button>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Ekstrakurikuler */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+          <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Daftar Ekstrakurikuler</h3>
+          <p className="text-xs text-slate-500 mb-4">Hanya muncul jika jenis presensi adalah "Ekstrakurikuler"</p>
+          <div className="flex gap-2 mb-4">
+            <input type="text" value={newEkskul} onChange={(e) => setNewEkskul(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addEkskul()} placeholder="Contoh: Tari" className="flex-1 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2 bg-slate-50 dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
+            <button onClick={addEkskul} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold transition-colors">Tambah</button>
+          </div>
+          <ul className="space-y-2 max-h-60 overflow-y-auto pr-2">
+            {ekskulOptions.map(e => (
+              <li key={e} className="flex justify-between items-center bg-slate-50 dark:bg-slate-700/50 p-3 rounded-lg border border-slate-100 dark:border-slate-600">
+                <span className="text-slate-700 dark:text-slate-300 font-medium">{e}</span>
+                <button onClick={() => removeEkskul(e)} className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 p-1.5 rounded-lg transition-colors"><X className="w-4 h-4" /></button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="flex justify-end mt-8">
+        <button onClick={handleSave} disabled={loading} className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white px-8 py-3 rounded-xl font-bold transition-colors shadow-md flex items-center gap-2">
+          <Save className="w-5 h-5" /> {loading ? 'Menyimpan...' : 'Simpan Kategori Presensi'}
+        </button>
+      </div>
+    </div>
+  );
+}
+

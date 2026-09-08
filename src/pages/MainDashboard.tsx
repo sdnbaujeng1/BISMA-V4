@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import UnifiedAnnouncementCard from '../components/UnifiedAnnouncementCard';
 
 import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
+import { safeStorage } from '../lib/storage';
 
 export default function MainDashboard({ user, onLogout, onNavigate, darkMode, toggleDarkMode }: { user: any, onLogout: () => void, onNavigate: (page: string) => void, darkMode: boolean, toggleDarkMode: () => void }) {
   const [stats, setStats] = useState<any>(null);
@@ -51,11 +52,11 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
     }
 
     // Load theme
-    const storedColor = localStorage.getItem('app_theme_color');
+    const storedColor = safeStorage.getItem('app_theme_color');
     if (storedColor) setThemeColor(storedColor);
 
     const handleThemeChange = () => {
-      const newColor = localStorage.getItem('app_theme_color');
+      const newColor = safeStorage.getItem('app_theme_color');
       if (newColor) setThemeColor(newColor);
     };
 

@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 declare namespace JSX {
   interface IntrinsicElements {
-    marquee: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & { scrollAmount?: string };
+    marquee: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & { scrollAmount?: string; scrollamount?: string };
   }
 }

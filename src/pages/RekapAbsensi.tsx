@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { safeStorage } from '../lib/storage';
 
 export default function RekapAbsensi({ user, onNavigate }: { user: any, onNavigate: (page: string) => void }) {
   const [kelas, setKelas] = useState('');
@@ -40,7 +41,7 @@ export default function RekapAbsensi({ user, onNavigate }: { user: any, onNaviga
           if (data.headmasterName) setHeadmasterName(data.headmasterName);
           if (data.headmasterNIP) setHeadmasterNIP(data.headmasterNIP);
         } else {
-          const stored = localStorage.getItem('school_identity_data');
+          const stored = safeStorage.getItem('school_identity_data');
           if (stored) {
             const data = JSON.parse(stored);
             if (data.schoolName) setSchoolName(data.schoolName);
@@ -49,7 +50,7 @@ export default function RekapAbsensi({ user, onNavigate }: { user: any, onNaviga
           }
         }
       } catch (e) {
-        const stored = localStorage.getItem('school_identity_data');
+        const stored = safeStorage.getItem('school_identity_data');
         if (stored) {
           const data = JSON.parse(stored);
           if (data.schoolName) setSchoolName(data.schoolName);
