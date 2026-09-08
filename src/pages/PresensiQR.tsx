@@ -18,8 +18,9 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
   const [isLocationChecking, setIsLocationChecking] = useState(true);
   const [isGeofenceValid, setIsGeofenceValid] = useState(false);
 
-  useEffect(() => {
-    const checkGeofencing = async () => {
+  const checkGeofencing = async () => {
+      setIsLocationChecking(true);
+      setLocationError(null);
       try {
         const res = await fetch('/api/pengaturan?keys=geofence_lat,geofence_lng,geofence_radius,geofence_roles');
         const data = await res.json();
@@ -80,7 +81,7 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
               (error) => {
                 console.error("Geolocation error:", error);
                 if (error.code === error.PERMISSION_DENIED) {
-                  setLocationError("Izin lokasi ditolak. Tolong izinkan akses lokasi untuk melakukan absensi.");
+                  setLocationError("Akses lokasi (GPS) DITOLAK oleh browser.\n\nUntuk membuka akses:\n1. Klik ikon Gembok (🔒) atau logo pengaturan di kiri atas address bar.\n2. Cari 'Location' (Lokasi).\n3. Ubah dari Block/Tolak menjadi ALLOW / IZINKAN.\n\nAtau klik 'Lanjutkan Tanpa Lokasi' untuk abaikan pengecekan jarak.");
                 } else {
                   setLocationError("Tidak dapat mengambil lokasi Anda saat ini. Pastikan GPS aktif.");
                 }
@@ -107,6 +108,7 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
       }
     };
 
+  useEffect(() => {
     checkGeofencing();
   }, [user]);
 
@@ -122,21 +124,57 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
 
   const processPresensi = async (studentNisn: string) => {
     try {
+      // Parse QR code payload if it contains date/time data
+      let nisnToSearch = studentNisn;
+      let timestampToSave = new Date();
+      let extractedTimeStr = "";
+      
+      try {
+        // Coba parse jika formatnya JSON (misal: {"nisn":"123","time":"2026-09-07T10:00:00"})
+        const parsed = JSON.parse(studentNisn);
+        if (parsed.nisn || parsed.NISN) {
+          nisnToSearch = parsed.nisn || parsed.NISN;
+        }
+        if (parsed.time || parsed.timestamp || parsed.tanggal) {
+          const t = parsed.time || parsed.timestamp || parsed.tanggal;
+          timestampToSave = new Date(t);
+        }
+      } catch (e) {
+        // Jika bukan JSON, mungkin format string dengan separator, misal: 123456789|2026-09-07 10:00:00
+        if (studentNisn.includes('|')) {
+           const parts = studentNisn.split('|');
+           nisnToSearch = parts[0];
+           timestampToSave = new Date(parts[1]);
+        }
+      }
+
+      // Pastikan timestamp valid
+      if (isNaN(timestampToSave.getTime())) {
+         timestampToSave = new Date();
+      }
+
       // 1. Get student details
       const { data: studentData, error: studentError } = await supabase
         .from('murid')
         .select('"Nama Lengkap", "Kelas", "NISN", "NIS"')
-        .or(`"NISN".eq."${studentNisn}","NIS".eq."${studentNisn}"`)
+        .or(`"NISN".eq."${nisnToSearch}","NIS".eq."${nisnToSearch}"`)
         .single();
 
       if (studentError || !studentData) {
-        setErrorMsg(`Siswa dengan ID ${studentNisn} tidak ditemukan.`);
+        setErrorMsg(`Siswa dengan ID ${nisnToSearch} tidak ditemukan.`);
         setTimeout(() => setErrorMsg(''), 3000);
         return;
       }
 
       const namaSiswa = studentData['Nama Lengkap'];
-      const actualNisn = studentData['NISN'] || studentNisn;
+      const actualNisn = studentData['NISN'] || nisnToSearch;
+
+      // Format Waktu (Tanggal, Jam, Menit, Detik)
+      const options: Intl.DateTimeFormatOptions = { 
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+      };
+      const formattedTime = timestampToSave.toLocaleString('id-ID', options).replace(/\./g, ':');
 
       // 2. Save to database
       const { error: insertError } = await supabase.from('presensi_qr').insert([{
@@ -145,7 +183,7 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
         kelas: studentData.Kelas,
         jenis: jenisPresensi,
         detail: jenisPresensi === 'Ekstrakurikuler' ? ekstra : '',
-        timestamp: new Date().toISOString()
+        timestamp: timestampToSave.toISOString()
       }]);
 
       if (insertError) {
@@ -153,10 +191,10 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
         throw insertError;
       }
 
-      setSuccessMsg(`Berhasil: ${namaSiswa} (${studentData.Kelas})`);
-      setRekap([{ waktu: new Date().toLocaleTimeString('id-ID'), nama: namaSiswa, kelas: studentData.Kelas }, ...rekap]);
+      setSuccessMsg(`Berhasil: ${namaSiswa}\n${formattedTime}`);
+      setRekap([{ waktu: formattedTime, nama: namaSiswa, kelas: studentData.Kelas }, ...rekap]);
       
-      setTimeout(() => setSuccessMsg(''), 3000);
+      setTimeout(() => setSuccessMsg(''), 4000);
 
     } catch (err) {
       console.error('Error processing presensi:', err);
@@ -205,11 +243,19 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
               <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full flex items-center justify-center mb-4">
                 <AlertTriangle className="w-8 h-8" />
               </div>
-              <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Terkendala Lokasi</h3>
-              <p className="text-slate-600 dark:text-slate-400 max-w-md mx-auto">{locationError}</p>
-              <button onClick={() => window.location.reload()} className="mt-6 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold py-2 px-6 rounded-xl transition-colors">
-                Coba Lagi
-              </button>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Akses Lokasi & Kamera Diperlukan</h3>
+              <div className="text-slate-600 dark:text-slate-400 max-w-lg mx-auto text-left bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                <p className="whitespace-pre-line leading-relaxed">{locationError}</p>
+              </div>
+              <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center w-full">
+                <button onClick={() => checkGeofencing()} className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-md flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-5 h-5" />
+                  Coba Lagi
+                </button>
+                <button onClick={() => { setLocationError(null); setIsGeofenceValid(true); }} className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold py-3 px-6 rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2">
+                  Lanjutkan Tanpa Lokasi
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -251,7 +297,16 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
                     <div className="w-full h-full object-cover">
                       <Scanner
                         onScan={handleScanResult}
-                        onError={(error) => console.error(error)}
+                        onError={(error: any) => {
+                          console.error("Camera error:", error);
+                          if (error && error.name === 'NotAllowedError') {
+                             setScanning(false);
+                             alert("Akses kamera ditolak. Silakan klik ikon gembok 🔒 di address bar browser Anda, pilih 'Allow' atau 'Izinkan' pada Camera, lalu muat ulang halaman.");
+                          } else {
+                             setErrorMsg("Gagal mengakses kamera. " + (error?.message || ""));
+                             setTimeout(() => setErrorMsg(''), 4000);
+                          }
+                        }}
                         components={{
                           onOff: false,
                           torch: true,
@@ -276,7 +331,7 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
                         className="absolute inset-0 bg-green-500/90 flex flex-col items-center justify-center text-white z-10"
                       >
                         <CheckCircle2 className="w-20 h-20 mb-4" />
-                        <p className="text-xl font-bold text-center px-4">{successMsg}</p>
+                        <p className="text-xl font-bold text-center px-4 whitespace-pre-line">{successMsg}</p>
                       </motion.div>
                     )}
                     {errorMsg && (
@@ -338,7 +393,7 @@ export default function PresensiQR({ user, onNavigate }: { user: any, onNavigate
                   <table className="w-full text-sm">
                     <thead className="bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 sticky top-0">
                       <tr>
-                        <th className="p-3 text-left w-32">Waktu</th>
+                        <th className="p-3 text-left w-48">Tanggal & Waktu</th>
                         <th className="p-3 text-left">Nama</th>
                         <th className="p-3 text-center w-24">Kelas</th>
                       </tr>

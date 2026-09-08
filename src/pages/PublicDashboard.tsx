@@ -1,10 +1,12 @@
-import { ResponsiveContainer, ScatterChart, CartesianGrid, XAxis, YAxis, Scatter, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, ScatterChart, CartesianGrid, XAxis, YAxis, Scatter, PieChart, Pie, Cell, Tooltip, Legend, ZAxis } from 'recharts';
 import { useEffect, useState } from 'react';
 import { AlertCircle, X, LogIn, BookOpen, Calculator, Sun, Moon, Users, GraduationCap, Clock, Backpack, CheckCircle2, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
 import HelpDeskFloat from '../components/HelpDeskFloat';
 import { supabase } from '../lib/supabase';
+
+const Marquee = "marquee" as any;
 
 export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }: { onNavigate: (page: string) => void, darkMode: boolean, toggleDarkMode: () => void }) {
   const [data, setData] = useState<any>(null);
@@ -231,9 +233,9 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
                 <div className="relative z-10">
                   <h3 className="text-lg font-bold mb-1 drop-shadow-md">Informasi Terkini</h3>
                   <div className="w-full bg-black/10 rounded-full py-1.5 px-3 mb-4 overflow-hidden flex items-center shadow-inner border border-white/10">
-                    <marquee className="text-blue-100 text-xs sm:text-sm italic font-medium tracking-wide" scrollAmount={schoolIdentity.sloganSpeed || "3"}>
+                    <Marquee className="text-blue-100 text-xs sm:text-sm italic font-medium tracking-wide" scrollAmount={schoolIdentity.sloganSpeed || "3"}>
                       {schoolIdentity.sloganText || "✨ Beriman, Ramah, Mandiri, Unggul dan Tangguh ✨"}
-                    </marquee>
+                    </Marquee>
                   </div>
                   <p className="text-blue-100 text-sm mb-4 font-medium">{new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
                   <div className="flex items-center gap-2 text-xs font-bold bg-white/20 w-fit px-3 py-1 rounded-full backdrop-blur-sm shadow-inner border border-white/10">

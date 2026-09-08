@@ -191,7 +191,7 @@ export default function App() {
       {currentPage === 'kasih_ibu_guru' && <KasihIbuGuru user={user} onNavigate={navigate} />}
       {currentPage === 'nilai_guru' && <NilaiGuru user={user} onNavigate={navigate} />}
       {currentPage === 'chatbot' && <ChatbotPage onNavigate={navigate} />}
-      {currentPage === 'rpp_generator' && <IframePage title="RPP Generator AI" src="https://script.google.com/macros/s/AKfycbwRR7Mu7zJnQhTmRzGZmb-B4oVYmkMdmpgk30YMJF3GXhdWKRiQ_k4krLgsdmFI-hXGLw/exec" onNavigate={navigate} backTo="main" />}
+      {currentPage === 'rpp_generator' && <IframePage title="RPP Generator AI" src="https://sigmabai.netlify.app/" onNavigate={navigate} backTo="main" />}
       {currentPage === 'kasih_ibu' && <IframePage title="Kasih Ibu" src="https://script.google.com/macros/s/AKfycbwcbvTOoHrgsoWsLgu9db49Po6R7NkqE5BfjCbInPUw2mz9uiDbRCOxesqbh4xT1k7M/exec" onNavigate={navigate} backTo="siswa" />}
       {currentPage === 'galeri_kegiatan' && <IframePage title="Galeri Kegiatan" src="https://www.sdnbaujeng1.sch.id/" onNavigate={navigate} backTo="main" />}
       {currentPage === 'rumah_pendidikan' && <IframePage title="Rumah Pendidikan" src="https://rumah.pendidikan.go.id/ruang/murid" onNavigate={navigate} backTo="siswa" />}

@@ -4,6 +4,7 @@ import KalenderAkademik from "./KalenderAkademik";
 import GeofencingAdmin from "./GeofencingAdmin";
 import KasihIbuAdmin from "./KasihIbuAdmin";
 import EkskulMappingView from "./EkskulMappingView";
+import CetakKartu from "./CetakKartu";
 import {
   Palette,
   Recycle,
@@ -40,6 +41,7 @@ import {
   HelpCircle,
   Activity,
   Target,
+  IdCard,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useSchoolIdentity } from "../hooks/useSchoolIdentity";
@@ -124,6 +126,7 @@ export default function AdminDashboard({
     { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { id: "input_guru", icon: UserPlus, label: "Input Guru Baru" },
     { id: "tabungan_sampah", icon: Trash2, label: "Tabungan Sampah" },
+    { id: "cetak_kartu", icon: IdCard, label: "Cetak Kartu Siswa" },
     { id: "kasih_ibu", icon: Heart, label: schoolIdentity.kasihIbuLabel || "Kasih Ibu" },
     { id: "kalender_akademik", icon: Calendar, label: "Kalender Akademik" },
     { id: "geofencing", icon: MapPin, label: "Geofencing" },
@@ -178,6 +181,16 @@ export default function AdminDashboard({
       shadow: "shadow-fuchsia-200 dark:shadow-fuchsia-900/20",
       action: () => setActiveView("ekskul_mapping"),
     },
+    {
+      id: "cetak_kartu_card",
+      title: "Cetak Kartu Siswa",
+      subtitle: "ID CARD QR",
+      icon: IdCard,
+      color: "bg-teal-500",
+      shadow: "shadow-teal-200 dark:shadow-teal-900/20",
+      action: () => setActiveView("cetak_kartu"),
+    },
+
     {
       id: "import_master",
       title: "Import Master",
@@ -263,6 +276,8 @@ export default function AdminDashboard({
 
   const renderContent = () => {
     switch (activeView) {
+      case "cetak_kartu":
+        return <CetakKartu />;
       case "monitoring":
         return <MonitoringKBMView showToast={showToast} />;
       case "dashboard":
