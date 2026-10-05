@@ -266,7 +266,7 @@ export default function App() {
       case 'bangkomar':
         return <IframePage title="Bangkomar" src="https://bangkomar.pasuruankab.go.id/" onNavigate={navigate} backTo={user?.role === 'siswa' ? 'siswa' : 'main'} />;
       case 'game_generator':
-        return <IframePage title="Game Generator" src="https://script.google.com/macros/s/AKfycbxg4OScIlFNDzkksUBfb5l6iYZqpRqPOoG94AazQESC0llZS5_nkHQIkJgNIUhNCzy21Q/exec" onNavigate={navigate} backTo={user?.role === 'siswa' ? 'siswa' : 'main'} />;
+        return <IframePage title="Game Generator" src="https://gamegenerator.ai.studio/" onNavigate={navigate} backTo={user?.role === 'siswa' ? 'siswa' : 'main'} />;
       case 'edugame':
         return <IframePage title="Edugame" src="https://edugamev2.netlify.app/" onNavigate={navigate} backTo={user?.role === 'siswa' ? 'siswa' : 'main'} />;
       default:
