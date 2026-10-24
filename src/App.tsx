@@ -24,6 +24,7 @@ import KasihIbuGuru from './pages/KasihIbuGuru';
 import NilaiGuru from './pages/NilaiGuru';
 
 import MonitoringDashboard from './pages/MonitoringDashboard';
+import SupervisiModule from './components/supervisi/SupervisiModule';
 
 import { supabase } from './lib/supabase';
 
@@ -269,6 +270,14 @@ export default function App() {
         return <IframePage title="Game Generator" src="https://gamegenerator.ai.studio/" onNavigate={navigate} backTo={user?.role === 'siswa' ? 'siswa' : 'main'} />;
       case 'edugame':
         return <IframePage title="Edugame" src="https://edugamev2.netlify.app/" onNavigate={navigate} backTo={user?.role === 'siswa' ? 'siswa' : 'main'} />;
+      case 'supervisi_akademik':
+      case 'supervisi':
+        return (
+          <SupervisiModule
+            user={user}
+            onBackToBisma={() => navigate(user?.role === 'admin' ? 'admin' : 'main')}
+          />
+        );
       default:
         // Absolute fallback to ensure the screen NEVER displays blank
         if (user?.role === 'admin') {

@@ -78,10 +78,16 @@ export default function UnifiedAnnouncementCard({ type = 'public', guruName, nip
     ? new Date(latestJournal.timestamp).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
     : new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   
+  const formatKelas = (k: any) => {
+    const s = String(k ?? '').trim();
+    if (!s) return '-';
+    return /^kelas\b/i.test(s) ? s.replace(/^kelas\s*/i, 'Kelas ') : `Kelas ${s}`;
+  };
+
   const displayContent = isGuruMode 
     ? (
         <div>
-          <div className="font-bold text-lg mb-1">{latestJournal.mata_pelajaran} - Kelas {latestJournal.kelas}</div>
+          <div className="font-bold text-lg mb-1">{latestJournal.mata_pelajaran} - {formatKelas(latestJournal.kelas)}</div>
           <div className="text-blue-100 text-sm opacity-90 line-clamp-2">
             {(() => {
               try {
@@ -147,7 +153,7 @@ export default function UnifiedAnnouncementCard({ type = 'public', guruName, nip
               >
                 {isGuruMode ? (
                   <div>
-                    <div className="font-bold text-sm sm:text-lg mb-1 leading-tight">{latestJournal.mata_pelajaran} - Kelas {latestJournal.kelas}</div>
+                    <div className="font-bold text-sm sm:text-lg mb-1 leading-tight">{latestJournal.mata_pelajaran} - {formatKelas(latestJournal.kelas)}</div>
                     <div className="text-blue-100 text-xs sm:text-sm opacity-90 line-clamp-2 sm:line-clamp-3">
                       {(() => {
                         try {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bell, LogOut, CalendarCheck, BarChart2, FilePenLine, Printer, UserCheck, ClipboardCheck, ShieldAlert, QrCode, NotebookPen, HeartHandshake, GalleryThumbnails, Check, X, LayoutDashboard, Settings, BookOpen, Sun, Moon, Trash2, ArrowLeft, User, Info, MessageSquare, XCircle, Send, FileSpreadsheet, Gamepad, Gamepad2, Globe } from 'lucide-react';
+import { Bell, LogOut, CalendarCheck, BarChart2, FilePenLine, Printer, UserCheck, ClipboardCheck, ShieldAlert, QrCode, NotebookPen, HeartHandshake, GalleryThumbnails, Check, X, LayoutDashboard, Settings, BookOpen, Sun, Moon, Trash2, ArrowLeft, User, Info, MessageSquare, XCircle, Send, FileSpreadsheet, Gamepad, Gamepad2, Globe, Award, BookOpenCheck, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import UnifiedAnnouncementCard from '../components/UnifiedAnnouncementCard';
 
@@ -107,8 +107,31 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
 
   const [showAllMenu, setShowAllMenu] = useState(false);
 
+  const supervisiRoleConfig =
+    user?.role === 'tendik'
+      ? {
+          icon: Award,
+          label: 'Supervisi',
+          gradient: 'from-indigo-500 to-blue-700',
+          shadow: 'shadow-indigo-500/40'
+        }
+      : user?.role === 'admin'
+      ? {
+          icon: ShieldCheck,
+          label: 'Supervisi',
+          gradient: 'from-blue-600 to-indigo-800',
+          shadow: 'shadow-blue-600/40'
+        }
+      : {
+          icon: BookOpenCheck,
+          label: 'Supervisi',
+          gradient: 'from-sky-500 to-blue-700',
+          shadow: 'shadow-sky-500/40'
+        };
+
   const menuItems = [
     { id: 'jurnal', icon: FilePenLine, label: 'Isi Jurnal', gradient: 'from-green-400 to-green-600', shadow: 'shadow-green-500/40', roles: ['guru'] },
+    { id: 'supervisi_akademik', icon: supervisiRoleConfig.icon, label: supervisiRoleConfig.label, gradient: supervisiRoleConfig.gradient, shadow: supervisiRoleConfig.shadow, roles: ['guru', 'tendik', 'admin'] },
     { id: 'presensi_qr', icon: QrCode, label: 'Scan QR', gradient: 'from-purple-400 to-purple-600', shadow: 'shadow-purple-500/40', roles: ['guru', 'tendik'] },
     { id: 'tugas_guru', icon: ClipboardCheck, label: 'Tugas', gradient: 'from-blue-400 to-blue-600', shadow: 'shadow-blue-500/40', roles: ['guru'] },
     { id: 'nilai_guru', icon: FileSpreadsheet, label: 'Nilai', gradient: 'from-fuchsia-400 to-fuchsia-600', shadow: 'shadow-fuchsia-500/40', roles: ['guru'] },
@@ -118,7 +141,6 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
     { id: 'kedisiplinan', icon: ShieldAlert, label: 'Kedisiplinan', gradient: 'from-red-400 to-red-600', shadow: 'shadow-red-500/40', roles: ['guru', 'tendik'] },
     { id: 'bank_sampah_guru', icon: Trash2, label: 'Bank Sampah', gradient: 'from-emerald-400 to-emerald-600', shadow: 'shadow-emerald-500/40', roles: ['guru', 'tendik'] },
     { id: 'edugame', url: 'https://edugamev2.netlify.app/', icon: Gamepad, label: 'Edugame', gradient: 'from-green-400 to-emerald-600', shadow: 'shadow-green-500/40', roles: ['guru', 'tendik'] },
-    // Hidden by default
     { id: 'laporan', icon: Printer, label: 'Cetak', gradient: 'from-teal-400 to-teal-600', shadow: 'shadow-teal-500/40', roles: ['guru', 'tendik'] },
     { id: 'keterlaksanaan_kbm', icon: ClipboardCheck, label: 'Keterlaksanaan', gradient: 'from-blue-400 to-blue-600', shadow: 'shadow-blue-500/40', roles: ['guru'] },
     { id: 'rpp_generator', icon: NotebookPen, label: 'RPP', gradient: 'from-indigo-400 to-indigo-600', shadow: 'shadow-indigo-500/40', roles: ['guru'] },
@@ -231,23 +253,41 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
                     )}
                   </div>
 
-                  {/* Tendik Quick Action: Presensi QR */}
-                  <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl shadow-md p-4 text-white flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2.5 bg-white/20 rounded-xl">
-                        <QrCode className="w-5 h-5 text-white" />
+                  {/* Tendik Quick Action: Presensi QR & Supervisi Akademik KS */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl shadow-md p-4 text-white flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-white/20 rounded-xl">
+                          <QrCode className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-sm">Scan QR Presensi Siswa</h4>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-sm">Scan QR Presensi Siswa</h4>
-                        <p className="text-xs text-purple-100">Buka kamera untuk scan kartu kehadiran & pembiasaan</p>
-                      </div>
+                      <button
+                        onClick={() => onNavigate('presensi_qr')}
+                        className="bg-white text-purple-700 hover:bg-purple-50 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer shrink-0 ml-2"
+                      >
+                        Buka Pemindai
+                      </button>
                     </div>
-                    <button
-                      onClick={() => onNavigate('presensi_qr')}
-                      className="bg-white text-purple-700 hover:bg-purple-50 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer shrink-0 ml-2"
-                    >
-                      Buka Pemindai
-                    </button>
+
+                    <div className="bg-gradient-to-r from-indigo-700 to-blue-900 rounded-2xl shadow-md p-4 text-white flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-white/20 rounded-xl">
+                          <Award className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-sm">Supervisi</h4>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => onNavigate('supervisi_akademik')}
+                        className="bg-white text-blue-900 hover:bg-blue-50 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer shrink-0 ml-2"
+                      >
+                        Supervisi
+                      </button>
+                    </div>
                   </div>
 
                   <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-5 border border-slate-100 dark:border-slate-700">
@@ -326,13 +366,22 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
                       <h3 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                         <CalendarCheck className={`w-5 h-5 ${currentTheme.text}`} /> Jadwal Hari Ini
                       </h3>
-                      <button
-                        onClick={() => onNavigate('presensi_qr')}
-                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 dark:hover:bg-purple-900/60 transition-colors cursor-pointer"
-                      >
-                        <QrCode className="w-3.5 h-3.5" />
-                        Scan Presensi Siswa
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => onNavigate('supervisi_akademik')}
+                          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-blue-100 hover:bg-blue-200 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900/60 transition-colors cursor-pointer"
+                        >
+                          <BookOpenCheck className="w-3.5 h-3.5" />
+                          Supervisi
+                        </button>
+                        <button
+                          onClick={() => onNavigate('presensi_qr')}
+                          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 dark:hover:bg-purple-900/60 transition-colors cursor-pointer"
+                        >
+                          <QrCode className="w-3.5 h-3.5" />
+                          Scan Presensi Siswa
+                        </button>
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {!stats ? (

@@ -986,7 +986,7 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                       {data.details.keterlaksanaan.map((k: any, idx: number) => (
                         <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
-                          <td className="py-2 px-3 font-bold">Kelas {k.kelas}</td>
+                          <td className="py-2 px-3 font-bold">{/^kelas\b/i.test(String(k.kelas || '').trim()) ? String(k.kelas).trim().replace(/^kelas\s*/i, 'Kelas ') : `Kelas ${k.kelas}`}</td>
                           <td className="py-2 px-3 text-center text-emerald-600 dark:text-emerald-400 font-medium">{k.done}</td>
                           <td className="py-2 px-3 text-center">{k.total}</td>
                           <td className="py-2 px-3 text-right font-bold">{k.percentage}%</td>
@@ -1011,7 +1011,7 @@ export default function MonitoringDashboard({ onLogout }: { onLogout: () => void
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                       {data.details.kebersihan.sort((a: any, b: any) => b.skor - a.skor).map((k: any, idx: number) => (
                         <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
-                          <td className="py-2 px-3 font-bold">Kelas {k.kelas}</td>
+                          <td className="py-2 px-3 font-bold">{/^kelas\b/i.test(String(k.kelas || '').trim()) ? String(k.kelas).trim().replace(/^kelas\s*/i, 'Kelas ') : `Kelas ${k.kelas}`}</td>
                           <td className="py-2 px-3 text-right font-medium text-emerald-600 dark:text-emerald-400">{k.skor}</td>
                         </tr>
                       ))}

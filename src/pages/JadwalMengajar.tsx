@@ -178,7 +178,7 @@ export default function JadwalMengajar({ user, onNavigate }: { user: any, onNavi
                         <h4 className="font-bold text-slate-800 dark:text-white truncate" title={item.mapel}>{item.mapel}</h4>
                         <div className="flex items-center gap-3 mt-1 text-xs text-slate-500 dark:text-slate-400">
                           <span className="flex items-center gap-1 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-md shadow-sm border border-slate-100 dark:border-slate-700">
-                            <MapPin className="w-3 h-3 text-red-400" /> Kelas {item.kelas}
+                            <MapPin className="w-3 h-3 text-red-400" /> {/^kelas\b/i.test(String(item.kelas || '').trim()) ? String(item.kelas).trim().replace(/^kelas\s*/i, 'Kelas ') : `Kelas ${item.kelas}`}
                           </span>
                           <span className="flex items-center gap-1 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-md shadow-sm border border-slate-100 dark:border-slate-700">
                             <Clock className="w-3 h-3 text-orange-400" /> {item.totalJP} JP

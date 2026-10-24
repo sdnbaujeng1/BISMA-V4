@@ -373,7 +373,7 @@ export default function KasihIbuGuru({ user, onNavigate }: { user: any, onNaviga
             <Gift className="w-5 h-5" /> Tukar Poin
           </button>
           <div className="bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-sm">
-            <Heart className="w-5 h-5" /> Wali Kelas {user?.waliKelas || ''}
+            <Heart className="w-5 h-5" /> Wali {/^kelas\b/i.test(String(user?.waliKelas || '').trim()) ? String(user.waliKelas).trim().replace(/^kelas\s*/i, 'Kelas ') : `Kelas ${user?.waliKelas || ''}`.trim()}
           </div>
         </div>
       </header>

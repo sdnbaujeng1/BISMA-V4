@@ -180,13 +180,16 @@ export default function PublicDashboard({ onNavigate, darkMode, toggleDarkMode }
               </div>
             </div>
 
-            <div>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-800 dark:text-white tracking-tight leading-tight uppercase flex items-center gap-1.5">
-                <span className="bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent">
-                  {data?.appName || schoolIdentity.appName || "BISMA"}
-                </span>
-              </h1>
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">
+            <div className="flex flex-col justify-center min-w-0">
+              <div className="flex items-center mb-0.5">
+                <img
+                  src={schoolIdentity.bismaLogoUrl || data?.bismaLogoUrl || "https://lh3.googleusercontent.com/d/1k2MibT1XHlAWHbFOQo80Cj4Lp5ZMeMLT"}
+                  alt={data?.appName || schoolIdentity.appName || "BISMA"}
+                  referrerPolicy="no-referrer"
+                  className="h-6 sm:h-7 md:h-8 lg:h-9 w-auto max-w-[140px] sm:max-w-[180px] md:max-w-[220px] object-contain object-left select-none"
+                />
+              </div>
+              <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">
                 {schoolIdentity.schoolName}
               </p>
             </div>

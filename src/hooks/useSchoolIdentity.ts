@@ -7,7 +7,15 @@ export interface SchoolIdentity {
   headmasterName: string;
   headmasterNIP: string;
   schoolLogo: string;
+  bismaLogoUrl?: string;
   logo1x1?: string;
+  logoKabupaten?: string;
+  kopHeaderLine1?: string;
+  kopHeaderLine2?: string;
+  schoolAddress?: string;
+  subdistrict?: string;
+  district?: string;
+  province?: string;
   kasihIbuLabel: string;
   sloganText?: string;
   sloganSpeed?: string;
@@ -21,7 +29,15 @@ export function useSchoolIdentity() {
     headmasterName: "AKHMAD NASOR, S.Pd",
     headmasterNIP: "198704082019031001",
     schoolLogo: "https://lh3.googleusercontent.com/d/1VSxiSJ43i0sOp-hjn2QaqlFPqRl3A5AL",
+    bismaLogoUrl: "https://lh3.googleusercontent.com/d/1k2MibT1XHlAWHbFOQo80Cj4Lp5ZMeMLT",
     logo1x1: "https://lh3.googleusercontent.com/d/1VSxiSJ43i0sOp-hjn2QaqlFPqRl3A5AL",
+    logoKabupaten: "/assets/logo-kab-pasuruan.png",
+    kopHeaderLine1: "PEMERINTAH KABUPATEN PASURUAN",
+    kopHeaderLine2: "DINAS PENDIDIKAN",
+    schoolAddress: "Jl. Balai Desa Baujeng No. 01 Desa Baujeng, Kecamatan Beji, Kabupaten Pasuruan",
+    subdistrict: "Kecamatan Beji",
+    district: "Kabupaten Pasuruan",
+    province: "Jawa Timur",
     kasihIbuLabel: "Kasih Ibu",
     sloganText: "BERMUTU ✨ Beriman, Ramah, Mandiri, Unggul dan Tangguh ✨",
     sloganSpeed: "3",
@@ -41,7 +57,15 @@ export function useSchoolIdentity() {
             headmasterName: data.headmasterName || "AKHMAD NASOR, S.Pd",
             headmasterNIP: data.headmasterNIP || "198704082019031001",
             schoolLogo: data.logo1x1 || "https://lh3.googleusercontent.com/d/1VSxiSJ43i0sOp-hjn2QaqlFPqRl3A5AL",
+            bismaLogoUrl: data.bismaLogoUrl || "https://lh3.googleusercontent.com/d/1k2MibT1XHlAWHbFOQo80Cj4Lp5ZMeMLT",
             logo1x1: data.logo1x1 || "https://lh3.googleusercontent.com/d/1VSxiSJ43i0sOp-hjn2QaqlFPqRl3A5AL",
+            logoKabupaten: data.logoKabupaten || "/assets/logo-kab-pasuruan.png",
+            kopHeaderLine1: data.kopHeaderLine1 || "PEMERINTAH KABUPATEN PASURUAN",
+            kopHeaderLine2: data.kopHeaderLine2 || "DINAS PENDIDIKAN",
+            schoolAddress: data.schoolAddress || "Jl. Balai Desa Baujeng No. 01 Desa Baujeng, Kecamatan Beji, Kabupaten Pasuruan",
+            subdistrict: data.subdistrict || "Kecamatan Beji",
+            district: data.district || "Kabupaten Pasuruan",
+            province: data.province || "Jawa Timur",
             kasihIbuLabel: data.kasih_ibu_label || data.kasih_ibu_name || "Kasih Ibu",
             sloganText: data.sloganText || "BERMUTU ✨ Beriman, Ramah, Mandiri, Unggul dan Tangguh ✨",
             sloganSpeed: data.sloganSpeed || "3",
@@ -74,7 +98,15 @@ export function useSchoolIdentity() {
               headmasterName: data.headmasterName || "AKHMAD NASOR, S.Pd",
               headmasterNIP: data.headmasterNIP || "198704082019031001",
               schoolLogo: data.logo1x1 || data.schoolLogo || "https://lh3.googleusercontent.com/d/1VSxiSJ43i0sOp-hjn2QaqlFPqRl3A5AL",
+              bismaLogoUrl: data.bismaLogoUrl || "https://lh3.googleusercontent.com/d/1k2MibT1XHlAWHbFOQo80Cj4Lp5ZMeMLT",
               logo1x1: data.logo1x1 || data.schoolLogo || "https://lh3.googleusercontent.com/d/1VSxiSJ43i0sOp-hjn2QaqlFPqRl3A5AL",
+              logoKabupaten: data.logoKabupaten || "/assets/logo-kab-pasuruan.png",
+              kopHeaderLine1: data.kopHeaderLine1 || "PEMERINTAH KABUPATEN PASURUAN",
+              kopHeaderLine2: data.kopHeaderLine2 || "DINAS PENDIDIKAN",
+              schoolAddress: data.schoolAddress || "Jl. Balai Desa Baujeng No. 01 Desa Baujeng, Kecamatan Beji, Kabupaten Pasuruan",
+              subdistrict: data.subdistrict || "Kecamatan Beji",
+              district: data.district || "Kabupaten Pasuruan",
+              province: data.province || "Jawa Timur",
               kasihIbuLabel: data.kasih_ibu_label || data.kasihIbuLabel || "Kasih Ibu",
               sloganText: data.sloganText || "BERMUTU ✨ Beriman, Ramah, Mandiri, Unggul dan Tangguh ✨",
               sloganSpeed: data.sloganSpeed || "3",

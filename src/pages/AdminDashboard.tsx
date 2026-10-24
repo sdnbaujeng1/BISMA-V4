@@ -6,6 +6,8 @@ import GeofencingAdmin from "./GeofencingAdmin";
 import KasihIbuAdmin from "./KasihIbuAdmin";
 import EkskulMappingView from "./EkskulMappingView";
 import CetakKartu from "./CetakKartu";
+import SupervisiModule from "../components/supervisi/SupervisiModule";
+import SupervisiPengaturanAdmin from "../components/supervisi/SupervisiPengaturanAdmin";
 import {
   Palette,
   Recycle,
@@ -45,9 +47,12 @@ import {
   IdCard,
   RotateCcw,
   BarChart3,
+  ShieldCheck,
+  FileCode2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useSchoolIdentity } from "../hooks/useSchoolIdentity";
+import PromptSummaryModal from "../components/PromptSummaryModal";
 
 interface AdminDashboardProps {
   user: any;
@@ -81,6 +86,7 @@ export default function AdminDashboard({
     window.innerWidth >= 1024,
   );
   const [adminHeaderClicks, setAdminHeaderClicks] = useState(0);
+  const [showPromptModal, setShowPromptModal] = useState(false);
 
   const handleAdminHeaderClick = () => {
     const next = adminHeaderClicks + 1;
@@ -143,6 +149,8 @@ export default function AdminDashboard({
   const menuItems = [
     { id: "monitoring", icon: Table, label: "KBM Hari Ini" },
     { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { id: "supervisi_akademik", icon: ShieldCheck, label: "Supervisi" },
+    { id: "pengaturan_bisma_plus", icon: Settings, label: "Pengaturan (BISMA +)" },
     { id: "input_guru", icon: UserPlus, label: "Input Guru Baru" },
     { id: "tabungan_sampah", icon: Trash2, label: "Tabungan Sampah" },
     { id: "cetak_kartu", icon: IdCard, label: "Cetak Kartu Siswa" },
@@ -152,9 +160,28 @@ export default function AdminDashboard({
     { id: "ekskul_mapping", icon: Target, label: "Mapping Ekstrakurikuler" },
     { id: "color_config", icon: Palette, label: "Konfigurasi Warna" },
     { id: "api_config", icon: Key, label: "Konfigurasi API" },
+    { id: "ringkasan_prompt", icon: FileCode2, label: "Ringkasan Prompt (JSON & JS)" },
   ];
 
   const adminCards = [
+    {
+      id: "supervisi_akademik_card",
+      title: "Supervisi",
+      subtitle: "SUPERVISI AKADEMIK",
+      icon: ShieldCheck,
+      color: "bg-blue-800",
+      shadow: "shadow-blue-200 dark:shadow-blue-900/20",
+      action: () => setActiveView("supervisi_akademik"),
+    },
+    {
+      id: "pengaturan_bisma_plus_card",
+      title: "Pengaturan (BISMA +)",
+      subtitle: "KOP, LOGO, KUNCI 3D & API",
+      icon: Settings,
+      color: "bg-indigo-700",
+      shadow: "shadow-indigo-200 dark:shadow-indigo-900/20",
+      action: () => setActiveView("pengaturan_bisma_plus"),
+    },
     {
       id: "tabungan_sampah_card",
       title: "Tabungan Sampah",
@@ -300,12 +327,54 @@ export default function AdminDashboard({
       shadow: "shadow-slate-200 dark:shadow-slate-900/20",
       action: () => setActiveModal("pengaturan"),
     },
+    {
+      id: "ringkasan_prompt",
+      title: "Ringkasan Prompt",
+      subtitle: "JSON & JS DOWNLOAD",
+      icon: FileCode2,
+      color: "bg-emerald-600",
+      shadow: "shadow-emerald-200 dark:shadow-emerald-900/20",
+      action: () => setShowPromptModal(true),
+    },
   ];
 
   const renderContent = () => {
     switch (activeView) {
       case "cetak_kartu":
         return <CetakKartu />;
+      case "supervisi_akademik":
+        return (
+          <SupervisiModule
+            user={user}
+            onBackToBisma={() => setActiveView("dashboard")}
+            embeddedInAdmin={true}
+          />
+        );
+      case "pengaturan_bisma_plus":
+        return (
+          <div className="max-w-6xl mx-auto space-y-4">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setActiveView("dashboard")}
+                className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-extrabold border-b-4 border-slate-950 cursor-pointer"
+              >
+                ← Kembali ke Dashboard Admin
+              </button>
+              <button
+                onClick={() => setActiveView("supervisi_akademik")}
+                className="px-4 py-2 rounded-xl bg-blue-700 text-white text-xs font-extrabold border-b-4 border-blue-950 cursor-pointer"
+              >
+                Buka Modul (BISMA +) →
+              </button>
+            </div>
+            <SupervisiPengaturanAdmin
+              onSaved={() => {
+                showToast("Pengaturan (BISMA +) berhasil disimpan ke database!", "success");
+                window.dispatchEvent(new Event("school-identity-update"));
+              }}
+            />
+          </div>
+        );
       case "pengaturan_qr":
         return <PengaturanQRView showToast={showToast} />;
       case "monitoring":
@@ -330,15 +399,25 @@ export default function AdminDashboard({
                   </span>
                 </p>
               </div>
-              <div className="text-right hidden md:block">
-                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                  {new Date().toLocaleDateString("id-ID", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowPromptModal(true)}
+                  className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                  title="Lihat & Download Ringkasan Prompt Rekayasa Aplikasi BISMA (JSON & JS)"
+                >
+                  <FileCode2 className="w-4 h-4" />
+                  <span>Ringkasan Prompt (JSON & JS)</span>
+                </button>
+                <div className="text-right hidden md:block">
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                    {new Date().toLocaleDateString("id-ID", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
               </div>
             </header>
 
@@ -602,7 +681,11 @@ export default function AdminDashboard({
             <button
               key={item.id}
               onClick={() => {
-                setActiveView(item.id);
+                if (item.id === "ringkasan_prompt") {
+                  setShowPromptModal(true);
+                } else {
+                  setActiveView(item.id);
+                }
                 if (window.innerWidth < 1024) setIsSidebarVisible(false);
               }}
               className={`p-3 rounded-xl flex justify-center transition-all group relative ${
@@ -699,6 +782,9 @@ export default function AdminDashboard({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Prompt Summary Modal */}
+      <PromptSummaryModal isOpen={showPromptModal} onClose={() => setShowPromptModal(false)} />
     </div>
   );
 }
@@ -3759,6 +3845,9 @@ function PengumumanModal({
 }) {
   const [appName, setAppName] = useState("BISMA");
   const [landingDesc, setLandingDesc] = useState("");
+  const [bismaLogoUrl, setBismaLogoUrl] = useState(
+    "https://lh3.googleusercontent.com/d/1k2MibT1XHlAWHbFOQo80Cj4Lp5ZMeMLT"
+  );
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -3792,7 +3881,19 @@ function PengumumanModal({
       const data = JSON.parse(stored);
       setAppName(data.appName || "BISMA");
       setLandingDesc(data.landingDesc || "");
+      if (data.bismaLogoUrl) setBismaLogoUrl(data.bismaLogoUrl);
     }
+
+    fetch("/api/pengaturan")
+      .then((res) => res.json())
+      .then((result) => {
+        if (result.success && result.data) {
+          if (result.data.appName) setAppName(result.data.appName);
+          if (result.data.landingDesc) setLandingDesc(result.data.landingDesc);
+          if (result.data.bismaLogoUrl) setBismaLogoUrl(result.data.bismaLogoUrl);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleNewAnnouncement = () => {
@@ -3821,7 +3922,12 @@ function PengumumanModal({
     );
   };
 
-  const handleSaveApp = () => {
+  const handleSaveApp = async () => {
+    const cleanBismaUrl =
+      bismaLogoUrl.trim() ||
+      "https://lh3.googleusercontent.com/d/1k2MibT1XHlAWHbFOQo80Cj4Lp5ZMeMLT";
+    setBismaLogoUrl(cleanBismaUrl);
+
     const stored = safeStorage.getItem("public_dashboard_data");
     let data = stored
       ? JSON.parse(stored)
@@ -3829,9 +3935,31 @@ function PengumumanModal({
 
     data.appName = appName;
     data.landingDesc = landingDesc;
+    data.bismaLogoUrl = cleanBismaUrl;
 
     safeStorage.setItem("public_dashboard_data", JSON.stringify(data));
-    showToast("Pengaturan aplikasi disimpan", "success");
+
+    try {
+      const res = await fetch("/api/pengaturan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appName,
+          landingDesc,
+          bismaLogoUrl: cleanBismaUrl,
+        }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        showToast("Pengaturan Landing Page & URL Logo BISMA berhasil disimpan ke database", "success");
+      } else {
+        showToast("Gagal menyimpan ke database: " + result.message, "error");
+      }
+    } catch {
+      showToast("Pengaturan disimpan secara lokal", "success");
+    }
+
+    window.dispatchEvent(new Event("school-identity-update"));
     window.dispatchEvent(new Event("public-data-update"));
   };
 
@@ -3924,6 +4052,32 @@ function PengumumanModal({
                   className="w-full h-24 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                   placeholder="Deskripsi singkat aplikasi..."
                 ></textarea>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  URL Gambar Tulisan BISMA (Header Landing / Public Dashboard — Terhubung ke DB)
+                </label>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  <div className="px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl flex items-center justify-center shrink-0 min-w-[140px] h-12">
+                    {bismaLogoUrl ? (
+                      <img
+                        src={bismaLogoUrl}
+                        alt="Logo Tulisan BISMA"
+                        referrerPolicy="no-referrer"
+                        className="h-7 w-auto max-w-[160px] object-contain"
+                      />
+                    ) : (
+                      <span className="text-xs text-slate-400">Preview</span>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={bismaLogoUrl}
+                    onChange={(e) => setBismaLogoUrl(e.target.value)}
+                    className="flex-1 w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                    placeholder="https://lh3.googleusercontent.com/d/1k2MibT1XHlAWHbFOQo80Cj4Lp5ZMeMLT"
+                  />
+                </div>
               </div>
             </div>
             <div className="flex justify-end">
@@ -4140,6 +4294,9 @@ function PengaturanModal({
   const [logo3x4, setLogo3x4] = useState("");
   const [logo4x3, setLogo4x3] = useState("");
   const [logoKop, setLogoKop] = useState("");
+  const [bismaLogoUrl, setBismaLogoUrl] = useState(
+    "https://lh3.googleusercontent.com/d/1k2MibT1XHlAWHbFOQo80Cj4Lp5ZMeMLT"
+  );
   const [tahunAjaran, setTahunAjaran] = useState("2024/2025");
   const [semester, setSemester] = useState("Ganjil");
   const [jumlahUlangan, setJumlahUlangan] = useState("3");
@@ -4172,6 +4329,10 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
           setLogo3x4(data.logo3x4 || "");
           setLogo4x3(data.logo4x3 || "");
           setLogoKop(data.logoKop || "");
+          setBismaLogoUrl(
+            data.bismaLogoUrl ||
+              "https://lh3.googleusercontent.com/d/1k2MibT1XHlAWHbFOQo80Cj4Lp5ZMeMLT"
+          );
           setTahunAjaran(data.tahunAjaran || "2024/2025");
           setSemester(data.semester || "Ganjil");
           setJumlahUlangan(data.jumlahUlangan || "3");
@@ -4195,6 +4356,10 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
             setLogo3x4(data.logo3x4 || "");
             setLogo4x3(data.logo4x3 || "");
             setLogoKop(data.logoKop || "");
+            setBismaLogoUrl(
+              data.bismaLogoUrl ||
+                "https://lh3.googleusercontent.com/d/1k2MibT1XHlAWHbFOQo80Cj4Lp5ZMeMLT"
+            );
             setTahunAjaran(data.tahunAjaran || "2024/2025");
             setSemester(data.semester || "Ganjil");
             setJumlahUlangan(data.jumlahUlangan || "3");
@@ -4218,6 +4383,10 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
           setLogo3x4(data.logo3x4 || "");
           setLogo4x3(data.logo4x3 || "");
           setLogoKop(data.logoKop || "");
+          setBismaLogoUrl(
+            data.bismaLogoUrl ||
+              "https://lh3.googleusercontent.com/d/1k2MibT1XHlAWHbFOQo80Cj4Lp5ZMeMLT"
+          );
           setTahunAjaran(data.tahunAjaran || "2024/2025");
           setSemester(data.semester || "Ganjil");
           setJumlahUlangan(data.jumlahUlangan || "3");
@@ -4234,6 +4403,9 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
   }, []);
 
   const handleSave = async () => {
+    const cleanBismaUrl =
+      bismaLogoUrl.trim() ||
+      "https://lh3.googleusercontent.com/d/1k2MibT1XHlAWHbFOQo80Cj4Lp5ZMeMLT";
     const data = {
       schoolName,
       headmasterName,
@@ -4242,6 +4414,7 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
       logo3x4,
       logo4x3,
       logoKop,
+      bismaLogoUrl: cleanBismaUrl,
       tahunAjaran,
       semester,
       jumlahUlangan,
@@ -4263,6 +4436,7 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
         // Update safeStorage and dispatch event
         safeStorage.setItem("school_identity_data", JSON.stringify(data));
         window.dispatchEvent(new Event("school-identity-update"));
+        window.dispatchEvent(new Event("public-data-update"));
         showToast("Pengaturan sekolah berhasil disimpan!");
         onClose();
       } else {
@@ -4528,6 +4702,34 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
                   />
                 </div>
               </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
+                  Logo Tulisan BISMA (Header Landing / Public Dashboard — DB `bismaLogoUrl`)
+                </label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="px-3 h-10 bg-slate-100 dark:bg-slate-700 rounded-lg flex-shrink-0 overflow-hidden border border-slate-200 dark:border-slate-600 flex items-center justify-center min-w-[140px]">
+                    {bismaLogoUrl ? (
+                      <img
+                        src={bismaLogoUrl}
+                        alt="Logo Tulisan BISMA"
+                        referrerPolicy="no-referrer"
+                        className="h-7 w-auto max-w-[160px] object-contain"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-300">
+                        <Upload className="w-4 h-4" />
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={bismaLogoUrl}
+                    onChange={(e) => setBismaLogoUrl(e.target.value)}
+                    className="flex-1 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-slate-50 dark:bg-slate-700 dark:text-white text-sm focus:ring-2 focus:ring-slate-500 outline-none"
+                    placeholder="https://lh3.googleusercontent.com/d/1k2MibT1XHlAWHbFOQo80Cj4Lp5ZMeMLT"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -4555,8 +4757,18 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
               onClick={handleSave}
               className="w-full bg-slate-800 hover:bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-slate-200 dark:shadow-none transition-all flex items-center justify-center gap-2"
             >
-              <Save className="w-5 h-5" /> SIMPAN PENGATURAN
+              <Save className="w-5 h-5" /> SIMPAN PENGATURAN UMUM
             </button>
+          </div>
+
+          {/* Pengaturan Khusus (BISMA +) Supervisi Akademik */}
+          <div className="pt-8 border-t-2 border-slate-200 dark:border-slate-700">
+            <SupervisiPengaturanAdmin
+              onSaved={() => {
+                showToast("Pengaturan (BISMA +) berhasil disimpan ke database!", "success");
+                window.dispatchEvent(new Event("school-identity-update"));
+              }}
+            />
           </div>
         </div>
       </div>

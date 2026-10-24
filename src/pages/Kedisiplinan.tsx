@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, Search, X } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { ArrowLeft, Calendar, Search, X, Printer, UserX, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
+import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
+import { parseKetidakhadiran } from '../lib/ketidakhadiran';
 
 export default function Kedisiplinan({ user, onNavigate }: { user: any, onNavigate: (page: string) => void }) {
   const [kelas, setKelas] = useState('');
@@ -10,11 +12,14 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
   const [loading, setLoading] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [filterAbsenOnly, setFilterAbsenOnly] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);
   const [selectedCatatan, setSelectedCatatan] = useState<any>(null);
   const [penangananModal, setPenangananModal] = useState(false);
   const [savingPenanganan, setSavingPenanganan] = useState(false);
+
+  const schoolIdentity = useSchoolIdentity();
 
   const penangananOptions = [
     { id: 'Segitiga Restitusi', desc: 'Memperbaiki kesalahan melalui validasi tindakan dan penguatan keyakinan diri siswa.' },
@@ -159,23 +164,18 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
             }
             attendanceByDate[dateStr].totalJp += jpCount;
 
-            // Process Ketidakhadiran
-            // Format: [{ type: 'Sakit', students: ['Name1', 'Name2'] }, ...]
-            if (journal.ketidakhadiran && journal.ketidakhadiran !== '[]') {
+            // Process Ketidakhadiran using universal parseKetidakhadiran
+            if (journal.ketidakhadiran && journal.ketidakhadiran !== '[]' && journal.ketidakhadiran !== 'Nihil') {
               try {
-                const absensi = typeof journal.ketidakhadiran === 'string' ? JSON.parse(journal.ketidakhadiran) : journal.ketidakhadiran;
-                
-                if (Array.isArray(absensi)) {
-                    for (const record of absensi) {
-                        if (record.students && record.students.includes(studentName)) {
-                            attendanceByDate[dateStr].absentJp += jpCount;
-                            if (record.type === 'Sakit') attendanceByDate[dateStr].statuses.add('S');
-                            else if (record.type === 'Izin') attendanceByDate[dateStr].statuses.add('I');
-                            else if (record.type === 'Dispensasi') attendanceByDate[dateStr].statuses.add('D');
-                            else attendanceByDate[dateStr].statuses.add('A');
-                            break; // Found the student in this journal entry
-                        }
-                    }
+                const parsedAbsents = parseKetidakhadiran(journal.ketidakhadiran);
+                const matched = parsedAbsents.find(a => (a.nama || '').trim().toLowerCase() === (studentName || '').trim().toLowerCase());
+                if (matched) {
+                  attendanceByDate[dateStr].absentJp += jpCount;
+                  const norm = (matched.keterangan || '').toLowerCase();
+                  if (norm.includes('sakit')) attendanceByDate[dateStr].statuses.add('S');
+                  else if (norm.includes('izin') || norm.includes('ijin')) attendanceByDate[dateStr].statuses.add('I');
+                  else if (norm.includes('dispen')) attendanceByDate[dateStr].statuses.add('D');
+                  else attendanceByDate[dateStr].statuses.add('A');
                 }
               } catch (e) {
                 console.error("Error parsing Ketidakhadiran", e);
@@ -207,10 +207,9 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
             }
           });
 
-          // Apply priority rule for daily attendance
+          // Apply priority rule for daily attendance: S > I > D > A > H
           Object.values(attendanceByDate).forEach(day => {
              if (day.totalJp > 0) {
-                // If absent for fewer JPs than total JPs, implicit Hadir
                 if (day.absentJp < day.totalJp) {
                    day.statuses.add('H');
                 }
@@ -221,7 +220,7 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
                   i++;
                 } else if (day.statuses.has('D')) {
                   d++;
-                } else if (day.statuses.has('A') && !day.statuses.has('H')) {
+                } else if (day.statuses.has('A')) {
                   a++;
                 } else {
                   h++;
@@ -272,7 +271,7 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
               >
                 <option value="">-- Pilih Kelas --</option>
                 {availableClasses.map(c => (
-                  <option key={c} value={c}>Kelas {c}</option>
+                  <option key={c} value={c}>{/^kelas\b/i.test(String(c || '').trim()) ? String(c).trim().replace(/^kelas\s*/i, 'Kelas ') : `Kelas ${c}`}</option>
                 ))}
               </select>
             </div>
@@ -296,7 +295,7 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
             </div>
           </div>
 
-          <div className="border-b border-slate-200 dark:border-slate-700 mb-6">
+          <div className="border-b border-slate-200 dark:border-slate-700 mb-6 flex flex-wrap items-center justify-between gap-4">
             <nav className="-mb-px flex space-x-8">
               <button 
                 onClick={() => setTab('absensi')}
@@ -311,42 +310,113 @@ export default function Kedisiplinan({ user, onNavigate }: { user: any, onNaviga
                 Kedisiplinan
               </button>
             </nav>
+
+            {tab === 'absensi' && kelas && (
+              <div className="flex items-center gap-3 print:hidden pb-2">
+                <button
+                  type="button"
+                  onClick={() => setFilterAbsenOnly(!filterAbsenOnly)}
+                  className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors ${filterAbsenOnly ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700' : 'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-700 dark:text-slate-300'}`}
+                >
+                  {filterAbsenOnly ? '✓ Hanya Siswa Tidak Hadir' : 'Tampilkan Semua Siswa'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 shadow-sm transition-colors"
+                >
+                  <Printer className="w-3.5 h-3.5" /> Cetak Rekap
+                </button>
+              </div>
+            )}
           </div>
 
           {kelas && (
             <div className="mt-6 animate-in fade-in duration-300">
               {tab === 'absensi' && (
-                <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-                  <table className="w-full text-sm border-collapse">
-                    <thead className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                      <tr>
-                        <th className="p-3 border-b dark:border-slate-600 text-center w-12">No</th>
-                        <th className="p-3 border-b dark:border-slate-600 text-left">Nama</th>
-                        <th className="p-3 border-b dark:border-slate-600 text-center w-16 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400">S</th>
-                        <th className="p-3 border-b dark:border-slate-600 text-center w-16 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400">I</th>
-                        <th className="p-3 border-b dark:border-slate-600 text-center w-16 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400">A</th>
-                        <th className="p-3 border-b dark:border-slate-600 text-center w-16 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400">D</th>
-                        <th className="p-3 border-b dark:border-slate-600 text-center w-20 bg-slate-200 dark:bg-slate-600 font-bold">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                      {loading ? (
-                        <tr><td colSpan={7} className="p-8 text-center text-slate-500 dark:text-slate-400 italic">Memuat data...</td></tr>
-                      ) : data.length === 0 ? (
-                        <tr><td colSpan={7} className="p-8 text-center text-slate-500 dark:text-slate-400 italic">Tidak ada data siswa.</td></tr>
-                      ) : data.map((m, i) => (
-                        <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                          <td className="p-3 text-center text-slate-500 dark:text-slate-400">{i + 1}</td>
-                          <td className="p-3 font-medium text-slate-800 dark:text-slate-200">{m.nama}</td>
-                          <td className="p-3 text-center font-mono dark:text-slate-300">{m.s}</td>
-                          <td className="p-3 text-center font-mono dark:text-slate-300">{m.i}</td>
-                          <td className="p-3 text-center font-mono dark:text-slate-300">{m.a}</td>
-                          <td className="p-3 text-center font-mono dark:text-slate-300">{m.d}</td>
-                          <td className="p-3 text-center font-bold text-slate-700 dark:text-slate-200">{m.total}</td>
+                <div className="print:text-black">
+                  {/* Print-only Kop & Info */}
+                  <div className="hidden print:block mb-6 border-b-2 border-black pb-3 text-black">
+                    <div className="flex items-center gap-4">
+                      {schoolIdentity.schoolLogo && (
+                        <img src={schoolIdentity.schoolLogo} className="h-16 w-16 object-contain" alt="Logo" />
+                      )}
+                      <div>
+                        <h2 className="text-xl font-black uppercase tracking-wide">{schoolIdentity.schoolName}</h2>
+                        <h3 className="text-sm font-bold uppercase mt-0.5">REKAPITULASI KETIDAKHADIRAN SISWA</h3>
+                        <p className="text-xs text-slate-700 mt-1">
+                          <strong>Kelas:</strong> {kelas} | <strong>Periode:</strong> {startDate ? `${startDate} s.d. ${endDate || 'Sekarang'}` : 'Seluruh Riwayat'}
+                          {filterAbsenOnly && ' | (Hanya Siswa dengan Ketidakhadiran)'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 print:border-black print:overflow-visible">
+                    <table className="w-full text-sm print:text-xs border-collapse print:border-black">
+                      <thead className="bg-slate-100 dark:bg-slate-700 print:bg-slate-100 text-slate-600 dark:text-slate-300 print:text-black">
+                        <tr>
+                          <th className="p-3 print:p-1.5 border-b dark:border-slate-600 print:border-black text-center w-12 font-bold">No</th>
+                          <th className="p-3 print:p-1.5 border-b dark:border-slate-600 print:border-black text-left font-bold">Nama Lengkap</th>
+                          <th className="p-3 print:p-1.5 border-b dark:border-slate-600 print:border-black text-center w-16 bg-green-50 dark:bg-green-900/20 print:bg-slate-100 text-green-700 dark:text-green-400 print:text-black font-bold">S</th>
+                          <th className="p-3 print:p-1.5 border-b dark:border-slate-600 print:border-black text-center w-16 bg-yellow-50 dark:bg-yellow-900/20 print:bg-slate-100 text-yellow-700 dark:text-yellow-400 print:text-black font-bold">I</th>
+                          <th className="p-3 print:p-1.5 border-b dark:border-slate-600 print:border-black text-center w-16 bg-red-50 dark:bg-red-900/20 print:bg-slate-100 text-red-700 dark:text-red-400 print:text-black font-bold">A</th>
+                          <th className="p-3 print:p-1.5 border-b dark:border-slate-600 print:border-black text-center w-16 bg-blue-50 dark:bg-blue-900/20 print:bg-slate-100 text-blue-700 dark:text-blue-400 print:text-black font-bold">D</th>
+                          <th className="p-3 print:p-1.5 border-b dark:border-slate-600 print:border-black text-center w-20 bg-slate-200 dark:bg-slate-600 print:bg-slate-200 font-bold">Total</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 dark:divide-slate-700 print:divide-black">
+                        {loading ? (
+                          <tr><td colSpan={7} className="p-8 text-center text-slate-500 dark:text-slate-400 italic">Memuat data ketidakhadiran...</td></tr>
+                        ) : data.length === 0 ? (
+                          <tr><td colSpan={7} className="p-8 text-center text-slate-500 dark:text-slate-400 italic">Tidak ada data siswa.</td></tr>
+                        ) : (
+                          data
+                            .filter(m => (filterAbsenOnly ? m.total > 0 : true))
+                            .map((m, i) => {
+                              const hasAbsence = m.total > 0;
+                              return (
+                                <tr key={i} className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors print:hover:bg-transparent ${hasAbsence ? 'bg-amber-50/40 dark:bg-amber-950/10' : ''}`}>
+                                  <td className="p-3 print:p-1.5 text-center text-slate-500 dark:text-slate-400 print:text-black">{i + 1}</td>
+                                  <td className="p-3 print:p-1.5 font-medium text-slate-800 dark:text-slate-200 print:text-black">{m.nama}</td>
+                                  <td className="p-3 print:p-1.5 text-center font-mono dark:text-slate-300 print:text-black font-semibold text-emerald-600">{m.s}</td>
+                                  <td className="p-3 print:p-1.5 text-center font-mono dark:text-slate-300 print:text-black font-semibold text-amber-600">{m.i}</td>
+                                  <td className="p-3 print:p-1.5 text-center font-mono dark:text-slate-300 print:text-black font-semibold text-rose-600">{m.a}</td>
+                                  <td className="p-3 print:p-1.5 text-center font-mono dark:text-slate-300 print:text-black font-semibold text-purple-600">{m.d}</td>
+                                  <td className="p-3 print:p-1.5 text-center font-bold text-slate-800 dark:text-slate-100 print:text-black">
+                                    {m.total > 0 ? (
+                                      <span className="inline-block px-2 py-0.5 rounded font-black text-rose-600 dark:text-rose-400 print:text-black">
+                                        {m.total}
+                                      </span>
+                                    ) : (
+                                      <span className="text-slate-400 print:text-black">0</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Print Signatures */}
+                  <div className="hidden print:flex justify-between items-start mt-12 text-sm text-black break-inside-avoid px-8">
+                    <div className="text-center">
+                      <p>Mengetahui,</p>
+                      <p>Kepala Sekolah</p>
+                      <div className="h-20"></div>
+                      <p className="font-bold underline">{schoolIdentity.headmasterName}</p>
+                      <p>NIP. {schoolIdentity.headmasterNIP}</p>
+                    </div>
+                    <div className="text-center">
+                      <p>Beji, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                      <p>Guru Kelas / Mata Pelajaran,</p>
+                      <div className="h-20"></div>
+                      <p className="font-bold underline">{user?.['Nama Guru'] || '-'}</p>
+                      <p>NIP. {user?.NIP || '-'}</p>
+                    </div>
+                  </div>
                 </div>
               )}
 

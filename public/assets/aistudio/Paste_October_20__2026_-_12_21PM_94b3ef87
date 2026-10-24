@@ -1,0 +1,1202 @@
+
+# MASTER PROMPT — BISMA+ SUPERVISI AKADEMIK
+# Version: 1.0
+# Target: Google AI Studio — Full-Stack Application Development
+# Interface Language: Bahasa Indonesia
+# Application: Existing BISMA Integration
+# Database: Supabase PostgreSQL
+# Authentication: Reuse Existing BISMA Authentication
+
+==========================================================
+A. ROLE AND DEVELOPMENT MISSION
+==========================================================
+
+Act as a Senior Full-Stack Software Engineer, Educational Technology Architect, UI/UX Designer, Supabase Database Architect, and Indonesian Academic Supervision Specialist.
+
+Build a professional, secure, responsive, production-oriented academic supervision application named:
+
+BISMA+ SUPERVISI
+"Sistem Supervisi Akademik Reflektif Terintegrasi"
+
+Institution:
+SDN Baujeng I Beji
+Kecamatan Beji, Kabupaten Pasuruan, Jawa Timur
+
+School identity:
+BERMUTU — Beriman, Ramah, Mandiri, Unggul, Tangguh.
+
+This application must become an integrated module within the existing BISMA application.
+
+The system is inspired by the reflective academic supervision workflow used in PMM/Ruang GTK, especially:
+
+1. Performance planning and observation preparation.
+2. Classroom observation.
+3. Post-observation reflection and follow-up planning.
+4. Implementation, reflection, and evaluation.
+5. Principal feedback and continuous professional improvement.
+
+IMPORTANT:
+BISMA+ is an internal school supervision system.
+
+Never claim this application is an official PMM/Ruang GTK application or automatically synchronized with government performance management services.
+
+Do not create official e-Kinerja ratings or government performance predicates.
+
+The application must emphasize professional development rather than competition between teachers.
+
+==========================================================
+B. NON-NEGOTIABLE DEVELOPMENT RULES
+==========================================================
+
+1. REUSE EXISTING BISMA LOGIN.
+
+Do not create another independent login system.
+
+Inspect the existing BISMA authentication architecture before implementing database integration.
+
+Reuse:
+- Existing authenticated session.
+- Existing teacher accounts.
+- Existing principal accounts.
+- Existing user identity.
+- Existing school identity.
+- Existing BISMA navigation and branding.
+
+If the existing BISMA project source is available, inspect it and integrate directly.
+
+Do not overwrite existing BISMA authentication components, database tables, or unrelated application features.
+
+If BISMA currently uses Supabase Auth:
+- Reuse the authenticated Supabase session.
+- Obtain the user identity from the validated session.
+- Map authenticated users to their school supervision membership.
+
+If BISMA uses another trusted identity provider:
+- Implement a compatible Supabase third-party authentication integration where supported.
+- Validate JWT issuer, audience, expiry, signature, and identity.
+- Do not treat a username or user ID stored in localStorage as authentication.
+- Do not create an insecure client-side JWT signing mechanism.
+
+If the authentication implementation cannot be verified:
+- Build an integration adapter and functional UI preview.
+- Isolate all protected data operations.
+- Display an integration-required state.
+- Never pretend a demo identity is an authenticated production user.
+
+2. USE SUPABASE AS THE DATABASE.
+
+Use Supabase PostgreSQL for application data.
+
+Use Supabase Storage for private document and evidence storage.
+
+Use Row Level Security on all supervision data.
+
+Never expose service_role keys, secret API keys, database passwords, or server-only credentials to the browser.
+
+3. AVOID DUPLICATE DATA.
+
+If BISMA already has user and school tables, use an adapter or relationship to those existing records.
+
+Do not recreate passwords or duplicate login identities.
+
+The proposed supervision database must be isolated from unrelated BISMA features.
+
+4. KEEP THE APPLICATION SIMPLE.
+
+Do not burden teachers with unnecessary administrative fields.
+
+Use progressive forms, dropdowns, checkboxes, guided reflection questions, auto-save, and contextual help.
+
+The application must remain fully usable without AI assistance.
+
+5. REAL IMPLEMENTATION ONLY.
+
+Every production button must perform its intended function.
+
+No fake save operation.
+No fake upload.
+No simulated database response presented as real.
+No fabricated supervision results.
+No fabricated student data.
+
+Display loading, success, validation, and error states correctly.
+
+==========================================================
+C. TECHNOLOGY STACK
+==========================================================
+
+Recommended technologies:
+
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- Accessible UI component architecture
+- Lucide Icons
+- Supabase JavaScript Client
+- PostgreSQL
+- Supabase Storage
+- React Hook Form
+- Zod for input validation
+- React Query or equivalent data synchronization
+- PDF generation with embedded fonts
+- Responsive CSS Grid and Flexbox
+
+Use the compatible environment and packages supported by the existing BISMA project.
+
+Do not migrate the entire BISMA project to another framework unnecessarily.
+
+Use reusable components, typed database models, and clean separation of concerns.
+
+Recommended folders:
+
+src/
+  components/
+    supervision/
+  features/
+    supervision/
+  pages/
+    supervision/
+  hooks/
+  services/
+    supervision/
+  lib/
+    supabase/
+    auth/
+  types/
+  utils/
+    pdf/
+
+supabase/
+  migrations/
+
+Use meaningful file names and modular source code.
+
+==========================================================
+D. APPLICATION IDENTITY AND DESIGN
+==========================================================
+
+Application title:
+BISMA+ SUPERVISI
+
+Subtitle:
+Supervisi Akademik Reflektif dan Berkelanjutan
+
+Design personality:
+- Professional
+- Modern
+- Friendly
+- Trustworthy
+- Clean
+- Suitable for elementary school teachers
+
+Reuse the original BISMA logo, approved icon, typography, and brand colors when these assets are available.
+
+Do not replace BISMA branding with a generic logo.
+
+If original assets are not supplied, use a temporary neutral placeholder clearly marked for replacement.
+
+Visual concept:
+Modern educational SaaS dashboard with subtle glass effects, refined cards, clear information hierarchy, and restrained animations.
+
+Color treatment:
+- Primary: existing BISMA brand color
+- Secondary: coordinated complementary color
+- Success: green
+- Warning: amber
+- Error: red
+- Background: clean light neutral
+- Optional dark mode
+
+The interface must look excellent on:
+- Desktop
+- Laptop
+- Tablet
+- Android smartphones
+- iPhone
+
+Responsive breakpoints:
+- Mobile: below 640px
+- Tablet: 640px to 1023px
+- Desktop: 1024px and above
+
+Mobile:
+- Single-column forms
+- Large touch targets
+- Compact header
+- Collapsible navigation
+- Sticky primary action where appropriate
+- No horizontal overflow
+
+Desktop:
+- Sidebar or contextual BISMA navigation
+- Spacious dashboard
+- Progress cards
+- Data tables with filters
+- Form sections with clear grouping
+
+Use smooth but lightweight transitions.
+
+Support reduced-motion preferences.
+
+Use Bahasa Indonesia for all application labels, instructions, notifications, and PDF outputs.
+
+==========================================================
+E. ACCESS ROLES
+==========================================================
+
+ROLE 1 — GURU
+
+Teacher permissions:
+
+- Access own supervision dashboard.
+- Create supervision cycle.
+- Complete Form A.
+- Save form drafts.
+- Submit observation preparation.
+- Propose observation schedule.
+- View approved schedule.
+- View published classroom observation results.
+- Complete Form C.
+- Complete Form D.
+- Upload relevant evidence.
+- View principal feedback.
+- Download own supervision documents.
+- View own supervision history.
+
+Teacher restrictions:
+
+- Cannot edit another teacher's data.
+- Cannot enter or modify principal observation ratings.
+- Cannot publish principal feedback.
+- Cannot assign themselves principal privileges.
+- Cannot modify a submitted form unless an authorized revision workflow permits it.
+- Cannot access another school's supervision records.
+
+ROLE 2 — KEPALA SEKOLAH
+
+Principal permissions:
+
+- View all teacher supervision records in the assigned school.
+- Review preparation forms.
+- Approve observation schedules.
+- Observe classroom teaching.
+- Complete Form B.
+- Provide evidence-based ratings.
+- Enter coaching notes and recommendations.
+- Review follow-up plans.
+- Review final reflections.
+- Publish feedback.
+- Monitor completion.
+- Finalize internal supervision cycles.
+- Download individual and school-wide reports.
+
+Principal restrictions:
+
+- Must not impersonate teachers.
+- Must not silently alter teacher-authored reflections.
+- Must not fabricate observation evidence.
+- Must not access records from unauthorized schools.
+
+OPTIONAL ADMINISTRATIVE ROLE
+
+A trusted BISMA system administrator may provision school accounts and maintain integrations.
+
+Administrative access must be granted server-side.
+
+Do not expose an administrative registration or role-promotion form to ordinary teachers.
+
+==========================================================
+F. MAIN NAVIGATION
+==========================================================
+
+TEACHER MENU:
+
+1. Dashboard Saya
+2. Perencanaan & Persiapan
+3. Hasil Observasi
+4. Rencana Tindak Lanjut
+5. Refleksi & Evaluasi
+6. Riwayat Supervisi
+
+PRINCIPAL MENU:
+
+1. Dashboard Sekolah
+2. Daftar Guru
+3. Persiapan Observasi
+4. Jadwal & Observasi
+5. Monitoring Tindak Lanjut
+6. Refleksi & Pembinaan
+7. Rekap dan Laporan
+
+Do not implement unnecessarily complex nested navigation.
+
+==========================================================
+G. SUPERVISION WORKFLOW
+==========================================================
+
+Use an explicit state-based workflow.
+
+Proposed cycle states:
+
+draft
+scheduled
+observed
+followup
+reflected
+completed
+
+Workflow:
+
+1. Teacher creates a new supervision cycle.
+2. Teacher completes and submits Form A.
+3. Principal reviews the submission.
+4. Principal approves the observation schedule.
+5. Principal observes classroom practice and completes Form B.
+6. Principal publishes observation feedback.
+7. Teacher reads the observation results.
+8. Teacher completes Form C.
+9. Principal reviews the follow-up plan.
+10. Teacher implements the agreed improvement.
+11. Teacher completes Form D.
+12. Principal reviews the reflection.
+13. Principal finalizes the supervision cycle.
+14. The completed cycle becomes a permanent, read-only internal archive.
+
+Do not unlock a later stage before prerequisites are completed.
+
+Use database-backed workflow state, not localStorage status.
+
+The system must display the next required action to each user.
+
+Provide controlled revision requests for future implementation, but never permit unauthorized overwriting of finalized records.
+
+==========================================================
+H. FORM A — PERSIAPAN OBSERVASI
+==========================================================
+
+FORM TITLE:
+FORM A — DISKUSI PERSIAPAN OBSERVASI
+
+Filled by:
+Teacher
+
+Reviewed by:
+Principal
+
+FIELDS:
+
+A1. Teacher identity
+- Teacher name: automatic
+- School: automatic
+- Academic year
+- Semester
+- Teacher assignment
+
+A2. Teaching information
+- Grade: I–VI
+- Subject
+- Learning topic
+- Learning objectives
+- Learning date
+- Optional teaching document reference
+
+A3. Observation focus
+
+Allow teachers to select one priority indicator:
+
+1. Classroom management.
+2. Active student engagement.
+3. Differentiated learning.
+4. Formative assessment and feedback.
+5. Positive communication.
+6. Student-centered learning.
+
+Use configurable indicators so rubrics can be updated without rewriting the entire application.
+
+A4. Target teacher behaviors
+
+Present specific recommended behaviors associated with the chosen indicator.
+
+Allow the teacher to select one or more behaviors.
+
+Examples:
+
+Indicator:
+Active student engagement
+
+Behaviors:
+- Teacher asks meaningful prompting questions.
+- Teacher actively involves students in classroom discussion.
+- Teacher organizes collaborative learning.
+- Teacher provides equitable participation opportunities.
+- Teacher responds constructively to student ideas.
+
+A5. Teacher preparation
+
+Question:
+"What actions will you take to demonstrate the selected target behaviors?"
+
+Input:
+Multiline reflective response.
+
+A6. Proposed observation schedule
+
+Fields:
+- Proposed date
+- Start time
+- End time
+- Grade
+- Subject
+- Classroom location
+
+A7. Supporting preparation
+
+- Optional teaching plan
+- Optional lesson material
+- Optional PDF document
+
+A8. Principal review
+
+- Review note
+- Approved date
+- Confirmed schedule
+
+Buttons:
+- Simpan Draf
+- Kirim Persiapan
+- Lihat Rubrik
+- Cetak Form A
+
+Require at least one selected target behavior.
+
+Validate scheduling values and required fields.
+
+The form must be easy to complete in approximately 5–10 minutes when the teacher already knows the lesson plan.
+
+==========================================================
+I. FORM B — OBSERVASI PRAKTIK PEMBELAJARAN
+==========================================================
+
+FORM TITLE:
+FORM B — HASIL OBSERVASI KINERJA GURU
+
+Filled by:
+Principal only
+
+Teacher:
+Read-only after publication
+
+DISPLAY:
+
+- Teacher identity
+- Observation schedule
+- Selected indicator
+- Selected target behaviors
+- Relevant recommended practices
+- Practices to avoid
+
+RATING MODEL:
+
+1 — Belum dilakukan
+2 — Dilakukan tetapi belum efektif
+3 — Dilakukan dan efektif
+
+Treat these numbers as internal categorical codes, not official ASN performance scores.
+
+For each target behavior, principal records:
+
+- Observed behavior
+- Rating
+- Concrete observation evidence
+- Impact on learning
+- Optional notes
+
+Provide:
+- Observation summary
+- Strengths
+- Improvement opportunities
+- Recommended next steps
+
+Example:
+
+Target:
+Teacher encourages student participation.
+
+Observation evidence:
+"During group discussion, the teacher asked an open question and invited students from different groups to share their ideas."
+
+Do not automatically fabricate evidence.
+
+Principal must enter evidence based on the actual observation.
+
+Provide a clear Publish Results action.
+
+Keep draft observations private from teachers until publication.
+
+==========================================================
+J. FORM C — RENCANA TINDAK LANJUT
+==========================================================
+
+FORM TITLE:
+FORM C — RENCANA TINDAK LANJUT
+
+Filled by:
+Teacher
+
+Available only after Form B is published.
+
+Show the teacher:
+- Observation findings
+- Principal recommendations
+- Chosen target behavior
+- Observed strengths
+- Areas for improvement
+
+REFLECTION QUESTIONS:
+
+1. What challenges did you experience during teaching?
+
+2. What do you believe caused these challenges?
+
+3. Which teaching practices need improvement?
+
+4. What improvement would you like to achieve?
+
+5. What concrete actions will you take?
+
+6. When will you implement these actions?
+
+7. What assistance or resources do you need?
+
+8. How will you recognize that improvement has occurred?
+
+FOLLOW-UP FIELDS:
+
+- Main challenge
+- Root cause
+- Improvement objective
+- Improvement steps
+- Learning resources
+- Implementation deadline
+- Required support
+- Success indicators
+
+Learning options:
+- Ruang GTK
+- Teacher learning community
+- Peer discussion
+- Principal coaching
+- Classroom practice
+- Other professional learning activities
+
+Do not require a government platform upload unless it is genuinely needed.
+
+Buttons:
+- Simpan Draf
+- Kirim Tindak Lanjut
+- Cetak Form C
+
+==========================================================
+K. FORM D — REFLEKSI DAN EVALUASI
+==========================================================
+
+FORM TITLE:
+FORM D — REFLEKSI DAN EVALUASI TINDAK LANJUT
+
+Filled by:
+Teacher
+
+Available after Form C is submitted and reviewed.
+
+Reflection questions:
+
+1. What new inspiration did you gain?
+
+2. What improvements have you implemented?
+
+3. What progress have you observed in your teaching practice?
+
+4. What positive changes occurred in student participation or learning?
+
+5. What challenges remain?
+
+6. How did you address those challenges?
+
+7. What will you continue improving?
+
+Allow supporting evidence uploads.
+
+Evidence examples:
+- Teaching material
+- Photographs of learning activities
+- Reflective notes
+- Assessment summary
+- Classroom activity documentation
+
+Avoid requiring identifiable student personal information.
+
+Fields:
+- Inspiration
+- Actions implemented
+- Progress achieved
+- Supporting evidence
+- Remaining challenges
+- Improvement strategy
+- Next professional development target
+
+Principal review:
+- Recognition of progress
+- Coaching feedback
+- Suggested next steps
+- Final internal supervision confirmation
+
+Buttons:
+- Simpan Draf
+- Kirim Refleksi
+- Cetak Form D
+- Lihat Riwayat
+
+==========================================================
+L. PRINCIPAL DASHBOARD
+==========================================================
+
+Provide dashboard cards:
+
+1. Total teachers
+2. Teachers with supervision cycles
+3. Preparation submissions
+4. Approved schedules
+5. Completed observations
+6. Submitted follow-up plans
+7. Completed reflections
+8. Finalized cycles
+
+Display:
+- Overall completion percentage
+- Upcoming observation schedules
+- Overdue follow-up actions
+- Recent teacher submissions
+- Supervision status by teacher
+- Indicator distribution
+
+Use filters:
+- Academic year
+- Semester
+- Teacher
+- Grade
+- Status
+
+Teacher monitoring table:
+
+Teacher Name
+Class
+Selected Indicator
+Observation Date
+Current Stage
+Last Update
+Required Action
+
+Use visual status badges.
+
+Do not rank teachers by observation score.
+
+Provide useful professional development summaries.
+
+==========================================================
+M. TEACHER DASHBOARD
+==========================================================
+
+Display:
+
+- Teacher name
+- Current semester
+- Current supervision status
+- Completion progress
+- Upcoming observation schedule
+- Last principal feedback
+- Next action
+- Previous supervision history
+
+Progress tracker:
+
+Preparation → Observation → Follow-Up → Reflection → Completion
+
+Use an understandable and encouraging interface.
+
+Example message:
+
+"Persiapan supervisi Anda telah dikirim. Silakan menunggu konfirmasi jadwal dari kepala sekolah."
+
+==========================================================
+N. AI REFLECTION ASSISTANT
+==========================================================
+
+Optional feature:
+"Asisten Refleksi BISMA+"
+
+Use generative AI only to assist teachers.
+
+Features:
+
+1. Suggest clearer reflection questions.
+2. Suggest achievable improvement goals.
+3. Recommend practical classroom strategies.
+4. Help structure follow-up plans.
+5. Help teachers identify possible success indicators.
+6. Suggest a reflection outline.
+
+MANDATORY GUARDRAILS:
+
+- Teacher controls final answers.
+- AI must not invent classroom observations.
+- AI must not invent achieved improvements.
+- AI must not automatically assign performance ratings.
+- AI must not submit forms without teacher confirmation.
+- AI-generated text must remain editable.
+- AI must distinguish suggestions from actual observations.
+- Do not send unnecessary personal or student data to external models.
+
+Provide a visible notice:
+"Saran AI perlu diperiksa dan disesuaikan dengan pengalaman nyata guru."
+
+The application must work normally if the AI service is unavailable.
+
+==========================================================
+O. SUPABASE DATABASE SPECIFICATION
+==========================================================
+
+Use these purpose-specific tables:
+
+1. bisma_supervision_schools
+2. bisma_supervision_memberships
+3. bisma_supervision_cycles
+4. bisma_supervision_forms
+5. bisma_supervision_feedback
+6. bisma_supervision_attachments
+
+Forms A–D are stored in bisma_supervision_forms using structured JSONB payloads with a form_code of A, B, C, or D.
+
+Benefits:
+- Flexible rubrics
+- Simplified updates
+- Unified form history
+- Smaller schema
+- Easy PDF generation
+
+Use PostgreSQL UUID primary keys.
+
+Use timestamps with timezone.
+
+Use server-generated timestamps.
+
+Use constraints, foreign keys, indexes, and RLS.
+
+The SQL migration supplied after this prompt is the reference database design.
+
+Do not replace it with insecure tables.
+
+Use a typed repository/service layer to transform JSONB forms into application models.
+
+Example Form A JSON structure:
+
+{
+  "grade": "IV",
+  "subject": "IPAS",
+  "topic": "Perubahan Wujud Benda",
+  "learning_objectives": [],
+  "indicator_code": "student_engagement",
+  "target_behaviors": [],
+  "preparation_actions": "",
+  "proposed_date": null,
+  "start_time": null,
+  "end_time": null,
+  "location": ""
+}
+
+Example Form B JSON structure:
+
+{
+  "observed_at": null,
+  "ratings": [
+    {
+      "behavior_code": "",
+      "rating": 1,
+      "evidence": "",
+      "learning_impact": ""
+    }
+  ],
+  "strengths": "",
+  "improvement_areas": "",
+  "recommendations": ""
+}
+
+Example Form C JSON structure:
+
+{
+  "challenges": "",
+  "root_causes": "",
+  "goals": [],
+  "action_steps": [],
+  "learning_sources": [],
+  "target_date": null,
+  "required_support": "",
+  "success_indicators": []
+}
+
+Example Form D JSON structure:
+
+{
+  "inspiration": "",
+  "actions_implemented": [],
+  "progress": "",
+  "learning_impact": "",
+  "remaining_challenges": "",
+  "improvement_strategy": "",
+  "next_goals": []
+}
+
+Create Zod schemas for each form.
+
+Validate JSON fields before saving.
+
+Use stable indicator codes rather than relying only on display labels.
+
+==========================================================
+P. ROW LEVEL SECURITY
+==========================================================
+
+Security is mandatory.
+
+Rules:
+
+1. Every protected request must have an authenticated identity.
+2. School memberships are provisioned by trusted backend administration.
+3. Teacher can read only assigned personal supervision cycles.
+4. Teacher can write Form A, C, and D only at authorized workflow stages.
+5. Teacher cannot modify Form B.
+6. Principal can view supervision data only within assigned schools.
+7. Principal is the only role authorized to write Form B.
+8. Draft Form B is invisible to teachers.
+9. Submitted forms are immutable in the initial workflow.
+10. Principal feedback is visible to teachers only after publication.
+11. Teachers cannot change school assignments or roles.
+12. Client-side role checks must never replace database authorization.
+13. Storage objects must be protected with RLS.
+14. The service_role key must never be included in frontend builds.
+15. Test all negative authorization scenarios.
+
+Never trust user IDs passed from frontend forms as proof of identity.
+
+Use verified JWT identity.
+
+==========================================================
+Q. EVIDENCE STORAGE
+==========================================================
+
+Use a PRIVATE Supabase Storage bucket:
+
+bisma-supervision
+
+Path convention:
+
+{school_id}/{cycle_id}/{uploader_user_id}/{file_name}
+
+Allowed file types:
+- PDF
+- JPG
+- PNG
+- WEBP
+
+Maximum file size:
+10 MB per file.
+
+Use unique generated file names.
+
+Display upload progress.
+
+Store attachment metadata in PostgreSQL.
+
+Only authorized teachers and principals may access files.
+
+Use short-lived signed URLs for private downloads.
+
+Never make the bucket public.
+
+Do not allow executable files or arbitrary uploads.
+
+==========================================================
+R. AUTOMATIC PDF REPORTS
+==========================================================
+
+Generate printable Indonesian-language A4 PDFs.
+
+REPORT 1:
+Form A — Persiapan Observasi
+
+REPORT 2:
+Form B — Hasil Observasi
+
+REPORT 3:
+Form C — Rencana Tindak Lanjut
+
+REPORT 4:
+Form D — Refleksi dan Evaluasi
+
+REPORT 5:
+Laporan Supervisi Akademik Lengkap
+
+REPORT 6:
+Rekap Supervisi Sekolah
+
+Complete individual report structure:
+
+1. Official school header
+2. Application title
+3. Teacher identity
+4. Academic year and semester
+5. Preparation summary
+6. Target behaviors
+7. Observation evidence
+8. Observation result categories
+9. Principal feedback
+10. Follow-up plan
+11. Reflection and evaluation
+12. Conclusion
+13. Confirmation and signatures
+
+School header:
+
+SDN BAUJENG I BEJI
+Kecamatan Beji, Kabupaten Pasuruan
+
+Allow the administrator to use an existing approved school letterhead.
+
+Use actual authenticated names and saved timestamps.
+
+Use an authorized digital confirmation record; do not fabricate handwritten signatures.
+
+PDF specifications:
+- A4 portrait
+- Consistent margins
+- Readable embedded fonts
+- Repeating table headers
+- Automatic page breaks
+- Page numbers
+- Indonesian date formatting
+- No cropped tables
+- No overflowing text
+- No blank report sections presented as completed
+
+Do not include unauthorized confidential data.
+
+Provide print preview.
+
+File naming:
+
+Supervisi_[NamaGuru]_[TahunAjaran]_[Semester].pdf
+
+==========================================================
+S. FORM VALIDATION AND USER EXPERIENCE
+==========================================================
+
+Required:
+
+- Draft auto-save
+- Manual save
+- Submission confirmation
+- Clear validation messages
+- Unsaved change warning
+- Responsive loading states
+- Empty states
+- Retry on recoverable network errors
+- Duplicate submission prevention
+- Keyboard accessibility
+- Screen-reader labels
+- Date and time validation
+
+Auto-save must not automatically submit.
+
+Do not silently overwrite another user's edits.
+
+Display errors in natural Indonesian.
+
+Example:
+"Data belum tersimpan. Periksa koneksi internet lalu coba kembali."
+
+==========================================================
+T. AUDITABILITY AND DATA INTEGRITY
+==========================================================
+
+Keep accurate:
+- created_at
+- updated_at
+- submitted_at
+- created_by
+- supervision status
+- principal publication time
+- feedback history where implemented
+
+Ensure:
+- One Form A per cycle
+- One Form B per cycle
+- One Form C per cycle
+- One Form D per cycle
+- No invalid workflow transitions
+- No duplicate submission
+- No cross-school access
+- No unauthorized status changes
+
+Use server-side authorization and database constraints.
+
+Finalized records should not be casually deleted or overwritten.
+
+==========================================================
+U. ERROR HANDLING
+==========================================================
+
+Handle these cases gracefully:
+
+- BISMA session expired
+- User lacks supervision membership
+- User belongs to another school
+- Supabase temporarily unavailable
+- Network timeout
+- PDF generation error
+- Upload failure
+- Invalid form submission
+- Attempt to access another teacher's record
+- Attempt to open an unpublished observation
+- Duplicate supervision cycle
+- Missing required workflow stage
+
+Never display raw credentials or internal server secrets.
+
+==========================================================
+V. PRODUCTION TEST SCENARIOS
+==========================================================
+
+Implement or provide meaningful tests for:
+
+TEST 01
+Teacher A can create Form A for own cycle.
+
+TEST 02
+Teacher A cannot read Teacher B's supervision record.
+
+TEST 03
+Teacher cannot modify Form B.
+
+TEST 04
+Principal can observe teachers in the assigned school.
+
+TEST 05
+Principal cannot access unrelated schools.
+
+TEST 06
+Form C cannot be submitted before Form B is published.
+
+TEST 07
+Form D cannot be submitted before Form C is submitted.
+
+TEST 08
+Submitted forms cannot be silently changed.
+
+TEST 09
+Unauthorized users cannot download private evidence.
+
+TEST 10
+PDF generation uses actual persisted data.
+
+TEST 11
+Dashboard counters match the database.
+
+TEST 12
+Refresh does not erase saved data.
+
+TEST 13
+Mobile layouts have no horizontal overflow.
+
+TEST 14
+The module works without AI.
+
+TEST 15
+Existing BISMA features remain functional.
+
+==========================================================
+W. IMPLEMENTATION PRIORITIES
+==========================================================
+
+PHASE 1 — REQUIRED MVP
+
+1. Existing BISMA auth integration.
+2. Verified user roles.
+3. Supabase database integration.
+4. Teacher dashboard.
+5. Principal dashboard.
+6. Forms A–D.
+7. Classroom observation rubric.
+8. Supervision workflow.
+9. Principal feedback.
+10. Private evidence upload.
+11. PDF reports.
+12. RLS enforcement.
+
+PHASE 2 — OPTIONAL ENHANCEMENTS
+
+1. AI reflection assistance.
+2. Coaching recommendations.
+3. Supervision analytics.
+4. Reminder notifications.
+5. Configurable indicators.
+6. Improved audit history.
+
+Finish Phase 1 before implementing Phase 2.
+
+==========================================================
+X. EXPECTED OUTPUT FROM GOOGLE AI STUDIO
+==========================================================
+
+Generate an actual working application.
+
+Required deliverables:
+
+1. Application architecture.
+2. Responsive interface.
+3. React and TypeScript components.
+4. BISMA authentication adapter.
+5. Supabase client integration.
+6. Typed supervision models.
+7. Working CRUD operations.
+8. Workflow validation.
+9. Supabase migrations.
+10. RLS integration.
+11. Private file storage.
+12. PDF generation.
+13. Dashboard and filtering.
+14. Clear setup instructions.
+15. Testing checklist.
+
+Build iteratively.
+
+First inspect existing BISMA structures if supplied.
+
+Then implement the dashboard and Forms A–D.
+
+Connect forms to Supabase.
+
+Apply secure authorization and workflow checks.
+
+Generate PDF outputs from real database records.
+
+Verify every feature.
+
+Do not invent an existing BISMA database schema.
+
+Document any required integration mapping.
+
+Do not claim a feature works unless it is actually implemented.
+
+FINAL GOAL:
+
+Deliver a powerful yet simple academic supervision system in which teachers independently prepare and reflect on their practice, principals conduct authentic classroom observations, and all supervision documents are securely stored and organized within BISMA+.

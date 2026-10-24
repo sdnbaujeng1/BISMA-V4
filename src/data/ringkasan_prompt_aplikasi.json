@@ -1,0 +1,310 @@
+{
+  "aplikasi": {
+    "nama": "BISMA (Bimbingan, Informasi, dan Sistem Manajemen Administrasi)",
+    "versi": "2.4.0",
+    "institusi": "UPT SDN Baujeng 1 Beji",
+    "tanggal_penyusunan": "2026-10-21",
+    "deskripsi": "Ringkasan prompt rekayasa sistem, blueprint logika fungsional, dan spesifikasi fitur per role pada ekosistem aplikasi BISMA."
+  },
+  "roles": [
+    {
+      "id": "admin",
+      "nama": "Administrator / Superadmin",
+      "deskripsi": "Memiliki kendali penuh terhadap manajemen master data, konfigurasi institusi, hak akses user, backup/restore database, dan pengaturan modul lanjutan (BISMA+ & Supervisi).",
+      "fitur": [
+        {
+          "id": "admin_dashboard_monitoring",
+          "nama": "Dashboard Monitoring Analitik Admin",
+          "kategori": "Dashboard & Analitik",
+          "ringkasan_prompt": "Sajikan panel analitik komprehensif yang menampilkan metrik KBM realtime, persentase kehadiran harian siswa dan guru, capaian pembiasaan Karakter Kasih Ibu, dan akumulasi bank sampah dengan filter tahun ajaran aktif.",
+          "input": ["Periode (Bulan/Tahun Ajaran)", "Filter Kelas", "Filter Tanggal"],
+          "logika_utama": "Agregasi data dari tabel jurnal, murid, transaksi bank sampah, dan habit logs. Menghitung persentase kehadiran: (Hadir / Total Siswa) * 100%. Memetakan radar chart dimensi karakter kasih ibu.",
+          "output": ["Kartu Statistik Metrik Utama", "Grafik Batang KBM per Kelas", "Spider Chart Dimensi Kasih Ibu", "Tabel 5 Siswa Paling Sering Absen & Pelanggaran"],
+          "aturan_bisnis": "Akses terbatas khusus role admin. Data selalu difilter berdasarkan tahun pelajaran dan semester yang aktif di pengaturan sistem."
+        },
+        {
+          "id": "admin_supervisi_akademik",
+          "nama": "Manajemen Supervisi Akademik KS",
+          "kategori": "Supervisi Akademik",
+          "ringkasan_prompt": "Kelola siklus supervisi akademik guru mulai dari penjadwalan, penugasan indikator prioritas D1-D8, evaluasi Form A hingga E, fitur edit & hapus siklus supervisi, hingga pencetakan dokumen resmi format A4 dengan lampiran Google Drive opsional.",
+          "input": ["ID Siklus Supervisi", "NIP Guru", "Tanggal Observasi", "Indikator Prioritas", "Skor Ketercapaian", "Catatan Bukti", "URL Link Drive (Opsional)"],
+          "logika_utama": "Siklus supervisi memuat relasi one-to-many ke attachment bukti dan payload JSON Form A (Perencanaan), Form B (Observasi Kelas), Form C (Pasca Observasi), Form D (Tindak Lanjut), dan Form E (Refleksi). Mendukung penghapusan permanen siklus dan pengeditan data jadwal.",
+          "output": ["Daftar Siklus Supervisi Guru", "Status Tahapan Berjalan (0%-100%)", "Laporan Rekap Nilai Kinerja Guru", "Dokumen PDF/Print A4 Resmi"],
+          "aturan_bisnis": "Admin dan Kepala Sekolah dapat mengedit jadwal atau menghapus siklus jika ada kesalahan input. URL Drive bersifat opsional."
+        },
+        {
+          "id": "admin_kelola_siswa",
+          "nama": "Kelola Master Data Siswa",
+          "kategori": "Master Data",
+          "ringkasan_prompt": "Sajikan tabel master murid lengkap dengan fitur CRUD, pencarian berdasarkan NISN/Nama, filter kelas, reset password default massal (baujeng+kelas), serta import dan export data melalui spreadsheet Excel.",
+          "input": ["NISN", "Nama Lengkap", "Kelas", "Jenis Kelamin", "NIS", "Tanggal Lahir", "File Excel (.xlsx)"],
+          "logika_utama": "Validasi integritas unik pada NISN. Saat import, baris dicocokkan atau di-upsert ke database. Generate default password otomatis 'baujeng(kelas)'.",
+          "output": ["Tabel Interaktif Murid", "Log Hasil Import/Export", "Notifikasi Reset Password"],
+          "aturan_bisnis": "NISN harus unik dan valid numerik. Penghapusan murid wajib memvalidasi relasi ke data jurnal dan tabungan bank sampah."
+        },
+        {
+          "id": "admin_kelola_guru",
+          "nama": "Kelola Master Data Guru & Tendik",
+          "kategori": "Master Data",
+          "ringkasan_prompt": "Kelola akun pengguna guru dan tenaga kependidikan, nomor induk pegawai (NIP), penugasan wali kelas, serta konfigurasi hak akses multi-role (Guru, Tendik, Walikelas, KS).",
+          "input": ["NIP", "Nama Guru / Tendik", "Password", "Role", "Penugasan Wali Kelas", "Mata Pelajaran yang Diampu"],
+          "logika_utama": "Penyimpanan kredensial terenkripsi/hash. Penugasan wali kelas membuka akses modul khusus 'Kasih Ibu' dan 'Bank Sampah' tingkat kelas.",
+          "output": ["Daftar Akun Guru & Tendik", "Status Akun Aktif", "Modal Reset Kredensial"],
+          "aturan_bisnis": "NIP menjadi identifier utama sinkronisasi jadwal mengajar dan riwayat jurnal KBM."
+        },
+        {
+          "id": "admin_kelola_jadwal",
+          "nama": "Kelola Jadwal KBM Realtime",
+          "kategori": "Akademik & KBM",
+          "ringkasan_prompt": "Sediakan tabel interaktif untuk mengatur jadwal pelajaran per hari (Senin - Sabtu), jam pembelajaran (1 - 8), kelas, mata pelajaran, dan guru pengampu.",
+          "input": ["Hari", "Jam Ke", "Kelas", "Mata Pelajaran", "Guru Pengampu"],
+          "logika_utama": "Validasi bentrok jam mengajar: mencegah guru yang sama terjadwal di dua kelas berbeda pada hari dan jam yang sama.",
+          "output": ["Matriks Jadwal Pelajaran Mingguan", "Jadwal Harian Otomatis di Dashboard Guru"],
+          "aturan_bisnis": "Jadwal real menjadi dasar validasi saat guru mengisi jurnal mengajar KBM harian."
+        },
+        {
+          "id": "admin_pengaturan_sekolah",
+          "nama": "Pengaturan Identitas & Tampilan Sekolah",
+          "kategori": "Konfigurasi Sistem",
+          "ringkasan_prompt": "Kelola identitas resmi sekolah (Nama Sekolah, Alamat, Nama Kepala Sekolah, NIP KS, Tahun Ajaran, Semester) serta aset visual (Logo 1x1, Logo Kabupaten, Logo KOP, dan Background Login).",
+          "input": ["Nama Sekolah", "Kepala Sekolah & NIP", "Tahun Ajaran Aktif", "Semester Aktif", "URL Logo 1x1", "URL Logo KOP", "URL Background Login"],
+          "logika_utama": "Menyimpan konfigurasi ke tabel 'pengaturan' database, broadcast update via event 'school-identity-update' ke seluruh client.",
+          "output": ["Sinkronisasi Kop Surat Cetak", "Tampilan Header Aplikasi", "Kop Laporan Resmi A4"],
+          "aturan_bisnis": "Logo dan identitas langsung tercermin pada seluruh dokumen cetak, kartu presensi, dan header dashboard."
+        },
+        {
+          "id": "admin_pengaturan_bisma",
+          "nama": "Konfigurasi BISMA+ & Supervisi Admin",
+          "kategori": "Konfigurasi Sistem",
+          "ringkasan_prompt": "Sediakan kontrol lanjutan untuk sistem BISMA+: URL logo khusus BISMA+ (terhubung ke Landing Page dan Login Page), toggle aturan penguncian urutan modul (sequential lock), toggle embed link drive, dan opsi autofill instrumen.",
+          "input": ["bismaLogoUrl", "enableSequentialUnlock", "enableDriveLinkEmbed", "enableAiAutofill"],
+          "logika_utama": "Simpan konfigurasi ke database dengan key 'bisma_supervisi_plus_config_v2'. Nilai bismaLogoUrl digunakan responsif pada header landing dan logo login page.",
+          "output": ["Logo BISMA+ Dinamis di Login & Landing", "Status Pengaturan Terkunci/Terbuka"],
+          "aturan_bisnis": "Pengubahan bismaLogoUrl otomatis memicu pembaruan logo login dan header publik tanpa perlu rebuild."
+        },
+        {
+          "id": "admin_backup_restore",
+          "nama": "Backup & Pemulihan Database",
+          "kategori": "Keamanan & Pemeliharaan",
+          "ringkasan_prompt": "Sediakan utilitas unduh salinan basis data instan (JSON/SQL snapshot) dan pemulihan data aman dengan validasi integritas struktur tabel.",
+          "input": ["File Restore (.json / .sql)", "Trigger Unduh Snapshot"],
+          "logika_utama": "Dump seluruh tabel publik (jurnal, murid, guru, pengaturan, transaksi_sampah, habit_logs) ke format file JSON terkompresi.",
+          "output": ["File Backup Berstempel Waktu", "Log Status Pemulihan"],
+          "aturan_bisnis": "Hanya superadmin yang berhak melakukan restore database demi mencegah penimpaan data keliru."
+        }
+      ]
+    },
+    {
+      "id": "ks",
+      "nama": "Kepala Sekolah",
+      "deskripsi": "Berperan sebagai supervisor pendidikan dan penilai kinerja pembelajaran guru, evaluator keterlaksanaan KBM, dan pemantau kedisiplinan serta budaya positif sekolah.",
+      "fitur": [
+        {
+          "id": "ks_supervisi_dashboard",
+          "nama": "Matriks Supervisi Akademik Terpadu",
+          "kategori": "Supervisi Akademik",
+          "ringkasan_prompt": "Tampilkan papan kendali supervisi guru yang menyajikan daftar guru, mata pelajaran, kelas, progres siklus (Perencanaan, Observasi, Pasca Observasi, Tindak Lanjut, Refleksi), dan tombol aksi cepat.",
+          "input": ["Filter Guru", "Filter Tahun Ajaran", "Filter Status Siklus"],
+          "logika_utama": "Kalkulasi persentase ketercapaian siklus supervisi guru per semester. Memberikan indikator status visual (Belum Mulai, Terjadwal, Observasi, Selesai).",
+          "output": ["Papan Progres Supervisi", "Ringkasan Nilai Kinerja Guru", "Tautan Aksi ke Tiap Form"],
+          "aturan_bisnis": "Kepala Sekolah dapat memantau seluruh guru secara berkala sesuai target kalender akademik."
+        },
+        {
+          "id": "ks_form_b_observasi",
+          "nama": "Pelaksanaan Observasi Pembelajaran (Form B)",
+          "kategori": "Supervisi Akademik",
+          "ringkasan_prompt": "Sajikan lembar instrumen observasi kelas berbasis 8 Indikator Prioritas Dimensi D Kurikulum Merdeka. Sediakan opsi penilaian perilaku (Belum Dilakukan, Dilakukan tapi Belum Efektif, Dilakukan dan Efektif), kolom catatan bukti kontekstual, dan kolom URL Google Drive dokumentasi (opsional).",
+          "input": ["Fokus Target Perilaku 1-3", "Status Pelaksanaan", "Catatan Bukti Konkret", "URL Drive Dokumentasi (Opsional)"],
+          "logika_utama": "Menyimpan penilaian perilaku per butir ke dalam JSON payload siklus. Link Drive diverifikasi format URL-nya dan disajikan sebagai tautan pratinjau bukti dokumen jika diisi.",
+          "output": ["Skor Observasi Kelas", "Catatan Penguatan Kepala Sekolah", "Tautan Lampiran Dokumentasi"],
+          "aturan_bisnis": "Penyematan Link Drive bersifat opsional agar tidak membebani observer jika bukti fisik sudah terverifikasi di kelas."
+        },
+        {
+          "id": "ks_laporan_supervisi_a4",
+          "nama": "Cetak Laporan Supervisi Resmi Format A4",
+          "kategori": "Pelaporan Resmi",
+          "ringkasan_prompt": "Hasilkan tata letak dokumen cetak resmi format standar A4 yang memuat Kop Surat Sekolah lengkap dengan logo kabupaten dan logo sekolah, data guru yang disupervisi, tabel hasil instrumen Form A-E, catatan kesepakatan, tautan bukti drive, dan blok tanda tangan Kepala Sekolah & Guru.",
+          "input": ["ID Siklus Supervisi", "Trigger Cetak (window.print)"],
+          "logika_utama": "Format CSS print stylesheet `@media print` dengan margin A4 standar (210mm x 297mm), page-break prevention pada tabel dan tanda tangan, serta resolusi font tajam.",
+          "output": ["Dokumen Cetak Fisik / PDF A4 Siap Arsip", "Lembar Pengesahan Supervisi"],
+          "aturan_bisnis": "Tata letak dokumen cetak wajib mematuhi format baku administrasi dinas pendidikan dan tidak terpotong antar halaman."
+        },
+        {
+          "id": "ks_monitoring_kehadiran",
+          "nama": "Monitoring Kehadiran Siswa & Guru Harian",
+          "kategori": "Monitoring KBM",
+          "ringkasan_prompt": "Pantau persentase kehadiran guru mengajar dan rekapan ketidakhadiran siswa (Sakit, Izin, Alpa, Dispensasi) yang terekam dari jurnal guru hari ini.",
+          "input": ["Filter Tanggal", "Filter Kelas"],
+          "logika_utama": "Mengambil agregasi kehadiran realtime dari tabel jurnal KBM dan scan QR presensi harian.",
+          "output": ["Metrik Kehadiran Harian", "Daftar Siswa Tidak Hadir Hari Ini", "Status Guru yang Sedang Mengajar"],
+          "aturan_bisnis": "Data diperbarui otomatis saat guru mengirimkan jurnal di kelas masing-masing."
+        }
+      ]
+    },
+    {
+      "id": "guru",
+      "nama": "Guru Mata Pelajaran & Guru Kelas",
+      "deskripsi": "Pelaksana proses KBM di kelas, pengisi jurnal pembelajaran harian, pencatat ketidakhadiran murid, penilai kedisiplinan dan capaian akademik.",
+      "fitur": [
+        {
+          "id": "guru_isi_jurnal",
+          "nama": "Pengisian Jurnal KBM Harian",
+          "kategori": "KBM & Pembelajaran",
+          "ringkasan_prompt": "Sajikan alur 4 langkah interaktif: 1. Pilih Kelas & Presensi Kehadiran Siswa; 2. Input Pembelajaran (Mapel, Jam Ke, Materi/Kegiatan); 3. Catatan Kedisiplinan & Perilaku; 4. Validasi Kebersihan Kelas dan Petugas Piket/Inval.",
+          "input": ["Kelas", "Daftar Kehadiran Murid (H/S/I/A)", "Mata Pelajaran", "Jam Pelajaran (contoh: 1, 2, 3)", "Materi Ajar", "Catatan Kedisiplinan", "Status Kebersihan"],
+          "logika_utama": "Otomatisasi daftar murid berdasarkan kelas yang dipilih. Menyimpan data absensi terstruktur `[{ type: 'Sakit', students: ['Nama'] }]` dan catatan kasus ke tabel `jurnal`.",
+          "output": ["Entri Jurnal Tersimpan di DB", "Popup Konfirmasi Ringkasan Jurnal", "Rekap KBM Realtime"],
+          "aturan_bisnis": "Mata pelajaran dapat diambil otomatis jika guru mengakses melalui tombol pintasan jadwal mengajar."
+        },
+        {
+          "id": "guru_cetak_laporan_jurnal",
+          "nama": "Cetak Laporan Jurnal & Ketidakhadiran",
+          "kategori": "Pelaporan KBM",
+          "ringkasan_prompt": "Tampilkan tabel riwayat jurnal mengajar guru dengan filter Bulan, Tahun, Kelas, dan Status Ketidakhadiran. Tampilkan nama siswa yang tidak hadir secara eksplisit di kolom Ketidakhadiran, lengkapi dengan tabel Rekapitulasi Siswa Tidak Hadir terpisah serta blok tanda tangan Kepala Sekolah dan Guru.",
+          "input": ["Filter Bulan", "Filter Tahun", "Filter Kelas", "Filter Status Absensi (Semua / Ada Ketidakhadiran / Nihil)"],
+          "logika_utama": "Memanfaatkan parser universal `parseKetidakhadiran` untuk mengekstrak seluruh format ketidakhadiran. Menghitung total Sakit, Izin, Alpa, Dispensasi dan merangkum kejadian per siswa.",
+          "output": ["Tabel Jurnal KBM Rapi", "Tabel Rekapitulasi Siswa Tidak Hadir", "Format Cetak Laporan Resmi A4"],
+          "aturan_bisnis": "Jika tidak ada siswa tidak hadir, kolom menampilkan keterangan 'Nihil (Semua Hadir)'. Saat dicetak, styling font berkontras tinggi dan rapi."
+        },
+        {
+          "id": "guru_rekap_absensi",
+          "nama": "Kehadiran Murid & Rekap Absensi",
+          "kategori": "Presensi & Kehadiran",
+          "ringkasan_prompt": "Sediakan rekapan kehadiran kelas per tanggal dengan kalkulasi prioritas status (Sakit > Izin > Dispensasi > Alpa > Hadir), opsi filter 'Tampilkan Semua' vs 'Hanya Siswa Tidak Hadir', serta tombol Cetak Presensi Resmi.",
+          "input": ["Kelas", "Tanggal", "Pilihan Filter Tampilan"],
+          "logika_utama": "Mencocokkan nama siswa secara case-insensitive & trimmed terhadap seluruh entri jurnal tanggal terpilih. Memberikan checkmark pada kolom status dan menghitung persentase kehadiran kelas.",
+          "output": ["Kartu Indikator S/I/A/D", "Tabel Presensi Kelas", "Lembar Cetak Laporan Presensi Harian"],
+          "aturan_bisnis": "Siswa yang memiliki catatan Alpa di jam pelajaran manapun tidak akan terhapus status tidak hadirnya."
+        },
+        {
+          "id": "guru_kedisiplinan",
+          "nama": "Presensi & Penanganan Kedisiplinan Siswa",
+          "kategori": "Kesiswaan & Bimbingan",
+          "ringkasan_prompt": "Kelola tabulasi riwayat ketidakhadiran akumulatif dan catatan pelanggaran disiplin siswa. Sediakan opsi input penanganan berbasis Segitiga Restitusi, Konsekuensi Logis, Kontrak Perilaku, serta tombol Cetak Rekap Ketidakhadiran.",
+          "input": ["Kelas", "Rentang Tanggal (Dari - Sampai)", "Catatan Kasus Siswa", "Metode Penanganan Masalah"],
+          "logika_utama": "Menghitung total ketidakhadiran siswa per periode. Menyimpan tindakan penyelesaian ke kolom `penanganan` catatan mengajar guru.",
+          "output": ["Daftar Akumulasi Ketidakhadiran", "Riwayat Penanganan Pelanggaran", "Lembar Cetak Rekap Kedisiplinan"],
+          "aturan_bisnis": "Klik ganda pada baris siswa untuk membuka riwayat pelanggaran dan menambahkan tindak lanjut pembinaan."
+        },
+        {
+          "id": "guru_presensi_qr",
+          "nama": "Scan QR Kartu Siswa & Pembiasaan",
+          "kategori": "Presensi Digital",
+          "ringkasan_prompt": "Buka kamera pemindai QR barcode kartu siswa untuk mencatat kedatangan, kepulangan, atau pemberian poin karakter pembiasaan baik secara instan.",
+          "input": ["Scan Barcode NISN Siswa", "Pilihan Mode (Presensi / Pembiasaan)"],
+          "logika_utama": "Dekode string QR NISN siswa, validasi data murid di database, lalu simpan timestamp dan status presensi ke server.",
+          "output": ["Audio Beep & Haptic Feedback", "Kartu Profil Siswa Terverifikasi", "Notifikasi Kehadiran Sukses"],
+          "aturan_bisnis": "Mencegah duplikasi scan dalam rentang waktu singkat (debouncing 3 detik)."
+        },
+        {
+          "id": "guru_kasih_ibu",
+          "nama": "Pemberian Poin Karakter Kasih Ibu",
+          "kategori": "Karakter & Budaya Positif",
+          "ringkasan_prompt": "Berikan poin apresiasi karakter positif (Disiplin, Kejujuran, Gotong Royong, Religi, Peduli Lingkungan) kepada siswa perorangan maupun kelompok kelas.",
+          "input": ["Nama/NISN Siswa", "Kategori Pembiasaan", "Jumlah Poin", "Catatan Apresiasi"],
+          "logika_utama": "Menambahkan poin ke saldo Kasih Ibu siswa dan mengupdate agregat dimensi karakter kelas.",
+          "output": ["Poin Reward Bertambah", "Riwayat Apresiasi Karakter", "Leaderboard Kelas"],
+          "aturan_bisnis": "Poin yang dikumpulkan siswa dapat ditukar dengan voucher reward sekolah atau perlengkapan belajar."
+        }
+      ]
+    },
+    {
+      "id": "walikelas",
+      "nama": "Wali Kelas",
+      "deskripsi": "Bertanggung jawab membimbing satu rombongan belajar, mengawasi kemajuan akademik, konsistensi kehadiran, keaktifan bank sampah, dan karakter Kasih Ibu siswa binaannya.",
+      "fitur": [
+        {
+          "id": "walikelas_monitoring_kelas",
+          "nama": "Dashboard Pantau Kelas Binaan",
+          "kategori": "Kewalikelasan",
+          "ringkasan_prompt": "Tampilkan ikhtisar menyeluruh kelas binaan: persentase kehadiran bulanan, total tabungan bank sampah kelas, rata-rata poin kasih ibu, dan siswa yang membutuhkan perhatian khusus.",
+          "input": ["ID Kelas Binaan", "Periode Bulan Aktif"],
+          "logika_utama": "Agregasi terpadu nilai, kehadiran, dan tabungan sampah dari seluruh siswa yang terdaftar di kelas bersangkutan.",
+          "output": ["Ringkasan Statistik Kelas", "Daftar Siswa Perlu Pendampingan", "Grafik Keaktifan"],
+          "aturan_bisnis": "Wali kelas memiliki hak akses otomatis jika akun gurunya ditandai sebagai wali kelas pada menu manajemen akun."
+        },
+        {
+          "id": "walikelas_rekap_bulanan",
+          "nama": "Cetak Buku Laporan Wali Kelas",
+          "kategori": "Administrasi Kelas",
+          "ringkasan_prompt": "Hasilkan berkas rekap presensi bulanan, rekapitulasi ketidakhadiran siswa, dan catatan perilaku untuk arsip bulanan dan pelaporan kepada orang tua.",
+          "input": ["Bulan", "Tahun", "Format Cetak"],
+          "logika_utama": "Penyusunan tabel presensi matriks 1 bulan kalender (tanggal 1 s.d. 31) dengan simbol H, S, I, A, D.",
+          "output": ["Format Cetak Buku Presensi Bulanan Resmi", "Daftar Tanda Tangan Wali Kelas"],
+          "aturan_bisnis": "Menjadi dokumen otentik pertanggungjawaban wali kelas di akhir semester."
+        }
+      ]
+    },
+    {
+      "id": "tendik",
+      "nama": "Tenaga Kependidikan / Petugas Piket",
+      "deskripsi": "Menjalankan operasional pendukung sekolah, memindai presensi gerbang, mencatat jurnal kerja tendik harian, dan memvalidasi piket inval guru.",
+      "fitur": [
+        {
+          "id": "tendik_jurnal_harian",
+          "nama": "Isi Jurnal Aktivitas Kerja Tendik",
+          "kategori": "Aktivitas Kerja",
+          "ringkasan_prompt": "Sediakan formulir ringkas pencatatan aktivitas kerja harian tendik (administrasi, pemeliharaan sarpras, keamanan, pelayanan tamu) dengan pencatatan tanggal dan waktu otomatis.",
+          "input": ["Deskripsi Aktivitas Kerja", "Tanggal"],
+          "logika_utama": "Simpan entri aktivitas ke endpoint `/api/jurnal-tendik` dengan referensi NIP dan nama tendik.",
+          "output": ["Riwayat Aktivitas Kerja Tendik", "Statistik Jam Kerja", "Konfirmasi Tersimpan"],
+          "aturan_bisnis": "Tendik dapat mengisi lebih dari satu kegiatan dalam satu hari kerja."
+        },
+        {
+          "id": "tendik_presensi_gerbang",
+          "nama": "Scan QR Presensi Cepat di Gerbang",
+          "kategori": "Presensi & Keamanan",
+          "ringkasan_prompt": "Aktifkan pemindai barcode kamera berkelanjutan dengan pembacaan instan untuk antrian siswa saat memasuki gerbang sekolah di pagi hari.",
+          "input": ["Kamera Scanner Stream", "Kode Barcode Siswa"],
+          "logika_utama": "Pemindaian beruntun tanpa reload halaman, validasi instan NISN, menampilkan nama dan kelas siswa dengan audio konfirmasi.",
+          "output": ["Audio Bell / Notifikasi Hijau", "Status Datang Tepat Waktu / Terlambat", "Update Dashboard Realtime"],
+          "aturan_bisnis": "Mencatat status terlambat otomatis jika scan dilakukan setelah jam batas masuk sekolah (contoh: 07.00 WIB)."
+        }
+      ]
+    },
+    {
+      "id": "siswa",
+      "nama": "Siswa / Murid",
+      "deskripsi": "Peserta didik yang memanfaatkan aplikasi untuk melihat kartu digital, memantau riwayat kehadiran, melihat akumulasi tabungan sampah, dan mengecek poin Kasih Ibu.",
+      "fitur": [
+        {
+          "id": "siswa_dashboard_pribadi",
+          "nama": "Dashboard Digital Siswa",
+          "kategori": "Kesiswaan",
+          "ringkasan_prompt": "Sajikan tampilan ramah anak yang menampilkan kartu digital ber-QR code, saldo tabungan bank sampah, total poin karakter Kasih Ibu, dan jadwal pelajaran hari ini.",
+          "input": ["Login Akun Siswa (NISN & Password)"],
+          "logika_utama": "Memuat data murid berdasarkan NISN sesi aktif, memvisualisasikan kartu identitas dengan barcode NISN.",
+          "output": ["Kartu Digital QR Siswa", "Widget Saldo Sampah", "Badge & Bintang Kasih Ibu", "Jadwal Pelajaran Hari Ini"],
+          "aturan_bisnis": "Siswa dapat memperlihatkan kartu digitalnya dari HP untuk di-scan oleh guru atau tendik piket."
+        },
+        {
+          "id": "siswa_bank_sampah",
+          "nama": "Tabungan Bank Sampah Siswa",
+          "kategori": "Ekologi & Finansial",
+          "ringkasan_prompt": "Tampilkan buku tabungan digital bank sampah: total kilogram sampah plastik/kertas yang telah disetorkan, riwayat transaksi, dan saldo rupiah yang terkumpul.",
+          "input": ["NISN Siswa"],
+          "logika_utama": "Merekap transaksi kredit/debit dari tabel transaksi bank sampah siswa.",
+          "output": ["Buku Tabungan Digital", "Grafik Setoran Sampah", "Total Rupiah Tersimpan"],
+          "aturan_bisnis": "Saldo tabungan dapat dicairkan pada periode tertentu atau digunakan untuk kebutuhan perlengkapan sekolah."
+        }
+      ]
+    },
+    {
+      "id": "monitoring",
+      "nama": "Dashboard Monitoring Publik & Pemangku Kepentingan",
+      "deskripsi": "Portal transparansi publik dan pemantauan bagi orang tua, komite sekolah, dan pengawas pendidikan.",
+      "fitur": [
+        {
+          "id": "monitoring_publik_live",
+          "nama": "Live Dashboard KBM & Kehadiran Sekolah",
+          "kategori": "Transparansi Publik",
+          "ringkasan_prompt": "Sajikan layar monitor informasi sekolah tanpa perlu login, menampilkan status KBM berjalan saat ini, rekapitulasi kehadiran siswa harian, capaian pembiasaan, dan kontak bantuan Helpdesk.",
+          "input": ["Auto-refresh Interval (60 detik)"],
+          "logika_utama": "Endpoint publik `/api/monitoring/stats` dan `/api/jadwal-mengajar` menyajikan agregat anonim tanpa mengekspos data privat anak.",
+          "output": ["Ticker Berita Sekolah", "Display KBM Kelas 1 - 6", "Grafik Kehadiran Publik", "Modal Detail Ketidakhadiran"],
+          "aturan_bisnis": "Sesuai standar privasi anak, data nama lengkap di halaman publik disajikan secara proporsional dan aman."
+        }
+      ]
+    }
+  ]
+}

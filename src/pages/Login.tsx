@@ -12,6 +12,7 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loginBgUrl, setLoginBgUrl] = useState('https://lh3.googleusercontent.com/d/144IjGRLPpyDoioIQK5oC03UKKYzf0NJe');
+  const [loginLogoUrl, setLoginLogoUrl] = useState('https://lh3.googleusercontent.com/d/1k2MibT1XHlAWHbFOQo80Cj4Lp5ZMeMLT');
   const schoolIdentity = useSchoolIdentity();
 
   useEffect(() => {
@@ -19,14 +20,25 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
       try {
         const res = await fetch('/api/pengaturan');
         const result = await res.json();
-        if (result.success && result.data.login_background_url) {
-          setLoginBgUrl(result.data.login_background_url);
+        if (result.success && result.data) {
+          if (result.data.login_background_url) {
+            setLoginBgUrl(result.data.login_background_url);
+          }
+          if (result.data.bismaLogoUrl) {
+            setLoginLogoUrl(result.data.bismaLogoUrl);
+          }
         }
       } catch (e) {
         console.error('Failed to load settings', e);
       }
     };
     fetchConfig();
+
+    const handleIdentityUpdate = () => {
+      fetchConfig();
+    };
+    window.addEventListener('school-identity-update', handleIdentityUpdate);
+    return () => window.removeEventListener('school-identity-update', handleIdentityUpdate);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,20 +99,20 @@ export default function Login({ onLogin, onNavigate }: { onLogin: (user: any) =>
                 y: { repeat: Infinity, duration: 3.5, ease: "easeInOut" },
                 opacity: { duration: 0.4 }
               }}
-              className="relative p-3 sm:p-4 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-2 border-emerald-500/80 dark:border-emerald-400/80 shadow-[0_0_1.5pt_rgba(16,185,129,0.8)] transition-all duration-300 flex items-center justify-center"
+              className="relative px-4 py-3 sm:px-6 sm:py-4 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-2 border-emerald-500/80 dark:border-emerald-400/80 shadow-[0_0_1.5pt_rgba(16,185,129,0.8)] transition-all duration-300 flex items-center justify-center"
             >
               <img 
-                src={schoolIdentity.schoolLogo} 
+                src={loginLogoUrl || schoolIdentity.bismaLogoUrl || schoolIdentity.schoolLogo} 
                 alt={schoolIdentity.appName || "Logo BISMA"} 
-                className="h-20 sm:h-24 w-auto object-contain transition-transform duration-300 group-hover:scale-105" 
+                referrerPolicy="no-referrer"
+                className="h-14 sm:h-16 md:h-20 w-auto max-w-[220px] sm:max-w-[280px] object-contain transition-transform duration-300 group-hover:scale-105" 
               />
             </motion.div>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-black text-black dark:text-white tracking-tight flex items-center justify-center gap-2">
-            LOGIN <span>{schoolIdentity.appName || "BISMA"}</span>
-          </h1>
-          <p className="text-slate-800 font-semibold dark:text-slate-200 mt-1 text-xs sm:text-sm">{schoolIdentity.schoolName}</p>
+          <h2 className="text-base sm:text-xl md:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-wider leading-tight drop-shadow-sm px-4 mt-1">
+            {schoolIdentity.schoolName}
+          </h2>
         </div>
         
         <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/50 dark:border-slate-700/50">
