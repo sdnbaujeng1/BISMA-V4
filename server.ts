@@ -574,7 +574,7 @@ app.get('/api/admin/stats', async (req, res) => {
       }
     } else {
       // Default to Guru
-      const { data: user } = await supabase.from('guru').select('nip, nama_guru, target_jp, mengajar').eq('nip', nip).eq('password', password).single();
+      const { data: user } = await supabase.from('guru').select('*').eq('nip', nip).eq('password', password).single();
       
       if (user) {
         const today = new Date();
@@ -584,13 +584,40 @@ app.get('/api/admin/stats', async (req, res) => {
         
         const { data: schedule } = await supabase.from('jadwal_real').select('jam, kelas, mapel').eq('hari', hariIniIndo).eq('guru', user.nama_guru).order('jam');
         
+        // Resolve waliKelas from pengaturan.wali_kelas_mapping or guru column
+        let resolvedWaliKelas = (user as any).wali_kelas || (user as any).waliKelas || '';
+        try {
+          const { data: wkRow } = await supabase.from('pengaturan').select('value').eq('key', 'wali_kelas_mapping').maybeSingle();
+          if (wkRow?.value) {
+            const wkMap = JSON.parse(wkRow.value);
+            // wkMap can have keys like "Kelas 1": { nip, nama } or by nip
+            for (const [kls, info] of Object.entries(wkMap)) {
+              if (kls.startsWith('Kelas') && info && typeof info === 'object') {
+                const inf = info as any;
+                if (
+                  (inf.nip && String(inf.nip).trim() === String(user.nip).trim()) ||
+                  (inf.nama && String(inf.nama).trim().toLowerCase() === String(user.nama_guru || '').trim().toLowerCase())
+                ) {
+                  resolvedWaliKelas = kls;
+                  break;
+                }
+              }
+            }
+            if (!resolvedWaliKelas && wkMap[user.nip]) {
+              resolvedWaliKelas = String(wkMap[user.nip]);
+            }
+          }
+        } catch (e) {}
+
         return res.json({
           success: true,
           user: {
             role: 'guru',
             NIP: user.nip,
             'Nama Guru': user.nama_guru,
-            Mengajar: user.mengajar
+            Mengajar: user.mengajar,
+            waliKelas: resolvedWaliKelas,
+            wali_kelas: resolvedWaliKelas
           },
           schedule: schedule || [],
           targetJP: user.target_jp
@@ -1641,13 +1668,31 @@ app.get('/api/admin/stats', async (req, res) => {
   });
 
   app.post('/api/users', async (req, res) => {
-    const { nip, nama, roles, password, jabatan } = req.body;
+    const { nip, nama, roles, password, jabatan, wali_kelas, waliKelas } = req.body;
     
     try {
       const rolesArray = Array.isArray(roles) ? roles : [roles];
       
       if (rolesArray.includes('Guru')) {
         await supabase.from('guru').insert({ nip, nama_guru: nama, password: password || '123456' });
+        const wkVal = wali_kelas !== undefined ? wali_kelas : waliKelas;
+        if (wkVal !== undefined) {
+          try {
+            const { data: wkRow } = await supabase.from('pengaturan').select('value').eq('key', 'wali_kelas_mapping').maybeSingle();
+            const wkMap = wkRow?.value ? JSON.parse(wkRow.value) : {};
+            // Remove previous assignment for this nip
+            Object.keys(wkMap).forEach((k) => {
+              if (k.startsWith('Kelas') && wkMap[k]?.nip === nip) delete wkMap[k];
+            });
+            if (wkVal && wkVal.startsWith('Kelas')) {
+              wkMap[wkVal] = { nip, nama };
+              wkMap[nip] = wkVal;
+            } else {
+              delete wkMap[nip];
+            }
+            await supabase.from('pengaturan').upsert({ key: 'wali_kelas_mapping', value: JSON.stringify(wkMap) });
+          } catch (e) {}
+        }
       }
       if (rolesArray.includes('Tendik')) {
         await supabase.from('tendik').insert({ nip, nama_tendik: nama, jabatan, password: password || '123456' });
@@ -2391,7 +2436,7 @@ app.get('/api/admin/stats', async (req, res) => {
 
   app.put('/api/users/:id', async (req, res) => {
     const { id } = req.params;
-    const { nip, nama, roles, password, jabatan } = req.body;
+    const { nip, nama, roles, password, jabatan, wali_kelas, waliKelas } = req.body;
 
     try {
       const rolesArray = Array.isArray(roles) ? roles : [roles];
@@ -2406,6 +2451,27 @@ app.get('/api/admin/stats', async (req, res) => {
           await supabase.from('guru').update(updateData).eq('nip', id);
         } else {
           await supabase.from('guru').insert({ ...updateData, password: password || '123456' });
+        }
+
+        const wkVal = wali_kelas !== undefined ? wali_kelas : waliKelas;
+        if (wkVal !== undefined) {
+          try {
+            const { data: wkRow } = await supabase.from('pengaturan').select('value').eq('key', 'wali_kelas_mapping').maybeSingle();
+            const wkMap = wkRow?.value ? JSON.parse(wkRow.value) : {};
+            Object.keys(wkMap).forEach((k) => {
+              if (k.startsWith('Kelas') && (wkMap[k]?.nip === id || wkMap[k]?.nip === nip)) {
+                delete wkMap[k];
+              }
+            });
+            delete wkMap[id];
+            if (wkVal && wkVal.startsWith('Kelas')) {
+              wkMap[wkVal] = { nip, nama };
+              wkMap[nip] = wkVal;
+            } else {
+              delete wkMap[nip];
+            }
+            await supabase.from('pengaturan').upsert({ key: 'wali_kelas_mapping', value: JSON.stringify(wkMap) });
+          } catch (e) {}
         }
       } else {
         await supabase.from('guru').delete().eq('nip', id);
@@ -2553,6 +2619,101 @@ app.get('/api/admin/stats', async (req, res) => {
           value: settings.bismaLogoUrl
         });
       }
+
+      // Ensure wali_kelas_mapping is populated with homeroom teachers (Nama & NIP) from guru + jadwal_real in DB
+      try {
+        let wkMap: Record<string, any> = {};
+        if (settings.wali_kelas_mapping) {
+          try {
+            wkMap = JSON.parse(settings.wali_kelas_mapping);
+          } catch (e) {
+            wkMap = {};
+          }
+        }
+
+        const [{ data: guruRows }, { data: jadwalRows }] = await Promise.all([
+          supabase.from('guru').select('nip, nama_guru, mengajar'),
+          supabase.from('jadwal_real').select('kelas, guru, mapel')
+        ]);
+
+        if (guruRows && guruRows.length > 0) {
+          const guruByName = new Map<string, { nip: string; nama: string }>();
+          guruRows.forEach((g: any) => {
+            const cleanName = String(g.nama_guru || '').trim();
+            if (cleanName) {
+              guruByName.set(cleanName.toLowerCase(), {
+                nip: String(g.nip || '').trim(),
+                nama: cleanName
+              });
+            }
+          });
+
+          // Backfill missing NIP if wkMap has nama but empty nip
+          for (const klsKey of ['Kelas 1', 'Kelas 2', 'Kelas 3', 'Kelas 4', 'Kelas 5', 'Kelas 6']) {
+            const existing = wkMap[klsKey];
+            if (existing && existing.nama && (!existing.nip || existing.nip === '-')) {
+              const foundGuru = guruByName.get(String(existing.nama).trim().toLowerCase());
+              if (foundGuru?.nip) {
+                wkMap[klsKey] = { nip: foundGuru.nip, nama: foundGuru.nama };
+              }
+            }
+          }
+
+          // Detect homeroom teacher per class from jadwal_real for any class not yet mapped
+          if (jadwalRows && jadwalRows.length > 0) {
+            for (let c = 1; c <= 6; c++) {
+              const klsKey = `Kelas ${c}`;
+              if (wkMap[klsKey] && wkMap[klsKey].nama && wkMap[klsKey].nip) continue;
+
+              const classSchedules = jadwalRows.filter((j: any) => {
+                const rawKls = String(j.kelas || '').trim();
+                return rawKls.toLowerCase() === klsKey.toLowerCase() || rawKls === String(c);
+              });
+
+              // Count core SD homeroom subjects taught by each teacher in this class
+              const teacherScore = new Map<string, number>();
+              classSchedules.forEach((j: any) => {
+                const tName = String(j.guru || '').trim();
+                if (!tName || tName === 'null') return;
+                const mLower = String(j.mapel || '').toLowerCase();
+                const isCore =
+                  mLower.includes('matematika') ||
+                  mLower.includes('bahasa indonesia') ||
+                  mLower.includes('pancasila') ||
+                  mLower.includes('ipas') ||
+                  mLower.includes('seni') ||
+                  mLower.includes('bahasa jawa');
+                teacherScore.set(tName, (teacherScore.get(tName) || 0) + (isCore ? 3 : 1));
+              });
+
+              let bestTeacher = '';
+              let bestScore = 0;
+              for (const [tName, score] of teacherScore.entries()) {
+                if (score > bestScore) {
+                  bestScore = score;
+                  bestTeacher = tName;
+                }
+              }
+
+              if (bestTeacher) {
+                const gInfo = guruByName.get(bestTeacher.toLowerCase());
+                wkMap[klsKey] = {
+                  nip: gInfo?.nip || '-',
+                  nama: gInfo?.nama || bestTeacher
+                };
+                if (gInfo?.nip) {
+                  wkMap[gInfo.nip] = klsKey;
+                }
+              }
+            }
+          }
+
+          settings.wali_kelas_mapping = JSON.stringify(wkMap);
+        }
+      } catch (e) {
+        console.error('Error enriching wali_kelas_mapping:', e);
+      }
+
       res.json({ success: true, data: settings });
     } catch (e: any) {
       res.status(500).json({ success: false, message: e.message });
@@ -2565,7 +2726,7 @@ app.get('/api/admin/stats', async (req, res) => {
       const settings = req.body;
       
       // -- TAHUN AJARAN MIGRATION LOGIC --
-      if (settings.tahunAjaran) {
+      if (settings.tahunAjaran && settings.forceMigrateTahunAjaran === 'true') {
          const { data: oldTaData } = await supabase.from('pengaturan').select('value').eq('key', 'tahunAjaran').maybeSingle();
          const oldTa = oldTaData?.value || "2024/2025";
          if (settings.tahunAjaran !== oldTa) {
@@ -2724,7 +2885,29 @@ app.get('/api/admin/stats', async (req, res) => {
   app.get('/api/guru', async (req, res) => {
     const { data, error } = await supabase.from('guru').select('*').order('nama_guru');
     if (error) return res.status(500).json({ success: false, message: error.message });
-    res.json({ success: true, data });
+    let wkMap: Record<string, any> = {};
+    try {
+      const { data: wkRow } = await supabase.from('pengaturan').select('value').eq('key', 'wali_kelas_mapping').maybeSingle();
+      if (wkRow?.value) wkMap = JSON.parse(wkRow.value);
+    } catch (e) {}
+    const enriched = (data || []).map((g: any) => {
+      let wk = g.wali_kelas || g.waliKelas || wkMap[g.nip] || '';
+      if (!wk) {
+        for (const [kls, info] of Object.entries(wkMap)) {
+          if (kls.startsWith('Kelas') && info && typeof info === 'object') {
+            if (
+              (info as any).nip === g.nip ||
+              String((info as any).nama || '').trim().toLowerCase() === String(g.nama_guru || '').trim().toLowerCase()
+            ) {
+              wk = kls;
+              break;
+            }
+          }
+        }
+      }
+      return { ...g, wali_kelas: wk, waliKelas: wk };
+    });
+    res.json({ success: true, data: enriched });
   });
 
   app.get('/api/users', async (req, res) => {
@@ -2732,6 +2915,11 @@ app.get('/api/admin/stats', async (req, res) => {
       const { data: guru, error: errorGuru } = await supabase.from('guru').select('*');
       const { data: tendik, error: errorTendik } = await supabase.from('tendik').select('*');
       const { data: admin, error: errorAdmin } = await supabase.from('admin').select('*');
+      const { data: wkRow } = await supabase.from('pengaturan').select('value').eq('key', 'wali_kelas_mapping').maybeSingle();
+      let wkMap: Record<string, any> = {};
+      if (wkRow?.value) {
+        try { wkMap = JSON.parse(wkRow.value); } catch (e) {}
+      }
 
       if (errorGuru) throw errorGuru;
       if (errorTendik) throw errorTendik;
@@ -2740,15 +2928,33 @@ app.get('/api/admin/stats', async (req, res) => {
       const userMap = new Map();
 
       (guru || []).forEach((g: any) => {
+        let wk = g.wali_kelas || g.waliKelas || wkMap[g.nip] || '';
+        if (!wk) {
+          for (const [kls, info] of Object.entries(wkMap)) {
+            if (kls.startsWith('Kelas') && info && typeof info === 'object') {
+              if (
+                (info as any).nip === g.nip ||
+                String((info as any).nama || '').trim().toLowerCase() === String(g.nama_guru || '').trim().toLowerCase()
+              ) {
+                wk = kls;
+                break;
+              }
+            }
+          }
+        }
         if (!userMap.has(g.nip)) {
-          userMap.set(g.nip, { id: g.nip, nip: g.nip, nama: g.nama_guru, roles: [], type: 'guru' });
+          userMap.set(g.nip, { id: g.nip, nip: g.nip, nama: g.nama_guru, roles: [], type: 'guru', wali_kelas: wk, waliKelas: wk });
         }
         userMap.get(g.nip).roles.push('Guru');
+        if (wk) {
+          userMap.get(g.nip).wali_kelas = wk;
+          userMap.get(g.nip).waliKelas = wk;
+        }
       });
 
       (tendik || []).forEach((t: any) => {
         if (!userMap.has(t.nip)) {
-          userMap.set(t.nip, { id: t.nip, nip: t.nip, nama: t.nama_tendik, roles: [], type: 'tendik' });
+          userMap.set(t.nip, { id: t.nip, nip: t.nip, nama: t.nama_tendik, roles: [], type: 'tendik', jabatan: t.jabatan || '' });
         }
         userMap.get(t.nip).roles.push('Tendik');
       });
@@ -2788,19 +2994,25 @@ app.get('/api/admin/stats', async (req, res) => {
   app.post('/api/guru', async (req, res) => {
     const { nip, nama, mapel, waliKelas, password, isExtra, extraName } = req.body;
     
-    // If it's an extra curricular teacher, we might handle it differently or just add to 'guru' table with specific flag
-    // For now, assuming 'guru' table has 'mengajar' column which stores subjects
-    
     const { error } = await supabase.from('guru').insert({
       nip,
       nama_guru: nama,
-      mengajar: mapel.join(', '), // Store as comma-separated string
+      mengajar: Array.isArray(mapel) ? mapel.join(', ') : (mapel || ''),
       password: password || '123456',
-      // You might need to add columns for wali_kelas or extra_curricular to your Supabase table if they don't exist
-      // For this example, I'll assume we store them in a metadata column or similar, or just 'mengajar'
     });
 
     if (error) return res.status(500).json({ success: false, message: error.message });
+
+    if (waliKelas) {
+      try {
+        const { data: wkRow } = await supabase.from('pengaturan').select('value').eq('key', 'wali_kelas_mapping').maybeSingle();
+        const wkMap = wkRow?.value ? JSON.parse(wkRow.value) : {};
+        wkMap[waliKelas] = { nip, nama };
+        wkMap[nip] = waliKelas;
+        await supabase.from('pengaturan').upsert({ key: 'wali_kelas_mapping', value: JSON.stringify(wkMap) });
+      } catch (e) {}
+    }
+
     res.json({ success: true, message: 'Data guru berhasil ditambahkan' });
   });
 

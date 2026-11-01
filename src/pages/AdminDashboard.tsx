@@ -53,6 +53,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { useSchoolIdentity } from "../hooks/useSchoolIdentity";
 import PromptSummaryModal from "../components/PromptSummaryModal";
+import NilaiConfigAdminModal from "../components/NilaiConfigAdminModal";
 
 interface AdminDashboardProps {
   user: any;
@@ -87,6 +88,7 @@ export default function AdminDashboard({
   );
   const [adminHeaderClicks, setAdminHeaderClicks] = useState(0);
   const [showPromptModal, setShowPromptModal] = useState(false);
+  const [showNilaiConfigModal, setShowNilaiConfigModal] = useState(false);
 
   const handleAdminHeaderClick = () => {
     const next = adminHeaderClicks + 1;
@@ -149,6 +151,7 @@ export default function AdminDashboard({
   const menuItems = [
     { id: "monitoring", icon: Table, label: "KBM Hari Ini" },
     { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { id: "konfigurasi_nilai", icon: BarChart3, label: "Konfigurasi Nilai & Logo" },
     { id: "supervisi_akademik", icon: ShieldCheck, label: "Supervisi" },
     { id: "pengaturan_bisma_plus", icon: Settings, label: "Pengaturan (BISMA +)" },
     { id: "input_guru", icon: UserPlus, label: "Input Guru Baru" },
@@ -164,6 +167,15 @@ export default function AdminDashboard({
   ];
 
   const adminCards = [
+    {
+      id: "konfigurasi_nilai_card",
+      title: "Konfigurasi Nilai",
+      subtitle: "LOGO, TAHUN AKTIF & RAPORT",
+      icon: BarChart3,
+      color: "bg-fuchsia-600",
+      shadow: "shadow-fuchsia-200 dark:shadow-fuchsia-900/20",
+      action: () => setShowNilaiConfigModal(true),
+    },
     {
       id: "supervisi_akademik_card",
       title: "Supervisi",
@@ -615,6 +627,10 @@ export default function AdminDashboard({
           <PengaturanModal
             onClose={() => setActiveModal(null)}
             showToast={showToast}
+            onOpenNilaiConfig={() => {
+              setActiveModal(null);
+              setShowNilaiConfigModal(true);
+            }}
           />
         );
       default:
@@ -683,6 +699,8 @@ export default function AdminDashboard({
               onClick={() => {
                 if (item.id === "ringkasan_prompt") {
                   setShowPromptModal(true);
+                } else if (item.id === "konfigurasi_nilai") {
+                  setShowNilaiConfigModal(true);
                 } else {
                   setActiveView(item.id);
                 }
@@ -785,6 +803,13 @@ export default function AdminDashboard({
 
       {/* Prompt Summary Modal */}
       <PromptSummaryModal isOpen={showPromptModal} onClose={() => setShowPromptModal(false)} />
+
+      {/* Konfigurasi Nilai, Logo & Tahun Aktif Modal */}
+      <NilaiConfigAdminModal
+        isOpen={showNilaiConfigModal}
+        onClose={() => setShowNilaiConfigModal(false)}
+        showToast={showToast}
+      />
     </div>
   );
 }
@@ -2908,6 +2933,11 @@ function UserManagementModal({
                             </span>
                           ),
                         )}
+                        {(user.wali_kelas || user.waliKelas) && (
+                          <span className="px-2 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                            Wali {user.wali_kelas || user.waliKelas}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-slate-400">••••••</td>
@@ -4283,13 +4313,15 @@ function PengumumanModal({
 function PengaturanModal({
   onClose,
   showToast,
+  onOpenNilaiConfig,
 }: {
   onClose: () => void;
   showToast: (msg: string, type?: "success" | "error") => void;
+  onOpenNilaiConfig?: () => void;
 }) {
-  const [schoolName, setSchoolName] = useState("Sekolah");
-  const [headmasterName, setHeadmasterName] = useState("Drs. H. Ahmad");
-  const [headmasterNIP, setHeadmasterNIP] = useState("196001011980031001");
+  const [schoolName, setSchoolName] = useState("SDN BAUJENG I BEJI");
+  const [headmasterName, setHeadmasterName] = useState("AKHMAD NASOR, S.Pd");
+  const [headmasterNIP, setHeadmasterNIP] = useState("198704082019031001");
   const [logo1x1, setLogo1x1] = useState("");
   const [logo3x4, setLogo3x4] = useState("");
   const [logo4x3, setLogo4x3] = useState("");
@@ -4302,6 +4334,7 @@ function PengaturanModal({
   const [jumlahUlangan, setJumlahUlangan] = useState("3");
   const [sloganText, setSloganText] = useState("✨ Beriman, Ramah, Mandiri, Unggul dan Tangguh ✨");
   const [sloganSpeed, setSloganSpeed] = useState("3");
+  const [nilaiRaportTagline, setNilaiRaportTagline] = useState("BERMUTU - Beriman, Ramah, Mandiri, Unggul dan Tangguh");
   const [waTemplate, setWaTemplate] = useState(`SDN BAUJENG I BEJI
 BISMA
 =============
@@ -4322,10 +4355,10 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
         const result = await res.json();
         if (result.success && result.data) {
           const data = result.data;
-          setSchoolName(data.schoolName || "Sekolah");
-          setHeadmasterName(data.headmasterName || "Drs. H. Ahmad");
-          setHeadmasterNIP(data.headmasterNIP || "196001011980031001");
-          setLogo1x1(data.logo1x1 || "");
+          setSchoolName(data.schoolName && data.schoolName !== "Sekolah" ? data.schoolName : "SDN BAUJENG I BEJI");
+          setHeadmasterName(data.headmasterName && data.headmasterName !== "Drs. H. Ahmad" ? data.headmasterName : "AKHMAD NASOR, S.Pd");
+          setHeadmasterNIP(data.headmasterNIP && data.headmasterNIP !== "196001011980031001" ? data.headmasterNIP : "198704082019031001");
+          setLogo1x1(data.logo1x1 || data.nilaiLogoSekolah || "");
           setLogo3x4(data.logo3x4 || "");
           setLogo4x3(data.logo4x3 || "");
           setLogoKop(data.logoKop || "");
@@ -4333,14 +4366,17 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
             data.bismaLogoUrl ||
               "https://lh3.googleusercontent.com/d/1k2MibT1XHlAWHbFOQo80Cj4Lp5ZMeMLT"
           );
-          setTahunAjaran(data.tahunAjaran || "2024/2025");
-          setSemester(data.semester || "Ganjil");
+          setTahunAjaran(data.nilaiTahunAktif || data.tahunAjaran || "2024/2025");
+          setSemester(data.nilaiSemesterAktif || data.semester || "Ganjil");
           setJumlahUlangan(data.jumlahUlangan || "3");
           if (data.wa_message_template) {
             setWaTemplate(data.wa_message_template);
           }
           if (data.sloganText) setSloganText(data.sloganText);
           if (data.sloganSpeed) setSloganSpeed(data.sloganSpeed);
+          if (data.nilaiRaportTagline || data.raportTagline) {
+            setNilaiRaportTagline(data.nilaiRaportTagline || data.raportTagline);
+          }
 
           // Also update safeStorage for consistency
           safeStorage.setItem("school_identity_data", JSON.stringify(data));
@@ -4349,10 +4385,10 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
           const stored = safeStorage.getItem("school_identity_data");
           if (stored) {
             const data = JSON.parse(stored);
-            setSchoolName(data.schoolName || "Sekolah");
-            setHeadmasterName(data.headmasterName || "Drs. H. Ahmad");
-            setHeadmasterNIP(data.headmasterNIP || "196001011980031001");
-            setLogo1x1(data.logo1x1 || "");
+            setSchoolName(data.schoolName && data.schoolName !== "Sekolah" ? data.schoolName : "SDN BAUJENG I BEJI");
+            setHeadmasterName(data.headmasterName && data.headmasterName !== "Drs. H. Ahmad" ? data.headmasterName : "AKHMAD NASOR, S.Pd");
+            setHeadmasterNIP(data.headmasterNIP && data.headmasterNIP !== "196001011980031001" ? data.headmasterNIP : "198704082019031001");
+            setLogo1x1(data.logo1x1 || data.nilaiLogoSekolah || "");
             setLogo3x4(data.logo3x4 || "");
             setLogo4x3(data.logo4x3 || "");
             setLogoKop(data.logoKop || "");
@@ -4360,8 +4396,8 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
               data.bismaLogoUrl ||
                 "https://lh3.googleusercontent.com/d/1k2MibT1XHlAWHbFOQo80Cj4Lp5ZMeMLT"
             );
-            setTahunAjaran(data.tahunAjaran || "2024/2025");
-            setSemester(data.semester || "Ganjil");
+            setTahunAjaran(data.nilaiTahunAktif || data.tahunAjaran || "2024/2025");
+            setSemester(data.nilaiSemesterAktif || data.semester || "Ganjil");
             setJumlahUlangan(data.jumlahUlangan || "3");
             if (data.wa_message_template) {
               setWaTemplate(data.wa_message_template);
@@ -4376,10 +4412,10 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
         const stored = safeStorage.getItem("school_identity_data");
         if (stored) {
           const data = JSON.parse(stored);
-          setSchoolName(data.schoolName || "Sekolah");
-          setHeadmasterName(data.headmasterName || "Drs. H. Ahmad");
-          setHeadmasterNIP(data.headmasterNIP || "196001011980031001");
-          setLogo1x1(data.logo1x1 || "");
+          setSchoolName(data.schoolName && data.schoolName !== "Sekolah" ? data.schoolName : "SDN BAUJENG I BEJI");
+          setHeadmasterName(data.headmasterName && data.headmasterName !== "Drs. H. Ahmad" ? data.headmasterName : "AKHMAD NASOR, S.Pd");
+          setHeadmasterNIP(data.headmasterNIP && data.headmasterNIP !== "196001011980031001" ? data.headmasterNIP : "198704082019031001");
+          setLogo1x1(data.logo1x1 || data.nilaiLogoSekolah || "");
           setLogo3x4(data.logo3x4 || "");
           setLogo4x3(data.logo4x3 || "");
           setLogoKop(data.logoKop || "");
@@ -4387,8 +4423,8 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
             data.bismaLogoUrl ||
               "https://lh3.googleusercontent.com/d/1k2MibT1XHlAWHbFOQo80Cj4Lp5ZMeMLT"
           );
-          setTahunAjaran(data.tahunAjaran || "2024/2025");
-          setSemester(data.semester || "Ganjil");
+          setTahunAjaran(data.nilaiTahunAktif || data.tahunAjaran || "2024/2025");
+          setSemester(data.nilaiSemesterAktif || data.semester || "Ganjil");
           setJumlahUlangan(data.jumlahUlangan || "3");
           if (data.wa_message_template) {
             setWaTemplate(data.wa_message_template);
@@ -4408,19 +4444,28 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
       "https://lh3.googleusercontent.com/d/1k2MibT1XHlAWHbFOQo80Cj4Lp5ZMeMLT";
     const data = {
       schoolName,
+      jabatanKepalaSekolah: `Kepala ${schoolName || "SDN BAUJENG I BEJI"}`,
       headmasterName,
       headmasterNIP,
       logo1x1,
+      nilaiLogoSekolah: logo1x1,
+      schoolLogo: logo1x1,
       logo3x4,
       logo4x3,
       logoKop,
       bismaLogoUrl: cleanBismaUrl,
       tahunAjaran,
+      nilaiTahunAktif: tahunAjaran,
+      tahunPelajaranAktif: tahunAjaran,
+      bisma_academicYear: tahunAjaran,
       semester,
+      nilaiSemesterAktif: semester,
       jumlahUlangan,
       wa_message_template: waTemplate,
       sloganText,
       sloganSpeed,
+      nilaiRaportTagline,
+      raportTagline: nilaiRaportTagline,
     };
 
     try {
@@ -4452,6 +4497,25 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
       <ModalHeader title="Pengaturan Umum" onClose={onClose} />
       <div className="p-8 overflow-y-auto bg-slate-50 dark:bg-slate-900/50">
         <div className="max-w-3xl mx-auto space-y-8">
+          {onOpenNilaiConfig && (
+            <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-fuchsia-600 p-5 rounded-2xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
+              <div>
+                <h4 className="font-bold text-sm sm:text-base">
+                  Konfigurasi Nilai, Logo & Tahun Aktif (Guru & Siswa)
+                </h4>
+                <p className="text-xs text-blue-100 mt-0.5">
+                  Atur tampilan logo, tahun pelajaran aktif, bobot nilai, dan pengesahan Raport STS (Kepala SDN BAUJENG I BEJI).
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onOpenNilaiConfig}
+                className="px-4 py-2.5 rounded-xl bg-white text-indigo-700 font-bold text-xs shrink-0 hover:bg-blue-50 transition-colors cursor-pointer shadow-xs"
+              >
+                Buka Konfigurasi Nilai →
+              </button>
+            </div>
+          )}
           {/* School Identity Section */}
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-3 mb-6">
@@ -4577,6 +4641,22 @@ Ket: ✅ = Hadir  |  ❌ = Tidak Hadir |`);
                 <p className="text-xs text-slate-400 mt-1">
                   Mengatur jumlah kolom nilai ulangan harian sebelum STS dan
                   ASAS pada fitur Nilai.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                  Tagline Footer Sebelah Kiri Raport STS (Nama Siswa | Kelas/NIS | [Tagline])
+                </label>
+                <input
+                  type="text"
+                  value={nilaiRaportTagline}
+                  onChange={(e) => setNilaiRaportTagline(e.target.value)}
+                  placeholder="Contoh: BERMUTU - Beriman, Ramah, Mandiri, Unggul dan Tangguh"
+                  className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 bg-slate-50 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-slate-500 outline-none"
+                />
+                <p className="text-xs text-slate-400 mt-1 font-mono">
+                  Pratinjau Footer Kiri: NAMA SISWA | Kelas 4/1024 | {nilaiRaportTagline || "BERMUTU"}
                 </p>
               </div>
             </div>

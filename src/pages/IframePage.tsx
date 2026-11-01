@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, Maximize2, Minimize2, ExternalLink } from 'lucide-react';
 
 export default function IframePage({ title, src, onNavigate, backTo = 'main' }: { title: string, src: string, onNavigate: (page: string) => void, backTo?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -64,15 +64,24 @@ export default function IframePage({ title, src, onNavigate, backTo = 'main' }: 
               </button>
               <h2 className="text-xl font-bold text-white">{title}</h2>
             </div>
-            {(title.toLowerCase().includes('game') || title.toLowerCase().includes('edugame')) && (
+            <div className="flex items-center gap-2">
               <button 
                 onClick={toggleFullscreen}
                 className="p-2 rounded-full hover:bg-white/20 text-white transition-colors"
-                title="Full Screen"
+                title={isFullscreen ? "Keluar Layar Penuh" : "Layar Penuh (Full Screen)"}
               >
-                <Maximize2 className="w-6 h-6" />
+                {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
               </button>
-            )}
+              <a
+                href={src}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="p-2 rounded-full hover:bg-white/20 text-white transition-colors"
+                title="Buka di Tab Baru"
+              >
+                <ExternalLink className="w-5 h-5" />
+              </a>
+            </div>
           </div>
         </header>
       )}

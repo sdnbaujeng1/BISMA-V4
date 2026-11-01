@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Heart, CheckCircle, XCircle, Clock, Gift, X, BarChart3, Users, Trophy, Save, Settings } from 'lucide-react';
+import { ArrowLeft, Heart, CheckCircle, XCircle, Clock, Gift, X, BarChart3, Users, Trophy, Save, Settings, Award } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
 import { supabase } from "../lib/supabase";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import CertificateAppreciationView from '../components/CertificateAppreciationView';
 
 const HABIT_POINTS: Record<string, { points: number, icon: string }> = {
   'Bangun Pagi': { points: 2, icon: '🌅' },
@@ -35,6 +36,7 @@ export default function KasihIbuAdmin() {
   const [pointPrice, setPointPrice] = useState<any>(100);
 
   const [kasihIbuLabel, setKasihIbuLabel] = useState<string>("Kasih Ibu");
+  const [kasihIbuNomorSertifikat, setKasihIbuNomorSertifikat] = useState<string>("421.2/ 015 /424.071.505/2026");
 
   const [exchangeData, setExchangeData] = useState({
     siswa: '',
@@ -43,7 +45,7 @@ export default function KasihIbuAdmin() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [validatingProgress, setValidatingProgress] = useState<{ current: number, total: number } | null>(null);
-  const [activeTab, setActiveTab] = useState<"konfigurasi" | "validasi" | "analisis" | "peringkat">("konfigurasi");
+  const [activeTab, setActiveTab] = useState<"konfigurasi" | "validasi" | "analisis" | "peringkat" | "sertifikat">("konfigurasi");
   const [chartData, setChartData] = useState<any[]>([]);
   const [rawData, setRawData] = useState<any[]>([]);
   const [usersMap, setUsersMap] = useState<Record<string, any>>({});
@@ -82,12 +84,13 @@ export default function KasihIbuAdmin() {
       const { data, error } = await supabase
         .from("pengaturan")
         .select("key, value")
-        .in("key", ["kasih_ibu_point_price", "kasih_ibu_label"]);
+        .in("key", ["kasih_ibu_point_price", "kasih_ibu_label", "kasih_ibu_nomor_sertifikat"]);
 
       if (data) {
         data.forEach((item) => {
           if (item.key === "kasih_ibu_point_price") setPointPrice(item.value);
           if (item.key === "kasih_ibu_label") setKasihIbuLabel(item.value);
+          if (item.key === "kasih_ibu_nomor_sertifikat" && item.value) setKasihIbuNomorSertifikat(item.value);
         });
       }
     } catch (e) {
@@ -99,8 +102,9 @@ const handleSaveConfig = async () => {
     setLoading(true);
     try {
       const updates = [
-        { key: "kasih_ibu_point_price", value: pointPrice },
+        { key: "kasih_ibu_point_price", value: String(pointPrice) },
         { key: "kasih_ibu_label", value: kasihIbuLabel || "Kasih Ibu" },
+        { key: "kasih_ibu_nomor_sertifikat", value: kasihIbuNomorSertifikat || "421.2/ 015 /424.071.505/2026" },
       ];
 
       await supabase.from("pengaturan").upsert(updates, { onConflict: "key" });
@@ -212,11 +216,14 @@ const handleSaveConfig = async () => {
           hasMore = false;
         }
       }
-      const { data: users } = await supabase.from("murid").select('"NISN", "Nama Lengkap", "NIS"');
+      const { data: users } = await supabase.from("murid").select('"NISN", "Nama Lengkap", "NIS", "Kelas"');
       const uMap: Record<string, any> = {};
       if (users) {
         users.forEach((u: any) => { 
-          if (u.NISN) uMap[u.NISN] = { nama: u["Nama Lengkap"], nis: u.NIS || '-' }; 
+          if (u.NISN) uMap[u.NISN] = { nama: u["Nama Lengkap"], nis: u.NIS || '-', kelas: u.Kelas || '-' }; 
+          if (u["Nama Lengkap"]) {
+            uMap[u["Nama Lengkap"]] = { nama: u["Nama Lengkap"], nis: u.NIS || '-', nisn: u.NISN || '-', kelas: u.Kelas || '-' };
+          }
         });
         setUsersMap(uMap as any);
       }
@@ -231,7 +238,7 @@ const handleSaveConfig = async () => {
         });
         const formattedChartData = Object.keys(classPoints).map((cls) => ({ name: cls, total: classPoints[cls] })).sort((a, b) => b.total - a.total);
         setChartData(formattedChartData);
-        calculateTopStudents("Semua Kelas", pointsData, uMap);
+        calculateTopStudents(selectedTopClass || "Semua Kelas", pointsData, uMap);
       }
     } catch (e) {
       console.error("Error fetching analysis data", e);
@@ -254,14 +261,18 @@ const handleSaveConfig = async () => {
   
   const calculateTopStudents = (kelas: string, pointsData = rawData, uMap = usersMap) => {
     const studentPoints: Record<string, number> = {};
+    const studentMetaFallback: Record<string, { nama?: string; kelas?: string }> = {};
     pointsData.forEach((entry) => {
       if ((kelas === "Semua Kelas" || entry.kelas === kelas)) {
         // Use a robust identifier matching how the dashboard ranks them
         const nisn = entry.nisn || entry.nama_murid;
         if (nisn) {
+          if (!studentMetaFallback[nisn]) {
+            studentMetaFallback[nisn] = { nama: entry.nama_murid, kelas: entry.kelas };
+          }
           if (HABIT_POINTS[entry.jenis_kebiasaan]) {
              studentPoints[nisn] = (studentPoints[nisn] || 0) + HABIT_POINTS[entry.jenis_kebiasaan].points;
-          } else if (entry.jenis_kebiasaan.startsWith('Tukar Poin')) {
+          } else if (entry.jenis_kebiasaan && entry.jenis_kebiasaan.startsWith('Tukar Poin')) {
              const match = entry.jenis_kebiasaan.match(/\(-(\d+)\)/);
              if (match) {
                studentPoints[nisn] = (studentPoints[nisn] || 0) - parseInt(match[1], 10);
@@ -273,10 +284,12 @@ const handleSaveConfig = async () => {
     const sortedStudents = Object.keys(studentPoints)
       .map((nisn) => {
         const userData = uMap[nisn] as any;
+        const fb = studentMetaFallback[nisn];
         return {
-          nisn,
-          name: userData ? userData.nama : `NISN: ${nisn}`,
+          nisn: userData?.nisn || nisn,
+          name: userData ? userData.nama : (fb?.nama || `NISN: ${nisn}`),
           nis: userData ? userData.nis : '-',
+          kelas: userData?.kelas || fb?.kelas || '-',
           points: studentPoints[nisn],
         };
       })
@@ -472,6 +485,17 @@ const handleSaveConfig = async () => {
           <Trophy className="w-4 h-4" />
           Peringkat 10 Besar
         </button>
+        <button 
+          onClick={() => setActiveTab("sertifikat")} 
+          className={`px-4 py-2.5 font-semibold text-sm whitespace-nowrap rounded-xl transition-all flex items-center gap-2 border ${
+            activeTab === "sertifikat" 
+              ? "bg-pink-600 text-white border-pink-600 shadow-md shadow-pink-500/20" 
+              : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+          }`}
+        >
+          <Award className="w-4 h-4" />
+          Cetak Sertifikat
+        </button>
       </div>
       
       {activeTab === "analisis" && (
@@ -576,6 +600,29 @@ const handleSaveConfig = async () => {
       )}
 
       
+      {activeTab === "sertifikat" && (
+        <CertificateAppreciationView
+          mode="kasih_ibu"
+          programLabel={kasihIbuLabel || schoolIdentity.kasihIbuLabel || "Kasih Ibu"}
+          selectedMonth={selectedMonth}
+          onMonthChange={(m) => setSelectedMonth(m)}
+          selectedClass={selectedTopClass}
+          onClassChange={(kls) => setSelectedTopClass(kls)}
+          classOptions={["Kelas 1", "Kelas 2", "Kelas 3", "Kelas 4", "Kelas 5", "Kelas 6"]}
+          topStudents={topStudents.slice(0, 3).map((s, idx) => ({
+            rank: (idx + 1) as 1 | 2 | 3,
+            name: s.name,
+            nis: s.nis,
+            nisn: s.nisn,
+            kelas: s.kelas,
+            points: s.points
+          }))}
+          certificateNumber={kasihIbuNomorSertifikat}
+          schoolIdentity={schoolIdentity}
+          onGoToConfig={() => setActiveTab("konfigurasi")}
+        />
+      )}
+
       {activeTab === "konfigurasi" && (
 
       <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
@@ -588,7 +635,7 @@ const handleSaveConfig = async () => {
                 Konfigurasi Program
               </h2>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Atur parameter dan label
+                Atur parameter, label, dan nomor sertifikat apresiasi
               </p>
             </div>
           </div>
@@ -601,7 +648,7 @@ const handleSaveConfig = async () => {
                 type="text"
                 value={kasihIbuLabel}
                 onChange={(e) => setKasihIbuLabel(e.target.value)}
-                className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-pink-500 outline-none transition-all"
+                className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-pink-500 outline-none transition-all dark:text-white"
                 placeholder="Contoh: Kasih Ibu"
               />
               <p className="text-xs text-slate-500 mt-2">
@@ -620,7 +667,7 @@ const handleSaveConfig = async () => {
                   type="number"
                   value={pointPrice}
                   onChange={(e) => setPointPrice(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-pink-500 outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-pink-500 outline-none transition-all dark:text-white"
                   placeholder="Contoh: 100"
                 />
               </div>
@@ -629,10 +676,25 @@ const handleSaveConfig = async () => {
                 (ATK).
               </p>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Nomor Sertifikat Apresiasi {kasihIbuLabel || "Kasih Ibu"}
+              </label>
+              <input
+                type="text"
+                value={kasihIbuNomorSertifikat}
+                onChange={(e) => setKasihIbuNomorSertifikat(e.target.value)}
+                className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-pink-500 outline-none transition-all font-mono text-sm dark:text-white"
+                placeholder="Contoh: 421.2/ 015 /424.071.505/2026"
+              />
+              <p className="text-xs text-slate-500 mt-2">
+                Nomor surat/sertifikat yang akan dicetak pada 5 template Sertifikat Apresiasi 3 Siswa Terbaik {kasihIbuLabel || "Kasih Ibu"}.
+              </p>
+            </div>
             <button
               onClick={handleSaveConfig}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-pink-600 hover:bg-pink-700 text-white py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50 mt-4"
+              className="w-full flex items-center justify-center gap-2 bg-pink-600 hover:bg-pink-700 text-white py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50 mt-4 cursor-pointer"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

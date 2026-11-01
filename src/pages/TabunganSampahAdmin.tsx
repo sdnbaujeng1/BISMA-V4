@@ -1,14 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { Trash2, Plus, Edit, Trash, Save, X, Trophy, Coins, Scale, ShoppingCart } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Trash2, Plus, Edit, Trash, Save, X, Trophy, Coins, Scale, ShoppingCart, Award, Settings, Hash } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
+import { supabase } from '../lib/supabase';
+import CertificateAppreciationView from '../components/CertificateAppreciationView';
 
 export default function TabunganSampahAdmin({ showToast }: { showToast: (msg: string, type?: 'success' | 'error') => void }) {
+  const schoolIdentity = useSchoolIdentity();
+  const [activeTab, setActiveTab] = useState<'konfigurasi' | 'peringkat' | 'sertifikat'>('konfigurasi');
   const [stats, setStats] = useState({ totalSavings: 0, totalWeight: 0, championClass: '-' });
   const [wasteTypes, setWasteTypes] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [savingConfig, setSavingConfig] = useState(false);
   const [students, setStudents] = useState<any[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
+  const [nomorSertifikat, setNomorSertifikat] = useState<string>('421.2/ 016 /424.071.505/2026');
+  const [selectedTopClass, setSelectedTopClass] = useState<string>('Semua Kelas');
   
   // Modal State
   const [showTypeModal, setShowTypeModal] = useState(false);
@@ -25,6 +33,40 @@ export default function TabunganSampahAdmin({ showToast }: { showToast: (msg: st
   });
 
   const [selectedMonth, setSelectedMonth] = useState('');
+
+  const fetchCertConfig = async () => {
+    try {
+      const { data } = await supabase
+        .from('pengaturan')
+        .select('key, value')
+        .eq('key', 'tabungan_sampah_nomor_sertifikat')
+        .maybeSingle();
+      if (data && data.value) {
+        setNomorSertifikat(data.value);
+      }
+    } catch (e) {
+      console.error('Error fetching tabungan sampah cert config', e);
+    }
+  };
+
+  const handleSaveCertConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingConfig(true);
+    try {
+      await supabase
+        .from('pengaturan')
+        .upsert(
+          [{ key: 'tabungan_sampah_nomor_sertifikat', value: nomorSertifikat || '421.2/ 016 /424.071.505/2026' }],
+          { onConflict: 'key' }
+        );
+      showToast('Konfigurasi Nomor Sertifikat Tabungan Sampah berhasil disimpan!', 'success');
+    } catch (err) {
+      console.error('Error saving cert config', err);
+      showToast('Gagal menyimpan konfigurasi nomor sertifikat', 'error');
+    } finally {
+      setSavingConfig(false);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -60,8 +102,60 @@ export default function TabunganSampahAdmin({ showToast }: { showToast: (msg: st
   };
 
   useEffect(() => {
+    fetchCertConfig();
+  }, []);
+
+  useEffect(() => {
     fetchData();
   }, [selectedMonth]);
+
+  // Compute Top Students from filtered month transactions
+  const topWasteStudents = useMemo(() => {
+    const studentMap = new Map<string, { name: string; kelas: string; weight: number; savings: number; nis: string; nisn: string }>();
+
+    const normalizeClass = (kls: string) => {
+      const m = String(kls || '').match(/\d+/);
+      return m ? `Kelas ${m[0]}` : String(kls || '-');
+    };
+
+    transactions.forEach((t) => {
+      const rawName = String(t.siswa || '').trim();
+      if (!rawName) return;
+      const tKelas = normalizeClass(t.kelas);
+      if (selectedTopClass !== 'Semua Kelas' && tKelas !== selectedTopClass) return;
+
+      const beratVal = Number(t.berat) || 0;
+      const nilaiVal = Number(t.nilai) || 0;
+      // Only count waste deposits (positive weight or positive deposit value) toward best saver ranking
+      const depositWeight = beratVal > 0 ? beratVal : 0;
+      const depositSavings = nilaiVal > 0 ? nilaiVal : 0;
+
+      if (!studentMap.has(rawName)) {
+        const matchedStudent = students.find(
+          (s) => String(s['Nama Lengkap'] || '').trim().toLowerCase() === rawName.toLowerCase()
+        );
+        studentMap.set(rawName, {
+          name: matchedStudent ? matchedStudent['Nama Lengkap'] : rawName,
+          kelas: matchedStudent ? normalizeClass(matchedStudent.Kelas) : tKelas,
+          nis: matchedStudent?.NIS || '-',
+          nisn: matchedStudent?.NISN || '-',
+          weight: 0,
+          savings: 0
+        });
+      }
+
+      const entry = studentMap.get(rawName)!;
+      entry.weight += depositWeight;
+      entry.savings += depositSavings;
+    });
+
+    return Array.from(studentMap.values())
+      .filter((s) => s.weight > 0 || s.savings > 0)
+      .sort((a, b) => {
+        if (b.weight !== a.weight) return b.weight - a.weight;
+        return b.savings - a.savings;
+      });
+  }, [transactions, students, selectedTopClass]);
 
   const filterStudentsByClass = (allStudents: any[], kelas: string) => {
     const filtered = allStudents.filter(s => {
@@ -177,10 +271,10 @@ export default function TabunganSampahAdmin({ showToast }: { showToast: (msg: st
 
   return (
     <div className="max-w-7xl mx-auto">
-      <header className="mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <header className="mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Tabungan Sampah</h1>
-          <p className="text-slate-500 dark:text-slate-400">Konfigurasi Harga & Monitoring Tabungan</p>
+          <p className="text-slate-500 dark:text-slate-400">Konfigurasi Harga, Monitoring Tabungan & Apresiasi Siswa Terbaik</p>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-3">
           <input
@@ -195,142 +289,320 @@ export default function TabunganSampahAdmin({ showToast }: { showToast: (msg: st
               filterStudentsByClass(students, 'Kelas 1');
               setShowExchangeModal(true);
             }}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg shadow-purple-200 dark:shadow-none transition-all w-full sm:w-auto"
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg shadow-purple-200 dark:shadow-none transition-all w-full sm:w-auto cursor-pointer"
           >
             <ShoppingCart className="w-4 h-4" /> Tukar ATK
           </button>
         </div>
       </header>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-4">
-          <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center text-green-600 dark:text-green-400">
-            <Coins className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Total Tabungan</p>
-            <h3 className="text-2xl font-bold text-slate-800 dark:text-white">
-              Rp {stats.totalSavings.toLocaleString('id-ID')}
-            </h3>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-4">
-          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400">
-            <Scale className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Total Berat</p>
-            <h3 className="text-2xl font-bold text-slate-800 dark:text-white">
-              {stats.totalWeight.toFixed(1)} kg
-            </h3>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-4">
-          <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-xl flex items-center justify-center text-yellow-600 dark:text-yellow-400">
-            <Trophy className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Juara Kelas</p>
-            <h3 className="text-2xl font-bold text-slate-800 dark:text-white">
-              {stats.championClass}
-            </h3>
-          </div>
-        </div>
+      {/* Navigation Tabs */}
+      <div className="flex flex-wrap gap-3 mb-8">
+        <button
+          onClick={() => setActiveTab('konfigurasi')}
+          className={`px-4 py-2.5 font-semibold text-sm whitespace-nowrap rounded-xl transition-all flex items-center gap-2 border cursor-pointer ${
+            activeTab === 'konfigurasi'
+              ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/20'
+              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+          }`}
+        >
+          <Settings className="w-4 h-4" />
+          Konfigurasi & Monitoring
+        </button>
+        <button
+          onClick={() => setActiveTab('peringkat')}
+          className={`px-4 py-2.5 font-semibold text-sm whitespace-nowrap rounded-xl transition-all flex items-center gap-2 border cursor-pointer ${
+            activeTab === 'peringkat'
+              ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/20'
+              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+          }`}
+        >
+          <Trophy className="w-4 h-4" />
+          Peringkat Nasabah Terbaik
+        </button>
+        <button
+          onClick={() => setActiveTab('sertifikat')}
+          className={`px-4 py-2.5 font-semibold text-sm whitespace-nowrap rounded-xl transition-all flex items-center gap-2 border cursor-pointer ${
+            activeTab === 'sertifikat'
+              ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/20'
+              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+          }`}
+        >
+          <Award className="w-4 h-4" />
+          Cetak Sertifikat
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Configuration Section */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
-              <Trash2 className="w-5 h-5 text-slate-400" /> Jenis & Harga Sampah
-            </h3>
-            <button 
-              onClick={openAddModal}
-              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors"
-            >
-              <Plus className="w-4 h-4" /> Tambah
-            </button>
+      {activeTab === 'sertifikat' && (
+        <CertificateAppreciationView
+          mode="tabungan_sampah"
+          programLabel="Tabungan Sampah"
+          selectedMonth={selectedMonth}
+          onMonthChange={(m) => setSelectedMonth(m)}
+          selectedClass={selectedTopClass}
+          onClassChange={(kls) => setSelectedTopClass(kls)}
+          classOptions={['Kelas 1', 'Kelas 2', 'Kelas 3', 'Kelas 4', 'Kelas 5', 'Kelas 6']}
+          topStudents={topWasteStudents.slice(0, 3).map((s, idx) => ({
+            rank: (idx + 1) as 1 | 2 | 3,
+            name: s.name,
+            nis: s.nis,
+            nisn: s.nisn,
+            kelas: s.kelas,
+            weight: s.weight,
+            savings: s.savings
+          }))}
+          certificateNumber={nomorSertifikat}
+          schoolIdentity={schoolIdentity}
+          onGoToConfig={() => setActiveTab('konfigurasi')}
+        />
+      )}
+
+      {activeTab === 'peringkat' && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                <Trophy className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Peringkat Siswa Terbaik Tabungan Sampah</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Berdasarkan total berat setoran dan nilai tabungan sampah pada bulan terpilih
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <select
+                value={selectedTopClass}
+                onChange={(e) => setSelectedTopClass(e.target.value)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500 outline-none text-slate-700 dark:text-white font-medium"
+              >
+                <option value="Semua Kelas">Semua Kelas</option>
+                {['Kelas 1', 'Kelas 2', 'Kelas 3', 'Kelas 4', 'Kelas 5', 'Kelas 6'].map((cls) => (
+                  <option key={cls} value={cls}>{cls}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => setActiveTab('sertifikat')}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center gap-2 shadow-sm cursor-pointer"
+              >
+                <Award className="w-4 h-4" /> Cetak Sertifikat 3 Terbaik
+              </button>
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left text-slate-600 dark:text-slate-300">
-              <thead className="bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-200 uppercase font-bold text-xs">
-                <tr>
-                  <th className="px-4 py-3 rounded-l-lg">Jenis Sampah</th>
-                  <th className="px-4 py-3">Harga / kg</th>
-                  <th className="px-4 py-3 rounded-r-lg text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {wasteTypes.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="px-4 py-8 text-center text-slate-400">Belum ada data jenis sampah.</td>
-                  </tr>
-                ) : (
-                  wasteTypes.map((type) => (
-                    <tr key={type.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                      <td className="px-4 py-3 font-medium text-slate-800 dark:text-white">{type.nama}</td>
-                      <td className="px-4 py-3">Rp {type.harga.toLocaleString('id-ID')}</td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button onClick={() => openEditModal(type)} className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => handleDeleteType(type.id)} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
-                            <Trash className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+          <div className="space-y-3">
+            {topWasteStudents.length > 0 ? (
+              topWasteStudents.slice(0, 10).map((st, idx) => (
+                <div
+                  key={`${st.name}-${idx}`}
+                  className="flex items-center justify-between p-4 rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${
+                        idx === 0
+                          ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                          : idx === 1
+                          ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                          : idx === 2
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+                          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                      }`}
+                    >
+                      {idx + 1}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 dark:text-white">{st.name}</h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {st.kelas} • NIS: {st.nis} • NISN: {st.nisn}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-emerald-600 dark:text-emerald-400 text-base">
+                      {st.weight.toFixed(1)} kg
+                    </div>
+                    <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      Total Setoran Sampah
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-12 text-slate-500 dark:text-slate-400">
+                <Trophy className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                <p>Belum ada data setoran sampah pada periode bulan ini.</p>
+              </div>
+            )}
           </div>
         </div>
+      )}
 
-        {/* Recent Transactions */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-          <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-6 flex items-center gap-2">
-            <Coins className="w-5 h-5 text-slate-400" /> Riwayat Transaksi Terakhir
-          </h3>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left text-slate-600 dark:text-slate-300">
-              <thead className="bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-200 uppercase font-bold text-xs">
-                <tr>
-                  <th className="px-4 py-3 rounded-l-lg">Tanggal</th>
-                  <th className="px-4 py-3">Siswa</th>
-                  <th className="px-4 py-3">Berat</th>
-                  <th className="px-4 py-3 rounded-r-lg text-right">Nilai</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {transactions.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-slate-400">Belum ada transaksi.</td>
-                  </tr>
-                ) : (
-                  transactions.slice(0, 5).map((t, i) => (
-                    <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                      <td className="px-4 py-3">{new Date(t.tanggal).toLocaleDateString('id-ID')}</td>
-                      <td className="px-4 py-3 font-medium text-slate-800 dark:text-white">{t.siswa} ({t.kelas})</td>
-                      <td className="px-4 py-3">{t.berat} kg</td>
-                      <td className="px-4 py-3 text-right font-bold text-green-600 dark:text-green-400">
-                        Rp {Number(t.nilai).toLocaleString('id-ID')}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+      {activeTab === 'konfigurasi' && (
+        <>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-4">
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center text-green-600 dark:text-green-400">
+                <Coins className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Total Tabungan</p>
+                <h3 className="text-2xl font-bold text-slate-800 dark:text-white">
+                  Rp {stats.totalSavings.toLocaleString('id-ID')}
+                </h3>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-4">
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400">
+                <Scale className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Total Berat</p>
+                <h3 className="text-2xl font-bold text-slate-800 dark:text-white">
+                  {stats.totalWeight.toFixed(1)} kg
+                </h3>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-4">
+              <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-xl flex items-center justify-center text-yellow-600 dark:text-yellow-400">
+                <Trophy className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Juara Kelas</p>
+                <h3 className="text-2xl font-bold text-slate-800 dark:text-white">
+                  {stats.championClass}
+                </h3>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+
+          {/* Certificate Number Configuration Card */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-8">
+            <form onSubmit={handleSaveCertConfig} className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+              <div className="flex-1">
+                <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2 mb-1">
+                  <Hash className="w-5 h-5 text-emerald-600" /> Konfigurasi Nomor Sertifikat Tabungan Sampah
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                  Nomor resmi yang ditampilkan pada 5 template Sertifikat Apresiasi 3 Siswa Terbaik Tabungan Sampah.
+                </p>
+                <input
+                  type="text"
+                  value={nomorSertifikat}
+                  onChange={(e) => setNomorSertifikat(e.target.value)}
+                  placeholder="Contoh: 421.2/ 016 /424.071.505/2026"
+                  className="w-full max-w-md px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white font-mono text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={savingConfig}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  {savingConfig ? 'Menyimpan...' : 'Simpan Nomor Sertifikat'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Configuration Section */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                  <Trash2 className="w-5 h-5 text-slate-400" /> Jenis & Harga Sampah
+                </h3>
+                <button 
+                  onClick={openAddModal}
+                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" /> Tambah
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left text-slate-600 dark:text-slate-300">
+                  <thead className="bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-200 uppercase font-bold text-xs">
+                    <tr>
+                      <th className="px-4 py-3 rounded-l-lg">Jenis Sampah</th>
+                      <th className="px-4 py-3">Harga / kg</th>
+                      <th className="px-4 py-3 rounded-r-lg text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {wasteTypes.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="px-4 py-8 text-center text-slate-400">Belum ada data jenis sampah.</td>
+                      </tr>
+                    ) : (
+                      wasteTypes.map((type) => (
+                        <tr key={type.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                          <td className="px-4 py-3 font-medium text-slate-800 dark:text-white">{type.nama}</td>
+                          <td className="px-4 py-3">Rp {type.harga.toLocaleString('id-ID')}</td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex justify-end gap-2">
+                              <button onClick={() => openEditModal(type)} className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleDeleteType(type.id)} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                                <Trash className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Recent Transactions */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+              <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+                <Coins className="w-5 h-5 text-slate-400" /> Riwayat Transaksi Terakhir
+              </h3>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left text-slate-600 dark:text-slate-300">
+                  <thead className="bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-200 uppercase font-bold text-xs">
+                    <tr>
+                      <th className="px-4 py-3 rounded-l-lg">Tanggal</th>
+                      <th className="px-4 py-3">Siswa</th>
+                      <th className="px-4 py-3">Berat</th>
+                      <th className="px-4 py-3 rounded-r-lg text-right">Nilai</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {transactions.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-8 text-center text-slate-400">Belum ada transaksi.</td>
+                      </tr>
+                    ) : (
+                      transactions.slice(0, 5).map((t, i) => (
+                        <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                          <td className="px-4 py-3">{new Date(t.tanggal).toLocaleDateString('id-ID')}</td>
+                          <td className="px-4 py-3 font-medium text-slate-800 dark:text-white">{t.siswa} ({t.kelas})</td>
+                          <td className="px-4 py-3">{t.berat} kg</td>
+                          <td className="px-4 py-3 text-right font-bold text-green-600 dark:text-green-400">
+                            Rp {Number(t.nilai).toLocaleString('id-ID')}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Modal Add/Edit Type */}
       <AnimatePresence>

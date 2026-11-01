@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Bell, LogOut, CalendarCheck, BarChart2, FilePenLine, Printer, UserCheck, ClipboardCheck, ShieldAlert, QrCode, NotebookPen, HeartHandshake, GalleryThumbnails, Check, X, LayoutDashboard, Settings, BookOpen, Sun, Moon, Trash2, ArrowLeft, User, Info, MessageSquare, XCircle, Send, FileSpreadsheet, Gamepad, Gamepad2, Globe, Award, BookOpenCheck, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import UnifiedAnnouncementCard from '../components/UnifiedAnnouncementCard';
+import RppOptionModal from '../components/RppOptionModal';
 
 import { useSchoolIdentity } from '../hooks/useSchoolIdentity';
 import { safeStorage } from '../lib/storage';
@@ -12,11 +13,22 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
   const [activeTab, setActiveTab] = useState('dashboard');
   const [themeColor, setThemeColor] = useState('blue');
   const [showAbout, setShowAbout] = useState(false);
+  const [showRppModal, setShowRppModal] = useState(false);
   const [tendikStats, setTendikStats] = useState<any>(null);
   const [activity, setActivity] = useState('');
   const [loadingActivity, setLoadingActivity] = useState(false);
   const schoolIdentity = useSchoolIdentity();
   const logoUrl = schoolIdentity.schoolLogo;
+
+  const handleSelectRppApi = () => {
+    setShowRppModal(false);
+    onNavigate('rpp_generator');
+  };
+
+  const handleSelectRppNonApi = () => {
+    setShowRppModal(false);
+    window.open('https://sites.google.com/view/akhmadnasor/rpp-generator', '_blank', 'noopener,noreferrer');
+  };
 
   const colors: Record<string, { gradient: string, text: string, bg: string, border: string, ring: string }> = {
     blue: { gradient: 'from-blue-600 to-indigo-600', text: 'text-blue-600', bg: 'bg-blue-600', border: 'border-blue-200', ring: 'ring-blue-500' },
@@ -430,7 +442,9 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
                 <button 
                   key={item.id}
                   onClick={() => {
-                    if (item.id === 'kemendikdasmen' && item.url) {
+                    if (item.id === 'rpp_generator') {
+                      setShowRppModal(true);
+                    } else if (item.id === 'kemendikdasmen' && item.url) {
                       window.open(item.url, '_blank');
                     } else {
                       onNavigate(item.id);
@@ -604,6 +618,14 @@ export default function MainDashboard({ user, onLogout, onNavigate, darkMode, to
           </div>
         )}
       </AnimatePresence>
+
+      {/* RPP Generator Option Modal */}
+      <RppOptionModal
+        isOpen={showRppModal}
+        onClose={() => setShowRppModal(false)}
+        onSelectApi={handleSelectRppApi}
+        onSelectNonApi={handleSelectRppNonApi}
+      />
     </div>
   );
 }
