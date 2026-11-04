@@ -12,8 +12,10 @@ import {
   ShieldCheck,
   Trash2,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  QrCode
 } from 'lucide-react';
+import QRCode from 'react-qr-code';
 import {
   SupervisiActor,
   SupervisionCycle,
@@ -52,17 +54,22 @@ interface DriveLinkSectionProps {
     evidence_category: string;
     principal_note?: string;
   }) => Promise<void>;
-  onSaveAttachmentNote?: (params: {
-    cycle_id: string;
-    attachment_id: string;
-    principal_note: string;
-    file_name?: string;
-    link_url?: string;
-  }) => Promise<void>;
+  onSaveAttachmentNote?: (
+    params: {
+      cycle_id: string;
+      attachment_id: string;
+      principal_note: string;
+      file_name?: string;
+      link_url?: string;
+      drive_url?: string;
+    },
+    options?: { silent?: boolean }
+  ) => Promise<void>;
   onDeleteAttachment?: (params: {
     cycle_id: string;
     attachment_id: string;
   }) => Promise<void>;
+  onPendingLinkChange?: (pending: { url: string; title: string; category: string }) => void;
 }
 
 export default function DriveLinkSection({
@@ -82,15 +89,16 @@ export default function DriveLinkSection({
   onEmbedLink,
   onAddDriveLink,
   onSaveAttachmentNote,
-  onDeleteAttachment
+  onDeleteAttachment,
+  onPendingLinkChange
 }: DriveLinkSectionProps) {
   const isPrincipal = actor.supervisiRole === 'kepala_sekolah';
   const attachments = (cycle.attachments || []).filter(a => a.form_code === formCode);
   const resolvedCategories = categoryOptions || categories || [];
   const allowAdding = !isLocked && canAddLink;
 
-  // If optional and no attachments yet, start collapsed to keep the form clean & uncluttered
-  const [isExpanded, setIsExpanded] = useState<boolean>(!optional || attachments.length > 0);
+  // Always start expanded so teacher/principal can directly see and input Drive links on Form A-D
+  const [isExpanded, setIsExpanded] = useState<boolean>(true);
   const [docTitle, setDocTitle] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [category, setCategory] = useState(defaultCategory);
@@ -104,9 +112,16 @@ export default function DriveLinkSection({
   const [principalNote, setPrincipalNote] = useState('');
   const [savingNote, setSavingNote] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [autoSavedBadge, setAutoSavedBadge] = useState('');
 
-  const handleAddLink = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const notifyPending = (nextUrl: string, nextTitle: string, nextCat: string) => {
+    if (onPendingLinkChange) {
+      onPendingLinkChange({ url: nextUrl.trim(), title: nextTitle.trim(), category: nextCat });
+    }
+  };
+
+  const handleAddLink = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setErrorMsg('');
     const cleanUrl = linkUrl.trim();
     if (!cleanUrl) {
@@ -137,6 +152,9 @@ export default function DriveLinkSection({
       }
       setDocTitle('');
       setLinkUrl('');
+      notifyPending('', '', category);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Gagal menyimpan tautan ke database.');
     } finally {
       setSubmitting(false);
     }
@@ -145,19 +163,29 @@ export default function DriveLinkSection({
   const openPreviewModal = (att: SupervisionAttachment) => {
     setActiveAttachment(att);
     setEditTitle(att.file_name || '');
-    setEditUrl(att.link_url || att.download_url || '');
-    setPrincipalNote(att.principal_note || '');
+    setEditUrl(att.drive_url || att.link_url || att.download_url || '');
+    const draftKey = `bisma_att_note_${cycle.id}_${att.id}`;
+    const savedLocal = typeof window !== 'undefined' ? localStorage.getItem(draftKey) : null;
+    setPrincipalNote(att.principal_note || savedLocal || '');
+    setAutoSavedBadge('');
   };
 
   const handleGenerateAiNote = async () => {
     if (!activeAttachment) return;
     setAiLoading(true);
+    setAutoSavedBadge('');
     try {
+      const targetUrl = editUrl || activeAttachment.drive_url || activeAttachment.link_url || activeAttachment.download_url || '';
       const res = await fetch('/api/supervisi/ai-reflection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           actor,
+          cycle_id: cycle.id,
+          cycle,
+          attachments: cycle.attachments || [],
+          link_url: targetUrl,
+          drive_url: targetUrl,
           mode: 'attachment_ks_note',
           stage: `Tinjauan Berkas Form ${formCode}`,
           teacher_name: cycle.teacher_name,
@@ -171,7 +199,25 @@ export default function DriveLinkSection({
       });
       const json = await res.json();
       if (json.success && json.suggestions?.principal_note) {
-        setPrincipalNote(json.suggestions.principal_note);
+        const generatedNote = json.suggestions.principal_note;
+        setPrincipalNote(generatedNote);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(`bisma_att_note_${cycle.id}_${activeAttachment.id}`, generatedNote);
+        }
+        if (onSaveAttachmentNote) {
+          await onSaveAttachmentNote(
+            {
+              cycle_id: cycle.id,
+              attachment_id: activeAttachment.id,
+              principal_note: generatedNote,
+              file_name: editTitle || activeAttachment.file_name,
+              link_url: targetUrl,
+              drive_url: targetUrl
+            },
+            { silent: true }
+          );
+          setAutoSavedBadge('Tersimpan otomatis ke database');
+        }
       }
     } finally {
       setAiLoading(false);
@@ -182,12 +228,17 @@ export default function DriveLinkSection({
     if (!activeAttachment || !onSaveAttachmentNote) return;
     setSavingNote(true);
     try {
+      const targetUrl = editUrl || activeAttachment.drive_url || activeAttachment.link_url || activeAttachment.download_url || '';
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`bisma_att_note_${cycle.id}_${activeAttachment.id}`, principalNote);
+      }
       await onSaveAttachmentNote({
         cycle_id: cycle.id,
         attachment_id: activeAttachment.id,
         principal_note: principalNote,
         file_name: editTitle,
-        link_url: editUrl
+        link_url: targetUrl,
+        drive_url: targetUrl
       });
       setActiveAttachment(null);
     } finally {
@@ -196,7 +247,7 @@ export default function DriveLinkSection({
   };
 
   const previewEmbedUrl = activeAttachment
-    ? toEmbedPreviewUrl(editUrl || activeAttachment.link_url || activeAttachment.download_url)
+    ? toEmbedPreviewUrl(editUrl || activeAttachment.drive_url || activeAttachment.link_url || activeAttachment.download_url)
     : '';
 
   return (
@@ -258,7 +309,10 @@ export default function DriveLinkSection({
                 </label>
                 <select
                   value={category}
-                  onChange={e => setCategory(e.target.value)}
+                  onChange={e => {
+                    setCategory(e.target.value);
+                    notifyPending(linkUrl, docTitle, e.target.value);
+                  }}
                   className="w-full px-3 py-2.5 rounded-xl border-2 border-slate-300 bg-slate-50 font-bold text-slate-800"
                 >
                   {resolvedCategories.map(c => (
@@ -276,7 +330,10 @@ export default function DriveLinkSection({
                 <input
                   type="text"
                   value={docTitle}
-                  onChange={e => setDocTitle(e.target.value)}
+                  onChange={e => {
+                    setDocTitle(e.target.value);
+                    notifyPending(linkUrl, e.target.value, category);
+                  }}
                   placeholder="Contoh: Modul Ajar & LKPD Google Drive"
                   className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-300 font-semibold text-slate-900"
                 />
@@ -291,7 +348,10 @@ export default function DriveLinkSection({
                 <input
                   type="text"
                   value={docTitle}
-                  onChange={e => setDocTitle(e.target.value)}
+                  onChange={e => {
+                    setDocTitle(e.target.value);
+                    notifyPending(linkUrl, e.target.value, category);
+                  }}
                   placeholder="Contoh: Dokumentasi Observasi Kelas"
                   className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-300 font-semibold text-slate-900"
                 />
@@ -306,7 +366,16 @@ export default function DriveLinkSection({
                 <input
                   type="url"
                   value={linkUrl}
-                  onChange={e => setLinkUrl(e.target.value)}
+                  onChange={e => {
+                    setLinkUrl(e.target.value);
+                    notifyPending(e.target.value, docTitle, category);
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddLink();
+                    }
+                  }}
                   placeholder="https://drive.google.com/file/d/... (Kosongkan jika tidak ada)"
                   className="flex-1 px-3.5 py-2.5 rounded-xl border-2 border-slate-300 font-semibold text-slate-900"
                 />
@@ -320,6 +389,37 @@ export default function DriveLinkSection({
                   <span>{submitting ? 'Menyimpan...' : 'Sematkan Link'}</span>
                 </button>
               </div>
+              {linkUrl.trim() && (
+                <div className="mt-2.5 p-2.5 rounded-xl bg-blue-50/70 border border-blue-200 flex items-center gap-3">
+                  <a
+                    href={/^https?:\/\//i.test(linkUrl.trim()) ? linkUrl.trim() : `https://${linkUrl.trim()}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 bg-white rounded-lg border border-blue-200 shrink-0 flex flex-col items-center gap-0.5 shadow-2xs"
+                    title="Pratinjau QR Code Tautan Drive"
+                  >
+                    <QRCode
+                      value={/^https?:\/\//i.test(linkUrl.trim()) ? linkUrl.trim() : `https://${linkUrl.trim()}`}
+                      size={44}
+                    />
+                    <span className="text-[8px] font-extrabold text-blue-700 uppercase">Scan QR</span>
+                  </a>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-extrabold text-blue-900 uppercase tracking-wide flex items-center gap-1">
+                      <QrCode className="w-3 h-3 text-blue-600" />
+                      Pratinjau Tautan Aktif & QR Code Otomatis
+                    </p>
+                    <a
+                      href={/^https?:\/\//i.test(linkUrl.trim()) ? linkUrl.trim() : `https://${linkUrl.trim()}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-bold text-blue-700 hover:text-blue-900 underline break-all block mt-0.5"
+                    >
+                      {/^https?:\/\//i.test(linkUrl.trim()) ? linkUrl.trim() : `https://${linkUrl.trim()}`}
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -329,45 +429,72 @@ export default function DriveLinkSection({
         </div>
       )}
 
-      {/* Daftar Link Drive / URL yang Telah Disematkan */}
+      {/* Daftar Link Drive / URL yang Telah Disematkan (Tautan + QR Code) */}
       {attachments.length > 0 && (
         <div className="space-y-2.5">
           {attachments.map(att => {
-            const url = att.link_url || att.download_url || '';
+            const url = att.drive_url || att.link_url || att.download_url || '';
             return (
               <div
                 key={att.id}
                 className="p-3.5 rounded-2xl bg-white dark:bg-slate-800 border-2 border-slate-200 border-b-4 border-b-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-blue-400 transition-all"
               >
-                <div className="space-y-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-                      <FileText className="w-4 h-4" />
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => openPreviewModal(att)}
-                      className="font-extrabold text-slate-900 dark:text-white hover:text-blue-700 text-left truncate cursor-pointer"
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  {url && (
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Klik atau Scan QR Code untuk membuka tautan Google Drive"
+                      className="p-1.5 rounded-xl bg-white border-2 border-slate-200 shadow-xs shrink-0 flex flex-col items-center gap-1 hover:border-blue-500 transition-all"
                     >
-                      {att.file_name}
-                    </button>
-                    <span className="text-slate-500 text-[11px] font-medium">
-                      • {att.evidence_category}
-                    </span>
-                    {att.principal_note && (
-                      <span className="text-emerald-700 text-[11px] font-extrabold flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Ada Catatan KS
+                      <QRCode value={url} size={52} />
+                      <span className="text-[9px] font-extrabold text-slate-600 uppercase tracking-tight">
+                        QR Drive
                       </span>
+                    </a>
+                  )}
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                        <FileText className="w-4 h-4" />
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => openPreviewModal(att)}
+                        className="font-extrabold text-slate-900 dark:text-white hover:text-blue-700 text-left truncate cursor-pointer"
+                      >
+                        {att.file_name}
+                      </button>
+                      <span className="text-slate-500 text-[11px] font-medium">
+                        • {att.evidence_category}
+                      </span>
+                      {att.principal_note && (
+                        <span className="text-emerald-700 text-[11px] font-extrabold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Ada Catatan KS
+                        </span>
+                      )}
+                    </div>
+                    {url ? (
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] text-blue-600 hover:text-blue-800 underline font-semibold truncate block pl-9"
+                      >
+                        {url}
+                      </a>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 pl-9">-</p>
+                    )}
+                    {att.principal_note && (
+                      <div className="ml-9 mt-1.5 p-2.5 rounded-xl bg-emerald-50/90 border border-emerald-200 text-[11px] text-emerald-950">
+                        <span className="font-extrabold text-emerald-800">Catatan Kepala Sekolah: </span>
+                        "{att.principal_note}"
+                      </div>
                     )}
                   </div>
-                  <p className="text-[11px] text-blue-600 truncate pl-9">{url}</p>
-                  {att.principal_note && (
-                    <div className="ml-9 mt-1.5 p-2.5 rounded-xl bg-emerald-50/90 border border-emerald-200 text-[11px] text-emerald-950">
-                      <span className="font-extrabold text-emerald-800">Catatan Kepala Sekolah: </span>
-                      "{att.principal_note}"
-                    </div>
-                  )}
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0 pl-9 sm:pl-0">
@@ -383,9 +510,9 @@ export default function DriveLinkSection({
                     <a
                       href={url}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300"
-                      title="Buka di Tab Baru"
+                      title="Buka Tautan di Tab Baru"
                     >
                       <ExternalLink className="w-4 h-4" />
                     </a>
@@ -444,7 +571,7 @@ export default function DriveLinkSection({
                     <span>Pratinjau Dokumen Google Drive / URL</span>
                   </span>
                   <a
-                    href={editUrl || activeAttachment.link_url || activeAttachment.download_url}
+                    href={editUrl || activeAttachment.drive_url || activeAttachment.link_url || activeAttachment.download_url}
                     target="_blank"
                     rel="noreferrer"
                     className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-extrabold text-[11px] border border-blue-200 flex items-center gap-1.5"
@@ -499,6 +626,30 @@ export default function DriveLinkSection({
                         className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-medium text-blue-700 text-xs"
                       />
                     </div>
+                    {(editUrl || activeAttachment.drive_url || activeAttachment.link_url || activeAttachment.download_url) && (
+                      <div className="pt-2 border-t border-slate-200 flex items-center gap-3">
+                        <div className="p-2 rounded-xl bg-white border border-slate-300 shrink-0">
+                          <QRCode
+                            value={editUrl || activeAttachment.drive_url || activeAttachment.link_url || activeAttachment.download_url || ''}
+                            size={64}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <span className="text-[10px] font-extrabold text-slate-700 uppercase flex items-center gap-1">
+                            <QrCode className="w-3.5 h-3.5 text-blue-600" />
+                            Tautan Aktif & QR Code Drive
+                          </span>
+                          <a
+                            href={editUrl || activeAttachment.drive_url || activeAttachment.link_url || activeAttachment.download_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 underline break-all block"
+                          >
+                            {editUrl || activeAttachment.drive_url || activeAttachment.link_url || activeAttachment.download_url}
+                          </a>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Principal Review Note Section */}
@@ -521,11 +672,40 @@ export default function DriveLinkSection({
                       )}
                     </div>
 
+                    {autoSavedBadge && (
+                      <div className="px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-900 font-bold text-[11px] flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>{autoSavedBadge}</span>
+                      </div>
+                    )}
+
                     <textarea
                       rows={5}
                       value={principalNote}
                       disabled={!isPrincipal}
-                      onChange={e => setPrincipalNote(e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setPrincipalNote(val);
+                        if (typeof window !== 'undefined' && activeAttachment) {
+                          localStorage.setItem(`bisma_att_note_${cycle.id}_${activeAttachment.id}`, val);
+                        }
+                      }}
+                      onBlur={() => {
+                        if (isPrincipal && activeAttachment && onSaveAttachmentNote) {
+                          const targetUrl = editUrl || activeAttachment.drive_url || activeAttachment.link_url || activeAttachment.download_url || '';
+                          onSaveAttachmentNote(
+                            {
+                              cycle_id: cycle.id,
+                              attachment_id: activeAttachment.id,
+                              principal_note: principalNote,
+                              file_name: editTitle || activeAttachment.file_name,
+                              link_url: targetUrl,
+                              drive_url: targetUrl
+                            },
+                            { silent: true }
+                          ).then(() => setAutoSavedBadge('Catatan tersimpan otomatis ke DB'));
+                        }
+                      }}
                       placeholder={
                         isPrincipal
                           ? 'Tuliskan catatan tinjauan, apresiasi, atau saran perbaikan terhadap dokumen yang disematkan...'

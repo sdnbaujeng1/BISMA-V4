@@ -33,7 +33,12 @@ interface SupervisiFormProps {
   cycles: SupervisionCycle[];
   selectedCycle: SupervisionCycle | null;
   onSelectCycle: (cycle: SupervisionCycle) => void;
-  onSaveFormB: (cycleId: string, payload: Partial<FormBPayload>, publish: boolean) => Promise<void>;
+  onSaveFormB: (
+    cycleId: string,
+    payload: Partial<FormBPayload> & Record<string, any>,
+    publish: boolean,
+    options?: { silent?: boolean }
+  ) => Promise<void>;
   onUploadAttachment?: (params: {
     cycle_id: string;
     form_code: 'A' | 'B' | 'C' | 'D';
@@ -41,13 +46,20 @@ interface SupervisiFormProps {
     mime_type?: string;
     base64_data?: string;
     drive_url?: string;
+    link_url?: string;
     evidence_category: string;
   }) => Promise<void>;
-  onSaveAttachmentNote?: (params: {
-    cycle_id: string;
-    attachment_id: string;
-    principal_note: string;
-  }) => Promise<void>;
+  onSaveAttachmentNote?: (
+    params: {
+      cycle_id: string;
+      attachment_id: string;
+      principal_note: string;
+      file_name?: string;
+      link_url?: string;
+      drive_url?: string;
+    },
+    options?: { silent?: boolean }
+  ) => Promise<void>;
   onDeleteAttachment?: (params: {
     cycle_id: string;
     attachment_id: string;
@@ -83,6 +95,7 @@ export default function SupervisiForm({
   const [saving, setSaving] = useState<boolean>(false);
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [aiNotice, setAiNotice] = useState<string>('');
+  const [hydratedCycleId, setHydratedCycleId] = useState<string>('');
 
   const [observedAt, setObservedAt] = useState<string>('');
   const [ratings, setRatings] = useState<BehaviorObservationRating[]>([]);
@@ -90,6 +103,11 @@ export default function SupervisiForm({
   const [strengths, setStrengths] = useState<string>('');
   const [improvementAreas, setImprovementAreas] = useState<string>('');
   const [recommendations, setRecommendations] = useState<string>('');
+  const [pendingDrive, setPendingDrive] = useState<{ url: string; title: string; category: string }>({
+    url: '',
+    title: '',
+    category: 'Dokumentasi Foto / Video Observasi Kelas'
+  });
 
   useEffect(() => {
     if (!activeCycle) return;
@@ -104,30 +122,79 @@ export default function SupervisiForm({
         : ind.behaviors;
 
     const existingB = activeCycle.forms?.B?.payload;
+    let localDraft: any = {};
+    try {
+      const raw = localStorage.getItem(`bisma_supervisi_draft_${activeCycle.id}_B`);
+      if (raw) localDraft = JSON.parse(raw);
+    } catch {
+      // ignore
+    }
+
     setObservedAt(
       existingB?.observed_at ||
+        localDraft.observed_at ||
         activeCycle.confirmed_date ||
         activeCycle.proposed_date ||
         new Date().toISOString().split('T')[0]
     );
-    setSummary(existingB?.summary || '');
-    setStrengths(existingB?.strengths || '');
-    setImprovementAreas(existingB?.improvement_areas || '');
-    setRecommendations(existingB?.recommendations || '');
+    setSummary(existingB?.summary || localDraft.summary || '');
+    setStrengths(existingB?.strengths || localDraft.strengths || '');
+    setImprovementAreas(existingB?.improvement_areas || localDraft.improvement_areas || '');
+    setRecommendations(existingB?.recommendations || localDraft.recommendations || '');
 
     const initialRatings: BehaviorObservationRating[] = targetBehaviorsList.map(beh => {
-      const found = (existingB?.ratings || []).find(r => r.behavior_code === beh.code);
+      const found =
+        (existingB?.ratings || []).find(r => r.behavior_code === beh.code) ||
+        (localDraft.ratings || []).find((r: any) => r.behavior_code === beh.code);
+      const fallbackLocal = (localDraft.ratings || []).find((r: any) => r.behavior_code === beh.code);
       return {
         behavior_code: beh.code,
         behavior_label: beh.label,
-        rating: (found?.rating || 2) as BehaviorRatingCode,
-        evidence: found?.evidence || '',
-        learning_impact: found?.learning_impact || '',
-        notes: found?.notes || ''
+        rating: (found?.rating || fallbackLocal?.rating || 2) as BehaviorRatingCode,
+        evidence: found?.evidence || fallbackLocal?.evidence || '',
+        learning_impact: found?.learning_impact || fallbackLocal?.learning_impact || '',
+        notes: found?.notes || fallbackLocal?.notes || ''
       };
     });
     setRatings(initialRatings);
+    setHydratedCycleId(activeCycle.id);
   }, [activeCycle?.id]);
+
+  const buildPayload = (overrides?: Partial<FormBPayload> & Record<string, any>): Partial<FormBPayload> & Record<string, any> => {
+    const base: Partial<FormBPayload> & Record<string, any> = {
+      observed_at: observedAt,
+      ratings,
+      summary,
+      strengths,
+      improvement_areas: improvementAreas,
+      recommendations,
+      ...(pendingDrive.url
+        ? {
+            pending_drive_url: pendingDrive.url,
+            pending_drive_title: pendingDrive.title,
+            pending_drive_category: pendingDrive.category
+          }
+        : {}),
+      ...(overrides || {})
+    };
+    if (activeCycle?.id && typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`bisma_supervisi_draft_${activeCycle.id}_B`, JSON.stringify(base));
+      } catch {
+        // ignore
+      }
+    }
+    return base;
+  };
+
+  useEffect(() => {
+    if (!activeCycle || hydratedCycleId !== activeCycle.id || !isPrincipal || activeCycle.state === 'completed') return;
+    const payload = buildPayload();
+    const timer = setTimeout(() => {
+      onSaveFormB(activeCycle.id, payload, false, { silent: true }).catch(() => {});
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [observedAt, ratings, summary, strengths, improvementAreas, recommendations]);
 
   if (!activeCycle) {
     return (
@@ -177,6 +244,39 @@ export default function SupervisiForm({
             <p><span className="text-slate-500">Jadwal Observasi:</span> <span className="font-extrabold text-slate-900">{formatIndonesianDate(activeCycle.confirmed_date || activeCycle.proposed_date)}</span></p>
             <p><span className="text-slate-500">Supervisor:</span> <span className="font-extrabold text-slate-900">{activeCycle.principal_name}</span></p>
           </div>
+          {onUploadAttachment && (
+            <div className="text-left mb-6">
+              <DriveLinkSection
+                actor={actor}
+                cycle={activeCycle}
+                formCode="B"
+                indicatorTitle={currentIndicator.title}
+                topic={activeCycle.forms?.A?.payload?.topic || activeCycle.subject}
+                sectionTitle="Sematkan Link Drive / URL Dokumentasi Pembelajaran (Form B)"
+                sectionSubtitle="Guru dapat menyematkan tautan dokumentasi kegiatan kelas pada tahap observasi ini agar dapat dibaca oleh Kepala Sekolah & API."
+                categories={[
+                  'Dokumentasi Foto / Video Observasi Kelas',
+                  'Catatan Bukti Pengamatan Kelas',
+                  'Hasil Karya / Aktivitas Murid Saat Observasi',
+                  'Tautan Dokumentasi Observasi Lainnya'
+                ]}
+                defaultCategory="Dokumentasi Foto / Video Observasi Kelas"
+                canAddLink={!isCycleCompleted}
+                onAddDriveLink={async params => {
+                  await onUploadAttachment({
+                    cycle_id: params.cycle_id,
+                    form_code: params.form_code,
+                    file_name: params.file_name,
+                    drive_url: params.drive_url,
+                    link_url: params.drive_url,
+                    evidence_category: params.evidence_category
+                  });
+                }}
+                onSaveAttachmentNote={onSaveAttachmentNote}
+                onDeleteAttachment={onDeleteAttachment}
+              />
+            </div>
+          )}
           <div className="flex items-center justify-center gap-3">
             <button
               onClick={() => onNavigatePage('form_a', activeCycle)}
@@ -201,18 +301,7 @@ export default function SupervisiForm({
   const handleSave = async (publish: boolean) => {
     setSaving(true);
     try {
-      await onSaveFormB(
-        activeCycle.id,
-        {
-          observed_at: observedAt,
-          ratings,
-          summary,
-          strengths,
-          improvement_areas: improvementAreas,
-          recommendations
-        },
-        publish
-      );
+      await onSaveFormB(activeCycle.id, buildPayload(), publish);
     } finally {
       setSaving(false);
     }
@@ -222,6 +311,7 @@ export default function SupervisiForm({
     setAiLoading(true);
     setAiNotice('');
     try {
+      const currentPayload = buildPayload();
       const res = await fetch('/api/supervisi/generate-narrative', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -233,17 +323,12 @@ export default function SupervisiForm({
               ...activeCycle.forms,
               B: {
                 ...(activeCycle.forms?.B || {}),
-                payload: {
-                  observed_at: observedAt,
-                  ratings,
-                  summary,
-                  strengths,
-                  improvement_areas: improvementAreas,
-                  recommendations
-                }
+                payload: currentPayload
               }
             }
           },
+          attachments: activeCycle.attachments || [],
+          link_url: pendingDrive.url || undefined,
           mode: 'observation_evidence'
         })
       });
@@ -257,34 +342,37 @@ export default function SupervisiForm({
           d.dampak_murid ||
           'Murid tampak aktif berdiskusi di dalam kelompok, berani mengemukakan pendapat, serta mampu menyelesaikan tugas pembelajaran dengan baik.';
 
-        setRatings(prev =>
-          prev.map((item, idx) => ({
-            ...item,
-            evidence:
-              item.evidence.trim() ||
-              `${mainEvidence} Pada perilaku "${item.behavior_label}", guru memfasilitasi murid secara nyata di ruang kelas.`,
-            learning_impact:
-              item.learning_impact.trim() ||
-              `${mainImpact} (Perilaku sasaran #${idx + 1} berdampak positif pada keterlibatan murid).`
-          }))
-        );
+        const nextRatings = ratings.map((item, idx) => ({
+          ...item,
+          evidence:
+            item.evidence.trim() ||
+            `${mainEvidence} Pada perilaku "${item.behavior_label}", guru memfasilitasi murid secara nyata di ruang kelas.`,
+          learning_impact:
+            item.learning_impact.trim() ||
+            `${mainImpact} (Perilaku sasaran #${idx + 1} berdampak positif pada keterlibatan murid).`
+        }));
+        const nextSummary = summary.trim() || d.ringkasan_observasi || mainEvidence;
+        const nextStrengths = strengths.trim() || d.kekuatan_utama || '';
+        const nextImprovement = improvementAreas.trim() || d.area_pengembangan || '';
+        const nextRecs = recommendations.trim() || d.rekomendasi_pembinaan || '';
 
-        if (d.ringkasan_observasi && !summary.trim()) {
-          setSummary(d.ringkasan_observasi);
-        } else if (!summary.trim()) {
-          setSummary(mainEvidence);
-        }
-        if (d.kekuatan_utama && !strengths.trim()) {
-          setStrengths(d.kekuatan_utama);
-        }
-        if (d.area_pengembangan && !improvementAreas.trim()) {
-          setImprovementAreas(d.area_pengembangan);
-        }
-        if (d.rekomendasi_pembinaan && !recommendations.trim()) {
-          setRecommendations(d.rekomendasi_pembinaan);
-        }
+        setRatings(nextRatings);
+        setSummary(nextSummary);
+        setStrengths(nextStrengths);
+        setImprovementAreas(nextImprovement);
+        setRecommendations(nextRecs);
+
+        const immediatePayload = buildPayload({
+          ratings: nextRatings,
+          summary: nextSummary,
+          strengths: nextStrengths,
+          improvement_areas: nextImprovement,
+          recommendations: nextRecs
+        });
+        await onSaveFormB(activeCycle.id, immediatePayload, false, { silent: true });
+
         setAiNotice(
-          'PENCATATAN BUKTI PENGAMATAN KELAS, dampak murid, kekuatan, dan rekomendasi pembinaan KS berhasil diisi menggunakan API tertanam berdasarkan data.'
+          'PENCATATAN BUKTI PENGAMATAN KELAS, dampak murid, kekuatan, dan rekomendasi pembinaan KS berhasil diisi menggunakan API dan tersimpan otomatis ke database.'
         );
       }
     } finally {
@@ -703,6 +791,8 @@ export default function SupervisiForm({
               cycle={activeCycle}
               formCode="B"
               optional={true}
+              indicatorTitle={currentIndicator.title}
+              topic={activeCycle.forms?.A?.payload?.topic || activeCycle.subject}
               sectionTitle="Sematkan Link Drive / URL Dokumentasi Observasi Kelas (Form B)"
               sectionSubtitle="Bersifat opsional (tidak wajib). Anda dapat menyematkan tautan foto/video pengamatan kelas atau langsung menyimpan/mempublikasikan Form B tanpa tautan."
               categories={[
@@ -713,12 +803,14 @@ export default function SupervisiForm({
               ]}
               defaultCategory="Dokumentasi Foto / Video Observasi Kelas"
               canAddLink={!isCycleCompleted}
+              onPendingLinkChange={setPendingDrive}
               onAddDriveLink={async params => {
                 await onUploadAttachment({
                   cycle_id: params.cycle_id,
                   form_code: params.form_code,
                   file_name: params.file_name,
                   drive_url: params.drive_url,
+                  link_url: params.drive_url,
                   evidence_category: params.evidence_category
                 });
               }}
@@ -764,7 +856,12 @@ export default function SupervisiForm({
           <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200">
             <button
               type="button"
-              onClick={() => setPageStep(2)}
+              onClick={() => {
+                if (!isCycleCompleted && isPrincipal) {
+                  onSaveFormB(activeCycle.id, buildPayload(), false, { silent: true }).catch(() => {});
+                }
+                setPageStep(2);
+              }}
               className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold border-b-4 border-slate-300 flex items-center gap-2 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -772,7 +869,12 @@ export default function SupervisiForm({
             </button>
             <button
               type="button"
-              onClick={() => onNavigatePage(isPrincipal ? 'ks_followup' : 'form_c', activeCycle)}
+              onClick={() => {
+                if (!isCycleCompleted && isPrincipal) {
+                  onSaveFormB(activeCycle.id, buildPayload(), false, { silent: true }).catch(() => {});
+                }
+                onNavigatePage(isPrincipal ? 'ks_followup' : 'form_c', activeCycle);
+              }}
               className="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white text-xs sm:text-sm font-extrabold border-b-4 border-emerald-950 active:border-b-0 active:translate-y-1 transition-all flex items-center gap-2 shadow-lg cursor-pointer"
             >
               <span>Lanjutkan ke Halaman Rencana Tindak Lanjut (Form C)</span>

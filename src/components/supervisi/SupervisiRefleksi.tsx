@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   MessageSquareText,
   Send,
@@ -34,7 +34,8 @@ interface SupervisiRefleksiProps {
   onSaveFormD: (
     cycleId: string,
     payload: Partial<FormDPayload>,
-    action: 'save_draft' | 'submit' | 'principal_finalize'
+    action: 'save_draft' | 'submit' | 'principal_finalize',
+    opts?: { silent?: boolean }
   ) => Promise<void>;
   onUploadAttachment: (params: {
     cycle_id: string;
@@ -43,13 +44,19 @@ interface SupervisiRefleksiProps {
     mime_type?: string;
     base64_data?: string;
     drive_url?: string;
+    link_url?: string;
     evidence_category: string;
   }) => Promise<void>;
-  onSaveAttachmentNote?: (params: {
-    cycle_id: string;
-    attachment_id: string;
-    principal_note: string;
-  }) => Promise<void>;
+  onSaveAttachmentNote?: (
+    params: {
+      cycle_id: string;
+      attachment_id: string;
+      principal_note: string;
+      link_url?: string;
+      drive_url?: string;
+    },
+    opts?: { silent?: boolean }
+  ) => Promise<void>;
   onDeleteAttachment?: (params: {
     cycle_id: string;
     attachment_id: string;
@@ -93,6 +100,12 @@ export default function SupervisiRefleksi({
   const [saving, setSaving] = useState<boolean>(false);
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [aiNotice, setAiNotice] = useState<string>('');
+  const [pendingDrive, setPendingDrive] = useState<{ title: string; url: string; category: string }>({
+    title: '',
+    url: '',
+    category: EVIDENCE_CATEGORIES[0]
+  });
+  const isHydratedRef = useRef<boolean>(false);
 
   // Form D fields (Q1 - Q7)
   const [inspiration, setInspiration] = useState('');
@@ -110,19 +123,85 @@ export default function SupervisiRefleksi({
 
   useEffect(() => {
     if (!activeCycle) return;
+    isHydratedRef.current = false;
     const p = activeCycle.forms?.D?.payload;
-    setInspiration(p?.inspiration || '');
-    setActionsImplementedText((p?.actions_implemented || []).join('\n'));
-    setProgress(p?.progress || '');
-    setLearningImpact(p?.learning_impact || '');
-    setRemainingChallenges(p?.remaining_challenges || '');
-    setImprovementStrategy(p?.improvement_strategy || '');
-    setNextGoalsText((p?.next_goals || []).join('\n'));
+    let cached: Partial<FormDPayload> | null = null;
+    try {
+      const raw = localStorage.getItem(`bisma_supervisi_draft_${activeCycle.id}_D`);
+      if (raw) cached = JSON.parse(raw);
+    } catch {
+      cached = null;
+    }
 
-    setRecognitionOfProgress(p?.recognition_of_progress || '');
-    setCoachingFeedback(p?.coaching_feedback || '');
-    setSuggestedNextSteps(p?.suggested_next_steps || '');
+    setInspiration(cached?.inspiration || p?.inspiration || '');
+    const resolvedActions = cached?.actions_implemented?.length
+      ? cached.actions_implemented
+      : p?.actions_implemented || [];
+    setActionsImplementedText(resolvedActions.join('\n'));
+    setProgress(cached?.progress || p?.progress || '');
+    setLearningImpact(cached?.learning_impact || p?.learning_impact || '');
+    setRemainingChallenges(cached?.remaining_challenges || p?.remaining_challenges || '');
+    setImprovementStrategy(cached?.improvement_strategy || p?.improvement_strategy || '');
+    const resolvedNextGoals = cached?.next_goals?.length
+      ? cached.next_goals
+      : p?.next_goals || [];
+    setNextGoalsText(resolvedNextGoals.join('\n'));
+
+    setRecognitionOfProgress(cached?.recognition_of_progress || p?.recognition_of_progress || '');
+    setCoachingFeedback(cached?.coaching_feedback || p?.coaching_feedback || '');
+    setSuggestedNextSteps(cached?.suggested_next_steps || p?.suggested_next_steps || '');
+
+    setTimeout(() => {
+      isHydratedRef.current = true;
+    }, 80);
   }, [activeCycle?.id]);
+
+  // Auto-save Form D notes to localStorage & DB so manual/API notes never disappear on Back or Refresh
+  useEffect(() => {
+    if (!activeCycle || !isHydratedRef.current || activeCycle.state === 'completed') return;
+    const payloadToSave: Partial<FormDPayload> & Record<string, any> = {
+      inspiration,
+      actions_implemented: actionsImplementedText.split('\n').map(s => s.trim()).filter(Boolean),
+      progress,
+      learning_impact: learningImpact,
+      remaining_challenges: remainingChallenges,
+      improvement_strategy: improvementStrategy,
+      next_goals: nextGoalsText.split('\n').map(s => s.trim()).filter(Boolean),
+      recognition_of_progress: recognitionOfProgress,
+      coaching_feedback: coachingFeedback,
+      suggested_next_steps: suggestedNextSteps,
+      ...(pendingDrive.url.trim()
+        ? {
+            pending_drive_url: pendingDrive.url.trim(),
+            pending_drive_title: pendingDrive.title.trim(),
+            pending_drive_category: pendingDrive.category
+          }
+        : {})
+    };
+    try {
+      localStorage.setItem(`bisma_supervisi_draft_${activeCycle.id}_D`, JSON.stringify(payloadToSave));
+    } catch {
+      // ignore
+    }
+
+    const timer = setTimeout(() => {
+      onSaveFormD(activeCycle.id, payloadToSave, 'save_draft', { silent: true }).catch(() => {});
+    }, 900);
+    return () => clearTimeout(timer);
+  }, [
+    activeCycle?.id,
+    inspiration,
+    actionsImplementedText,
+    progress,
+    learningImpact,
+    remainingChallenges,
+    improvementStrategy,
+    nextGoalsText,
+    recognitionOfProgress,
+    coachingFeedback,
+    suggestedNextSteps,
+    pendingDrive.url
+  ]);
 
   if (!activeCycle) {
     return (
@@ -176,7 +255,7 @@ export default function SupervisiRefleksi({
   const formDStatus = activeCycle.forms?.D?.status || 'draft';
   const isCycleCompleted = activeCycle.state === 'completed';
 
-  const buildPayload = (): Partial<FormDPayload> => ({
+  const buildPayload = (): Partial<FormDPayload> & Record<string, any> => ({
     inspiration,
     actions_implemented: actionsImplementedText.split('\n').map(s => s.trim()).filter(Boolean),
     progress,
@@ -186,13 +265,26 @@ export default function SupervisiRefleksi({
     next_goals: nextGoalsText.split('\n').map(s => s.trim()).filter(Boolean),
     recognition_of_progress: recognitionOfProgress,
     coaching_feedback: coachingFeedback,
-    suggested_next_steps: suggestedNextSteps
+    suggested_next_steps: suggestedNextSteps,
+    ...(pendingDrive.url.trim()
+      ? {
+          pending_drive_url: pendingDrive.url.trim(),
+          pending_drive_title: pendingDrive.title.trim(),
+          pending_drive_category: pendingDrive.category
+        }
+      : {})
   });
 
   const handleAction = async (action: 'save_draft' | 'submit' | 'principal_finalize') => {
     setSaving(true);
     try {
-      await onSaveFormD(activeCycle.id, buildPayload(), action);
+      const payload = buildPayload();
+      try {
+        localStorage.setItem(`bisma_supervisi_draft_${activeCycle.id}_D`, JSON.stringify(payload));
+      } catch {
+        // ignore
+      }
+      await onSaveFormD(activeCycle.id, payload, action);
     } finally {
       setSaving(false);
     }
@@ -206,6 +298,10 @@ export default function SupervisiRefleksi({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           actor,
+          cycle_id: activeCycle.id,
+          cycle: activeCycle,
+          attachments: activeCycle.attachments || [],
+          link_url: pendingDrive.url,
           stage: 'Form D — Refleksi dan Evaluasi Tindak Lanjut',
           indicator_title: currentIndicator.title,
           target_behaviors: activeCycle.forms?.C?.payload?.action_steps || [],
@@ -216,63 +312,79 @@ export default function SupervisiRefleksi({
       if (json.success && json.suggestions) {
         setAiNotice(
           json.notice ||
-            'Isian otomatis Form D dan catatan tinjauan KS berhasil disusun menggunakan API tertanam berdasarkan data.'
+            'Isian otomatis Form D dan catatan tinjauan KS berhasil disusun menggunakan API tertanam berdasarkan data & tautan bukti dukung.'
         );
-        if (json.suggestions.outline && !inspiration.trim()) {
-          setInspiration(json.suggestions.outline);
-        }
-        if (!actionsImplementedText.trim()) {
-          const stepsC = activeCycle.forms?.C?.payload?.action_steps || [];
-          setActionsImplementedText(
-            stepsC.length > 0
-              ? stepsC.join('\n')
-              : Array.isArray(json.suggestions.action_steps)
-              ? json.suggestions.action_steps.join('\n')
-              : 'Menerapkan pembagian peran kelompok terstruktur dan memfasilitasi diskusi aktif murid di kelas.'
-          );
-        }
-        if (!progress.trim()) {
-          setProgress(
-            `Praktik mengajar pada ${formatClassLabel(activeCycle.grade)} (${activeCycle.subject}) menjadi lebih terarah, manajemen waktu diskusi kelompok lebih efektif, dan umpan balik kepada murid tersampaikan secara konstruktif.`
-          );
-        }
-        if (!learningImpact.trim()) {
-          setLearningImpact(
-            'Murid menjadi jauh lebih antusias, berani bertanya dan menanggapi pendapat teman, serta ketuntasan pemahaman konsep pada asesmen formatif meningkat secara nyata.'
-          );
-        }
-        if (!remainingChallenges.trim()) {
-          setRemainingChallenges(
-            'Masih terdapat 2–3 murid yang membutuhkan pendampingan individual lebih intensif saat menyimpulkan hasil diskusi kelompok.'
-          );
-        }
-        if (!improvementStrategy.trim()) {
-          setImprovementStrategy(
-            'Memberikan scaffolding bertahap (pertanyaan penuntun) dan memasangkan murid tersebut dengan tutor sebaya yang suportif.'
-          );
-        }
-        if (!nextGoalsText.trim()) {
-          setNextGoalsText(
-            `Mengembangkan variasi asesmen formatif dan media interaktif pada ${formatClassLabel(activeCycle.grade)}.\nBerbagi praktik baik hasil tindak lanjut supervisi di Komunitas Belajar (Kombel / KKG) sekolah.`
-          );
-        }
+        const nextInspiration =
+          json.suggestions.outline && !inspiration.trim() ? json.suggestions.outline : inspiration;
+        const stepsC = activeCycle.forms?.C?.payload?.action_steps || [];
+        const nextActionsText = actionsImplementedText.trim()
+          ? actionsImplementedText
+          : stepsC.length > 0
+          ? stepsC.join('\n')
+          : Array.isArray(json.suggestions.action_steps)
+          ? json.suggestions.action_steps.join('\n')
+          : 'Menerapkan pembagian peran kelompok terstruktur dan memfasilitasi diskusi aktif murid di kelas.';
+        const nextProgress = progress.trim()
+          ? progress
+          : `Praktik mengajar pada ${formatClassLabel(activeCycle.grade)} (${activeCycle.subject}) menjadi lebih terarah, manajemen waktu diskusi kelompok lebih efektif, dan umpan balik kepada murid tersampaikan secara konstruktif.`;
+        const nextLearningImpact = learningImpact.trim()
+          ? learningImpact
+          : 'Murid menjadi jauh lebih antusias, berani bertanya dan menanggapi pendapat teman, serta ketuntasan pemahaman konsep pada asesmen formatif meningkat secara nyata.';
+        const nextRemainingChallenges = remainingChallenges.trim()
+          ? remainingChallenges
+          : 'Masih terdapat 2–3 murid yang membutuhkan pendampingan individual lebih intensif saat menyimpulkan hasil diskusi kelompok.';
+        const nextImprovementStrategy = improvementStrategy.trim()
+          ? improvementStrategy
+          : 'Memberikan scaffolding bertahap (pertanyaan penuntun) dan memasangkan murid tersebut dengan tutor sebaya yang suportif.';
+        const nextGoals = nextGoalsText.trim()
+          ? nextGoalsText
+          : `Mengembangkan variasi asesmen formatif dan media interaktif pada ${formatClassLabel(activeCycle.grade)}.\nBerbagi praktik baik hasil tindak lanjut supervisi di Komunitas Belajar (Kombel / KKG) sekolah.`;
+
+        const nextRecognition =
+          isPrincipal && !recognitionOfProgress.trim()
+            ? `Apresiasi tinggi kepada ${activeCycle.teacher_name} atas komitmen nyata dalam menindaklanjuti hasil observasi pada ${formatClassLabel(activeCycle.grade)} (${activeCycle.subject}) hingga berdampak positif pada keterlibatan murid.`
+            : recognitionOfProgress;
+        const nextCoaching =
+          isPrincipal && !coachingFeedback.trim()
+            ? `Perubahan praktik pembelajaran terkait indikator ${currentIndicator.title} telah berjalan efektif dan terdokumentasi dengan baik melalui tautan bukti dukung.`
+            : coachingFeedback;
+        const nextSuggestedSteps =
+          isPrincipal && !suggestedNextSteps.trim()
+            ? 'Pertahankan konsistensi praktik baik ini dan bagikan pengalaman implementasi di forum Komunitas Belajar (Kombel) sekolah.'
+            : suggestedNextSteps;
+
+        setInspiration(nextInspiration);
+        setActionsImplementedText(nextActionsText);
+        setProgress(nextProgress);
+        setLearningImpact(nextLearningImpact);
+        setRemainingChallenges(nextRemainingChallenges);
+        setImprovementStrategy(nextImprovementStrategy);
+        setNextGoalsText(nextGoals);
         if (isPrincipal) {
-          if (!recognitionOfProgress.trim()) {
-            setRecognitionOfProgress(
-              `Apresiasi tinggi kepada ${activeCycle.teacher_name} atas komitmen nyata dalam menindaklanjuti hasil observasi pada ${formatClassLabel(activeCycle.grade)} (${activeCycle.subject}) hingga berdampak positif pada keterlibatan murid.`
-            );
-          }
-          if (!coachingFeedback.trim()) {
-            setCoachingFeedback(
-              `Perubahan praktik pembelajaran terkait indikator ${currentIndicator.title} telah berjalan efektif dan terdokumentasi dengan baik melalui tautan bukti dukung.`
-            );
-          }
-          if (!suggestedNextSteps.trim()) {
-            setSuggestedNextSteps(
-              'Pertahankan konsistensi praktik baik ini dan bagikan pengalaman implementasi di forum Komunitas Belajar (Kombel) sekolah.'
-            );
-          }
+          setRecognitionOfProgress(nextRecognition);
+          setCoachingFeedback(nextCoaching);
+          setSuggestedNextSteps(nextSuggestedSteps);
         }
+
+        // Immediately save API-generated notes to localStorage & DB so they never disappear on Back or Refresh
+        const immediatePayload: Partial<FormDPayload> = {
+          inspiration: nextInspiration,
+          actions_implemented: nextActionsText.split('\n').map(s => s.trim()).filter(Boolean),
+          progress: nextProgress,
+          learning_impact: nextLearningImpact,
+          remaining_challenges: nextRemainingChallenges,
+          improvement_strategy: nextImprovementStrategy,
+          next_goals: nextGoals.split('\n').map(s => s.trim()).filter(Boolean),
+          recognition_of_progress: nextRecognition,
+          coaching_feedback: nextCoaching,
+          suggested_next_steps: nextSuggestedSteps
+        };
+        try {
+          localStorage.setItem(`bisma_supervisi_draft_${activeCycle.id}_D`, JSON.stringify(immediatePayload));
+        } catch {
+          // ignore
+        }
+        await onSaveFormD(activeCycle.id, immediatePayload, 'save_draft', { silent: true }).catch(() => {});
       }
     } finally {
       setAiLoading(false);
@@ -534,17 +646,21 @@ export default function SupervisiRefleksi({
               actor={actor}
               cycle={activeCycle}
               formCode="D"
+              indicatorTitle={currentIndicator.title}
+              topic={activeCycle.forms?.A?.payload?.topic || activeCycle.subject}
               sectionTitle="Sematkan Link Drive / URL Bukti Dukung Tindak Lanjut (Form D)"
               sectionSubtitle="Guru menyematkan tautan Google Drive / URL foto kegiatan perbaikan di kelas, materi ajar revisi, catatan reflektif, atau ringkasan asesmen formatif. Jika dibuka oleh Kepala Sekolah, muncul pop-up untuk pratinjau langsung dan edit sebagai Catatan Tinjauan."
               categories={EVIDENCE_CATEGORIES}
               defaultCategory={EVIDENCE_CATEGORIES[0]}
               canAddLink={!isCycleCompleted}
+              onPendingLinkChange={setPendingDrive}
               onAddDriveLink={async params => {
                 await onUploadAttachment({
                   cycle_id: params.cycle_id,
                   form_code: params.form_code,
                   file_name: params.file_name,
                   drive_url: params.drive_url,
+                  link_url: params.drive_url,
                   evidence_category: params.evidence_category
                 });
               }}
@@ -556,7 +672,12 @@ export default function SupervisiRefleksi({
           <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200">
             <button
               type="button"
-              onClick={() => setPageStep(1)}
+              onClick={() => {
+                if (!isCycleCompleted) {
+                  onSaveFormD(activeCycle.id, buildPayload(), 'save_draft', { silent: true }).catch(() => {});
+                }
+                setPageStep(1);
+              }}
               className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold border-b-4 border-slate-300 flex items-center gap-2 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -564,7 +685,12 @@ export default function SupervisiRefleksi({
             </button>
             <button
               type="button"
-              onClick={() => setPageStep(3)}
+              onClick={() => {
+                if (!isCycleCompleted) {
+                  onSaveFormD(activeCycle.id, buildPayload(), 'save_draft', { silent: true }).catch(() => {});
+                }
+                setPageStep(3);
+              }}
               className="px-6 py-3 rounded-2xl bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-600 hover:to-indigo-700 text-white text-xs sm:text-sm font-extrabold border-b-4 border-purple-950 active:border-b-0 active:translate-y-1 transition-all flex items-center gap-2 shadow-lg cursor-pointer"
             >
               <span>Lanjutkan ke Pengiriman & Pembinaan Akhir (Lembar 3/3)</span>
@@ -691,7 +817,16 @@ export default function SupervisiRefleksi({
             </div>
 
             {isPrincipal && !isCycleCompleted && (
-              <div className="flex justify-end pt-2">
+              <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => handleAction('save_draft')}
+                  className="px-4 py-2.5 rounded-xl bg-white border-2 border-slate-300 border-b-4 text-slate-800 font-extrabold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  Simpan Catatan KS (Draf)
+                </button>
                 <button
                   type="button"
                   disabled={saving}
@@ -708,7 +843,12 @@ export default function SupervisiRefleksi({
           <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200">
             <button
               type="button"
-              onClick={() => setPageStep(2)}
+              onClick={() => {
+                if (!isCycleCompleted) {
+                  onSaveFormD(activeCycle.id, buildPayload(), 'save_draft', { silent: true }).catch(() => {});
+                }
+                setPageStep(2);
+              }}
               className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold border-b-4 border-slate-300 flex items-center gap-2 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -716,7 +856,12 @@ export default function SupervisiRefleksi({
             </button>
             <button
               type="button"
-              onClick={() => onNavigatePage(isPrincipal ? 'ks_reports' : 'history_pdf', activeCycle)}
+              onClick={() => {
+                if (!isCycleCompleted) {
+                  onSaveFormD(activeCycle.id, buildPayload(), 'save_draft', { silent: true }).catch(() => {});
+                }
+                onNavigatePage(isPrincipal ? 'ks_reports' : 'history_pdf', activeCycle);
+              }}
               className="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white text-xs sm:text-sm font-extrabold border-b-4 border-emerald-950 active:border-b-0 active:translate-y-1 transition-all flex items-center gap-2 shadow-lg cursor-pointer"
             >
               <span>Lanjutkan ke Halaman Riwayat & Laporan PDF Lengkap</span>

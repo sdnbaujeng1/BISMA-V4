@@ -240,6 +240,7 @@ function SupervisiWorkspace({
   const [totalTargetTeachers, setTotalTargetTeachers] = useState<number>(0);
   const [selectedCycle, setSelectedCycle] = useState<SupervisionCycle | null>(null);
   const [initialReportType, setInitialReportType] = useState<ReportDocType>('FULL');
+  const [autoPrintTrigger, setAutoPrintTrigger] = useState<number>(0);
   const [loadingData, setLoadingData] = useState<boolean>(true);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -307,6 +308,7 @@ function SupervisiWorkspace({
   const handleOpenPrintReport = (reportType: ReportDocType, cycle?: SupervisionCycle) => {
     if (cycle) setSelectedCycle(cycle);
     setInitialReportType(reportType);
+    setAutoPrintTrigger(Date.now());
     setActivePageId(isPrincipal ? 'ks_reports' : 'history_pdf');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -358,10 +360,21 @@ function SupervisiWorkspace({
     await fetchAllData();
   };
 
+  const syncUpdatedCycleInState = (updatedCycle?: SupervisionCycle) => {
+    if (!updatedCycle || !updatedCycle.id) return;
+    setCycles(prev => {
+      const exists = prev.some(c => c.id === updatedCycle.id);
+      if (!exists) return [updatedCycle, ...prev];
+      return prev.map(c => (c.id === updatedCycle.id ? updatedCycle : c));
+    });
+    setSelectedCycle(prev => (!prev || prev.id === updatedCycle.id ? updatedCycle : prev));
+  };
+
   const handleSaveFormA = async (
     cycleId: string,
-    payload: Partial<FormAPayload>,
-    action: 'save_draft' | 'submit' | 'principal_approve' | 'request_revision'
+    payload: Partial<FormAPayload> & Record<string, any>,
+    action: 'save_draft' | 'submit' | 'principal_approve' | 'request_revision',
+    options?: { silent?: boolean }
   ) => {
     const res = await fetch('/api/supervisi/form-a', {
       method: 'POST',
@@ -370,17 +383,25 @@ function SupervisiWorkspace({
     });
     const json = await res.json();
     if (!res.ok || !json.success) {
-      showNotice('error', json.message || 'Gagal menyimpan Form A.');
+      if (!options?.silent) {
+        showNotice('error', json.message || 'Gagal menyimpan Form A.');
+      }
       throw new Error(json.message);
     }
-    showNotice('success', json.message);
-    await fetchAllData(cycleId);
+    if (json.data) {
+      syncUpdatedCycleInState(json.data);
+    }
+    if (!options?.silent) {
+      showNotice('success', json.message);
+      await fetchAllData(cycleId);
+    }
   };
 
   const handleSaveFormB = async (
     cycleId: string,
-    payload: Partial<FormBPayload>,
-    publish: boolean
+    payload: Partial<FormBPayload> & Record<string, any>,
+    publish: boolean,
+    options?: { silent?: boolean }
   ) => {
     const res = await fetch('/api/supervisi/form-b', {
       method: 'POST',
@@ -389,17 +410,25 @@ function SupervisiWorkspace({
     });
     const json = await res.json();
     if (!res.ok || !json.success) {
-      showNotice('error', json.message || 'Gagal menyimpan Form B.');
+      if (!options?.silent) {
+        showNotice('error', json.message || 'Gagal menyimpan Form B.');
+      }
       throw new Error(json.message);
     }
-    showNotice('success', json.message);
-    await fetchAllData(cycleId);
+    if (json.data) {
+      syncUpdatedCycleInState(json.data);
+    }
+    if (!options?.silent) {
+      showNotice('success', json.message);
+      await fetchAllData(cycleId);
+    }
   };
 
   const handleSaveFormC = async (
     cycleId: string,
-    payload: Partial<FormCPayload>,
-    action: 'save_draft' | 'submit' | 'principal_review'
+    payload: Partial<FormCPayload> & Record<string, any>,
+    action: 'save_draft' | 'submit' | 'principal_review',
+    options?: { silent?: boolean }
   ) => {
     const res = await fetch('/api/supervisi/form-c', {
       method: 'POST',
@@ -408,17 +437,25 @@ function SupervisiWorkspace({
     });
     const json = await res.json();
     if (!res.ok || !json.success) {
-      showNotice('error', json.message || 'Gagal menyimpan Form C.');
+      if (!options?.silent) {
+        showNotice('error', json.message || 'Gagal menyimpan Form C.');
+      }
       throw new Error(json.message);
     }
-    showNotice('success', json.message);
-    await fetchAllData(cycleId);
+    if (json.data) {
+      syncUpdatedCycleInState(json.data);
+    }
+    if (!options?.silent) {
+      showNotice('success', json.message);
+      await fetchAllData(cycleId);
+    }
   };
 
   const handleSaveFormD = async (
     cycleId: string,
-    payload: Partial<FormDPayload>,
-    action: 'save_draft' | 'submit' | 'principal_finalize'
+    payload: Partial<FormDPayload> & Record<string, any>,
+    action: 'save_draft' | 'submit' | 'principal_finalize',
+    options?: { silent?: boolean }
   ) => {
     const res = await fetch('/api/supervisi/form-d', {
       method: 'POST',
@@ -427,11 +464,18 @@ function SupervisiWorkspace({
     });
     const json = await res.json();
     if (!res.ok || !json.success) {
-      showNotice('error', json.message || 'Gagal menyimpan Form D.');
+      if (!options?.silent) {
+        showNotice('error', json.message || 'Gagal menyimpan Form D.');
+      }
       throw new Error(json.message);
     }
-    showNotice('success', json.message);
-    await fetchAllData(cycleId);
+    if (json.data) {
+      syncUpdatedCycleInState(json.data);
+    }
+    if (!options?.silent) {
+      showNotice('success', json.message);
+      await fetchAllData(cycleId);
+    }
   };
 
   const handleUploadAttachment = async (params: {
@@ -441,39 +485,69 @@ function SupervisiWorkspace({
     mime_type?: string;
     base64_data?: string;
     drive_url?: string;
+    link_url?: string;
     evidence_category: string;
+    principal_note?: string;
   }) => {
+    const resolvedLink = params.link_url || params.drive_url || '';
     const res = await fetch('/api/supervisi/upload-attachment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ actor, ...params })
+      body: JSON.stringify({
+        actor,
+        ...params,
+        link_url: resolvedLink,
+        drive_url: resolvedLink
+      })
     });
     const json = await res.json();
     if (!res.ok || !json.success) {
       showNotice('error', json.message || 'Gagal menyematkan tautan bukti dukung.');
       throw new Error(json.message);
     }
+    if (json.data) {
+      syncUpdatedCycleInState(json.data);
+    }
     showNotice('success', json.message);
     await fetchAllData(params.cycle_id);
   };
 
-  const handleSaveAttachmentNote = async (params: {
-    cycle_id: string;
-    attachment_id: string;
-    principal_note: string;
-  }) => {
+  const handleSaveAttachmentNote = async (
+    params: {
+      cycle_id: string;
+      attachment_id: string;
+      principal_note: string;
+      file_name?: string;
+      link_url?: string;
+      drive_url?: string;
+    },
+    options?: { silent?: boolean }
+  ) => {
+    const resolvedLink = params.link_url || params.drive_url || '';
     const res = await fetch('/api/supervisi/attachment-note', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ actor, ...params })
+      body: JSON.stringify({
+        actor,
+        ...params,
+        link_url: resolvedLink || undefined,
+        drive_url: resolvedLink || undefined
+      })
     });
     const json = await res.json();
     if (!res.ok || !json.success) {
-      showNotice('error', json.message || 'Gagal menyimpan catatan tinjauan Kepala Sekolah.');
+      if (!options?.silent) {
+        showNotice('error', json.message || 'Gagal menyimpan catatan tinjauan Kepala Sekolah.');
+      }
       throw new Error(json.message);
     }
-    showNotice('success', json.message);
-    await fetchAllData(params.cycle_id);
+    if (json.data) {
+      syncUpdatedCycleInState(json.data);
+    }
+    if (!options?.silent) {
+      showNotice('success', json.message);
+      await fetchAllData(params.cycle_id);
+    }
   };
 
   const handleDeleteAttachment = async (params: {
@@ -489,6 +563,9 @@ function SupervisiWorkspace({
     if (!res.ok || !json.success) {
       showNotice('error', json.message || 'Gagal menghapus tautan.');
       throw new Error(json.message);
+    }
+    if (json.data) {
+      syncUpdatedCycleInState(json.data);
     }
     showNotice('success', json.message);
     await fetchAllData(params.cycle_id);
@@ -734,6 +811,7 @@ function SupervisiWorkspace({
               selectedCycle={selectedCycle}
               schoolIdentity={schoolIdentity}
               initialReportType={initialReportType}
+              autoPrintTrigger={autoPrintTrigger}
               onSelectCycle={setSelectedCycle}
             />
           )}

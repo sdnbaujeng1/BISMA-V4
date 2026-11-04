@@ -4174,8 +4174,41 @@ app.get('/api/admin/stats', async (req, res) => {
         end_time: payload?.end_time || existingPayload.end_time || '09:00',
         location: String(payload?.location ?? existingPayload.location ?? `Ruang Kelas ${payload?.grade || cycle.grade}`).trim(),
         supporting_rpp_title: String(payload?.supporting_rpp_title ?? existingPayload.supporting_rpp_title ?? '').trim(),
-        supporting_material_note: String(payload?.supporting_material_note ?? existingPayload.supporting_material_note ?? '').trim()
+        supporting_material_note: String(payload?.supporting_material_note ?? existingPayload.supporting_material_note ?? '').trim(),
+        review_note: String(payload?.review_note ?? existingPayload.review_note ?? '').trim(),
+        confirmed_schedule: payload?.confirmed_schedule || existingPayload.confirmed_schedule || payload?.proposed_date || existingPayload.proposed_date || '',
+        confirmed_start_time: payload?.confirmed_start_time || existingPayload.confirmed_start_time || payload?.start_time || existingPayload.start_time || '07:30',
+        confirmed_end_time: payload?.confirmed_end_time || existingPayload.confirmed_end_time || payload?.end_time || existingPayload.end_time || '09:00',
+        confirmed_location: String(payload?.confirmed_location ?? existingPayload.confirmed_location ?? payload?.location ?? existingPayload.location ?? `Ruang Kelas ${payload?.grade || cycle.grade}`).trim()
       };
+
+      // Auto-attach pending drive link if included in payload
+      const pendingDriveRaw = String(payload?.pending_drive_url || payload?.drive_url || '').trim();
+      if (pendingDriveRaw) {
+        const normUrl = /^https?:\/\//i.test(pendingDriveRaw) ? pendingDriveRaw : `https://${pendingDriveRaw}`;
+        cycle.attachments = Array.isArray(cycle.attachments) ? cycle.attachments : [];
+        const alreadyExists = cycle.attachments.some((a: any) => a.form_code === 'A' && (a.drive_url === normUrl || a.link_url === normUrl));
+        if (!alreadyExists) {
+          cycle.attachments.push({
+            id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            school_id: actor.schoolId,
+            cycle_id: cycle.id,
+            form_code: 'A',
+            uploader_nip: actor.nip || '-',
+            uploader_name: actor.nama,
+            file_name: String(payload?.pending_drive_title || updatedPayload.supporting_rpp_title || 'Dokumen Persiapan Form A').trim(),
+            storage_path: normUrl,
+            mime_type: 'text/uri-list',
+            file_size_bytes: 0,
+            evidence_category: String(payload?.pending_drive_category || 'RPP / Modul Ajar (Form A)'),
+            download_url: normUrl,
+            drive_url: normUrl,
+            link_url: normUrl,
+            principal_note: '',
+            created_at: now
+          });
+        }
+      }
 
       if (action === 'submit') {
         if (!updatedPayload.topic || !updatedPayload.proposed_date || !updatedPayload.preparation_actions) {
@@ -4192,6 +4225,14 @@ app.get('/api/admin/stats', async (req, res) => {
         }
       }
 
+      const prevStatusA = cycle.forms?.A?.status;
+      const nextStatusA =
+        action === 'submit'
+          ? 'submitted'
+          : prevStatusA === 'reviewed' || prevStatusA === 'submitted'
+          ? prevStatusA
+          : 'draft';
+
       cycle.grade = updatedPayload.grade;
       cycle.subject = updatedPayload.subject;
       cycle.indicator_code = updatedPayload.indicator_code;
@@ -4204,7 +4245,7 @@ app.get('/api/admin/stats', async (req, res) => {
           created_by: actor.nip || actor.nama,
           created_at: now
         }),
-        status: action === 'submit' ? 'submitted' : 'draft',
+        status: nextStatusA,
         payload: updatedPayload,
         submitted_at: action === 'submit' ? now : (cycle.forms.A?.submitted_at || null),
         updated_at: now
@@ -4280,7 +4321,7 @@ app.get('/api/admin/stats', async (req, res) => {
         observed_at: payload?.observed_at || existingB.observed_at || cycle.confirmed_date || cycle.proposed_date || now.split('T')[0],
         observer_nip: actor.headmasterNIP,
         observer_name: actor.headmasterName,
-        ratings: ratings.map((r: any) => ({
+        ratings: (ratings.length > 0 ? ratings : (existingB.ratings || [])).map((r: any) => ({
           behavior_code: r.behavior_code,
           behavior_label: r.behavior_label,
           rating: (Number(r.rating) === 3 ? 3 : Number(r.rating) === 2 ? 2 : 1) as 1 | 2 | 3,
@@ -4295,6 +4336,33 @@ app.get('/api/admin/stats', async (req, res) => {
         is_published: isPublished,
         published_at: isPublished ? (existingB.published_at || now) : null
       };
+
+      const pendingDriveB = String(payload?.pending_drive_url || payload?.drive_url || '').trim();
+      if (pendingDriveB) {
+        const normUrl = /^https?:\/\//i.test(pendingDriveB) ? pendingDriveB : `https://${pendingDriveB}`;
+        cycle.attachments = Array.isArray(cycle.attachments) ? cycle.attachments : [];
+        const alreadyExists = cycle.attachments.some((a: any) => a.form_code === 'B' && (a.drive_url === normUrl || a.link_url === normUrl));
+        if (!alreadyExists) {
+          cycle.attachments.push({
+            id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            school_id: actor.schoolId,
+            cycle_id: cycle.id,
+            form_code: 'B',
+            uploader_nip: actor.nip || '-',
+            uploader_name: actor.nama,
+            file_name: String(payload?.pending_drive_title || 'Dokumentasi Observasi Kelas Form B').trim(),
+            storage_path: normUrl,
+            mime_type: 'text/uri-list',
+            file_size_bytes: 0,
+            evidence_category: String(payload?.pending_drive_category || 'Dokumentasi Foto / Video Observasi Kelas'),
+            download_url: normUrl,
+            drive_url: normUrl,
+            link_url: normUrl,
+            principal_note: '',
+            created_at: now
+          });
+        }
+      }
 
       cycle.forms.B = {
         ...(cycle.forms.B || {
@@ -4421,8 +4489,36 @@ app.get('/api/admin/stats', async (req, res) => {
         target_date: payload?.target_date || existingC.target_date || '',
         learning_sources: Array.isArray(payload?.learning_sources) ? payload.learning_sources.filter(Boolean) : (existingC.learning_sources || []),
         required_support: String(payload?.required_support ?? existingC.required_support ?? '').trim(),
-        success_indicators: Array.isArray(payload?.success_indicators) ? payload.success_indicators.filter(Boolean) : (existingC.success_indicators || [])
+        success_indicators: Array.isArray(payload?.success_indicators) ? payload.success_indicators.filter(Boolean) : (existingC.success_indicators || []),
+        principal_review_note: String(payload?.principal_review_note ?? existingC.principal_review_note ?? '').trim()
       };
+
+      const pendingDriveC = String(payload?.pending_drive_url || payload?.drive_url || '').trim();
+      if (pendingDriveC) {
+        const normUrl = /^https?:\/\//i.test(pendingDriveC) ? pendingDriveC : `https://${pendingDriveC}`;
+        cycle.attachments = Array.isArray(cycle.attachments) ? cycle.attachments : [];
+        const alreadyExists = cycle.attachments.some((a: any) => a.form_code === 'C' && (a.drive_url === normUrl || a.link_url === normUrl));
+        if (!alreadyExists) {
+          cycle.attachments.push({
+            id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            school_id: actor.schoolId,
+            cycle_id: cycle.id,
+            form_code: 'C',
+            uploader_nip: actor.nip || '-',
+            uploader_name: actor.nama,
+            file_name: String(payload?.pending_drive_title || 'Dokumen Tindak Lanjut Form C').trim(),
+            storage_path: normUrl,
+            mime_type: 'text/uri-list',
+            file_size_bytes: 0,
+            evidence_category: String(payload?.pending_drive_category || 'Revisi RPP / Modul Ajar Pasca Observasi'),
+            download_url: normUrl,
+            drive_url: normUrl,
+            link_url: normUrl,
+            principal_note: '',
+            created_at: now
+          });
+        }
+      }
 
       if (action === 'submit') {
         if (!newPayloadC.challenges || !newPayloadC.root_causes || newPayloadC.goals.length === 0 || newPayloadC.action_steps.length === 0) {
@@ -4433,6 +4529,14 @@ app.get('/api/admin/stats', async (req, res) => {
         }
       }
 
+      const prevStatusC = cycle.forms?.C?.status;
+      const nextStatusC =
+        action === 'submit'
+          ? 'submitted'
+          : prevStatusC === 'reviewed' || prevStatusC === 'submitted'
+          ? prevStatusC
+          : 'draft';
+
       cycle.forms.C = {
         ...(cycle.forms.C || {
           id: `form-c-${Date.now()}`,
@@ -4441,7 +4545,7 @@ app.get('/api/admin/stats', async (req, res) => {
           created_by: actor.nip || actor.nama,
           created_at: now
         }),
-        status: action === 'submit' ? 'submitted' : 'draft',
+        status: nextStatusC,
         payload: newPayloadC,
         submitted_at: action === 'submit' ? now : (cycle.forms.C?.submitted_at || null),
         updated_at: now
@@ -4576,8 +4680,38 @@ app.get('/api/admin/stats', async (req, res) => {
         improvement_strategy: String(payload?.improvement_strategy ?? existingD.improvement_strategy ?? '').trim(),
         next_goals: Array.isArray(payload?.next_goals)
           ? payload.next_goals.filter(Boolean)
-          : (existingD.next_goals || [])
+          : (existingD.next_goals || []),
+        recognition_of_progress: String(payload?.recognition_of_progress ?? existingD.recognition_of_progress ?? '').trim(),
+        coaching_feedback: String(payload?.coaching_feedback ?? existingD.coaching_feedback ?? '').trim(),
+        suggested_next_steps: String(payload?.suggested_next_steps ?? existingD.suggested_next_steps ?? '').trim()
       };
+
+      const pendingDriveD = String(payload?.pending_drive_url || payload?.drive_url || '').trim();
+      if (pendingDriveD) {
+        const normUrl = /^https?:\/\//i.test(pendingDriveD) ? pendingDriveD : `https://${pendingDriveD}`;
+        cycle.attachments = Array.isArray(cycle.attachments) ? cycle.attachments : [];
+        const alreadyExists = cycle.attachments.some((a: any) => a.form_code === 'D' && (a.drive_url === normUrl || a.link_url === normUrl));
+        if (!alreadyExists) {
+          cycle.attachments.push({
+            id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            school_id: actor.schoolId,
+            cycle_id: cycle.id,
+            form_code: 'D',
+            uploader_nip: actor.nip || '-',
+            uploader_name: actor.nama,
+            file_name: String(payload?.pending_drive_title || 'Bukti Dukung Tindak Lanjut Form D').trim(),
+            storage_path: normUrl,
+            mime_type: 'text/uri-list',
+            file_size_bytes: 0,
+            evidence_category: String(payload?.pending_drive_category || 'Foto Kegiatan Pembelajaran di Kelas'),
+            download_url: normUrl,
+            drive_url: normUrl,
+            link_url: normUrl,
+            principal_note: '',
+            created_at: now
+          });
+        }
+      }
 
       if (action === 'submit') {
         if (!newPayloadD.inspiration || !newPayloadD.progress || !newPayloadD.learning_impact) {
@@ -4588,6 +4722,14 @@ app.get('/api/admin/stats', async (req, res) => {
         }
       }
 
+      const prevStatusD = cycle.forms?.D?.status;
+      const nextStatusD =
+        action === 'submit'
+          ? 'submitted'
+          : prevStatusD === 'finalized' || prevStatusD === 'submitted'
+          ? prevStatusD
+          : 'draft';
+
       cycle.forms.D = {
         ...(cycle.forms.D || {
           id: `form-d-${Date.now()}`,
@@ -4596,7 +4738,7 @@ app.get('/api/admin/stats', async (req, res) => {
           created_by: actor.nip || actor.nama,
           created_at: now
         }),
-        status: action === 'submit' ? 'submitted' : 'draft',
+        status: nextStatusD,
         payload: newPayloadD,
         submitted_at: action === 'submit' ? now : (cycle.forms.D?.submitted_at || null),
         updated_at: now
@@ -4658,15 +4800,9 @@ app.get('/api/admin/stats', async (req, res) => {
         });
       }
 
-      const rawLink = String(link_url || '').trim();
+      const rawInputLink = String(link_url || req.body.drive_url || req.body.url || '').trim();
+      const rawLink = rawInputLink && !/^https?:\/\//i.test(rawInputLink) ? `https://${rawInputLink}` : rawInputLink;
       if (rawLink) {
-        if (!/^https?:\/\//i.test(rawLink)) {
-          return res.status(400).json({
-            success: false,
-            message: 'Masukkan tautan Google Drive atau URL lengkap yang diawali http:// atau https://.'
-          });
-        }
-
         const attachmentRecord = {
           id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
           school_id: actor.schoolId,
@@ -4680,6 +4816,7 @@ app.get('/api/admin/stats', async (req, res) => {
           file_size_bytes: 0,
           evidence_category: evidence_category || 'Tautan Google Drive / Dokumen Pendukung',
           download_url: rawLink,
+          drive_url: rawLink,
           link_url: rawLink,
           principal_note: String(principal_note || '').trim(),
           reviewed_by_name: principal_note && actor.supervisiRole === 'kepala_sekolah' ? actor.headmasterName : '',
@@ -4694,7 +4831,7 @@ app.get('/api/admin/stats', async (req, res) => {
         await saveSupervisiCycles(cycles);
         return res.json({
           success: true,
-          message: 'Tautan Google Drive / URL berhasil disematkan pada siklus supervisi.',
+          message: `Tautan Google Drive / URL berhasil disematkan dan disimpan ke database pada Form ${attachmentRecord.form_code}.`,
           data: sanitizeCycleForActor(cycle, actor)
         });
       }
@@ -4797,12 +4934,17 @@ app.get('/api/admin/stats', async (req, res) => {
       }
 
       const now = new Date().toISOString();
+      const rawUpdatedUrl = String(link_url || req.body.drive_url || '').trim();
+      const normUpdatedUrl = rawUpdatedUrl && !/^https?:\/\//i.test(rawUpdatedUrl) ? `https://${rawUpdatedUrl}` : rawUpdatedUrl;
+      const resolvedUrl = normUpdatedUrl || attList[attIdx].drive_url || attList[attIdx].link_url || attList[attIdx].download_url;
+
       if (actor.supervisiRole === 'kepala_sekolah') {
         attList[attIdx] = {
           ...attList[attIdx],
           file_name: file_name ? String(file_name).trim() : attList[attIdx].file_name,
-          link_url: link_url ? String(link_url).trim() : (attList[attIdx].link_url || attList[attIdx].download_url),
-          download_url: link_url ? String(link_url).trim() : (attList[attIdx].download_url || attList[attIdx].link_url),
+          drive_url: resolvedUrl,
+          link_url: resolvedUrl,
+          download_url: resolvedUrl,
           principal_note: String(principal_note ?? attList[attIdx].principal_note ?? '').trim(),
           reviewed_by_name: actor.headmasterName,
           reviewed_at: now
@@ -4818,8 +4960,9 @@ app.get('/api/admin/stats', async (req, res) => {
         attList[attIdx] = {
           ...attList[attIdx],
           file_name: file_name ? String(file_name).trim() : attList[attIdx].file_name,
-          link_url: link_url ? String(link_url).trim() : (attList[attIdx].link_url || attList[attIdx].download_url),
-          download_url: link_url ? String(link_url).trim() : (attList[attIdx].download_url || attList[attIdx].link_url)
+          drive_url: resolvedUrl,
+          link_url: resolvedUrl,
+          download_url: resolvedUrl
         };
       }
 
@@ -4941,10 +5084,123 @@ app.get('/api/admin/stats', async (req, res) => {
     }
   });
 
+  // Helper to inspect and read embedded Google Drive / Documentation URLs from Form A-D
+  async function extractDriveAndDocContext(
+    cycleInput: any,
+    singleAttachment?: any,
+    extraAttachments?: any[],
+    directUrl?: string
+  ): Promise<{ summaryText: string; items: Array<{ formCode: string; title: string; category: string; url: string; snippet: string }> }> {
+    let resolvedAttachments: any[] = [];
+    if (Array.isArray(cycleInput?.attachments) && cycleInput.attachments.length > 0) {
+      resolvedAttachments = [...cycleInput.attachments];
+    } else if (cycleInput?.id) {
+      try {
+        const allCycles = await loadOrSeedSupervisiCycles();
+        const found = allCycles.find((c: any) => c.id === cycleInput.id);
+        if (found && Array.isArray(found.attachments)) {
+          resolvedAttachments = [...found.attachments];
+        }
+      } catch {
+        // ignore
+      }
+    }
+    if (Array.isArray(extraAttachments)) {
+      for (const att of extraAttachments) {
+        if (att && !resolvedAttachments.some((x: any) => x.id && x.id === att.id)) {
+          resolvedAttachments.push(att);
+        }
+      }
+    }
+    if (singleAttachment) {
+      resolvedAttachments.unshift(singleAttachment);
+    }
+    if (directUrl && String(directUrl).trim()) {
+      const cleanDirect = String(directUrl).trim();
+      if (!resolvedAttachments.some((x: any) => (x.drive_url || x.link_url || x.download_url) === cleanDirect)) {
+        resolvedAttachments.unshift({
+          form_code: 'A',
+          file_name: 'Tautan Dokumentasi',
+          evidence_category: 'Bukti Dukung Pembelajaran',
+          drive_url: cleanDirect,
+          link_url: cleanDirect
+        });
+      }
+    }
+
+    const uniqueByUrl = new Map<string, any>();
+    for (const att of resolvedAttachments) {
+      const rawUrl = String(att?.drive_url || att?.link_url || att?.download_url || '').trim();
+      if (!rawUrl) continue;
+      if (!uniqueByUrl.has(rawUrl)) {
+        uniqueByUrl.set(rawUrl, att);
+      }
+    }
+
+    const items: Array<{ formCode: string; title: string; category: string; url: string; snippet: string }> = [];
+    const entries = Array.from(uniqueByUrl.entries()).slice(0, 5);
+
+    await Promise.all(
+      entries.map(async ([url, att]) => {
+        const formCode = String(att?.form_code || 'A');
+        const title = String(att?.file_name || 'Dokumen Pembelajaran').trim();
+        const category = String(att?.evidence_category || 'Bukti Dukung').trim();
+        let snippet = '';
+
+        try {
+          let fetchUrl = url;
+          const gdocMatch = url.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/i);
+          if (gdocMatch?.[1]) {
+            fetchUrl = `https://docs.google.com/document/d/${gdocMatch[1]}/export?format=txt`;
+          }
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 2200);
+          const resp = await fetch(fetchUrl, {
+            signal: controller.signal,
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BismaSupervisiBot/1.0)' }
+          });
+          clearTimeout(timer);
+
+          if (resp.ok) {
+            const ctype = (resp.headers.get('content-type') || '').toLowerCase();
+            const rawText = await resp.text();
+            if (ctype.includes('text/plain')) {
+              snippet = rawText.replace(/\s+/g, ' ').trim().slice(0, 350);
+            } else if (ctype.includes('text/html')) {
+              const titleMatch = rawText.match(/<title[^>]*>([^<]+)<\/title>/i);
+              const ogDescMatch = rawText.match(/property=["']og:description["']\s+content=["']([^"']+)["']/i);
+              const extractedTitle = titleMatch?.[1]?.replace(/\s*-\s*Google Drive\s*/i, '').trim() || '';
+              const extractedDesc = ogDescMatch?.[1]?.trim() || '';
+              snippet = [extractedTitle, extractedDesc].filter(Boolean).join(' — ').slice(0, 300);
+            }
+          }
+        } catch {
+          // If private or network timeout, rely on attachment title, category, and URL structure
+        }
+
+        items.push({ formCode, title, category, url, snippet });
+      })
+    );
+
+    const summaryText =
+      items.length > 0
+        ? items
+            .map(
+              (it, idx) =>
+                `${idx + 1}. [Form ${it.formCode}] "${it.title}" (${it.category}) — URL: ${it.url}${
+                  it.snippet ? ` | Isi/Metadata Tautan: ${it.snippet}` : ''
+                }`
+            )
+            .join('\n')
+        : 'Belum ada tautan Google Drive / dokumentasi eksternal yang disematkan.';
+
+    return { summaryText, items };
+  }
+
   // 8d. Generate Narrative / Autofill using Embedded DB API Key (`/api/supervisi/generate-narrative`)
   app.post('/api/supervisi/generate-narrative', async (req, res) => {
     try {
-      const { cycle, mode, attachment } = req.body;
+      const { cycle, mode, attachment, attachments, link_url, drive_url } = req.body;
       const { data: settingsRows } = await supabase
         .from('pengaturan')
         .select('key, value')
@@ -4954,24 +5210,36 @@ app.get('/api/admin/stats', async (req, res) => {
         keyMap[r.key] = r.value;
       });
 
+      const docContext = await extractDriveAndDocContext(
+        cycle,
+        attachment,
+        attachments,
+        link_url || drive_url || attachment?.drive_url || attachment?.link_url
+      );
+
       const teacherName = cycle?.teacher_name || 'Guru';
       const rawGrade = String(cycle?.grade || 'IV').replace(/^(?:kelas\s*)+/i, '').trim() || 'IV';
       const kelasFormatted = `Kelas ${rawGrade}`;
       const subject = cycle?.subject || 'IPAS';
       const topic = cycle?.forms?.A?.payload?.topic || `Pembelajaran Aktif & Kontekstual ${subject}`;
       const indTitle = cycle?.indicator_title || 'Pembelajaran yang Berpusat pada Peserta Didik';
-      const attTitle = attachment?.file_name || 'Perangkat Pembelajaran';
-      const attCategory = attachment?.evidence_category || 'RPP / Modul Ajar';
+      const firstDoc = docContext.items[0];
+      const attTitle = attachment?.file_name || firstDoc?.title || cycle?.forms?.A?.payload?.supporting_rpp_title || 'Perangkat Pembelajaran';
+      const attCategory = attachment?.evidence_category || firstDoc?.category || 'RPP / Modul Ajar & Dokumentasi';
+      const docRefNote =
+        docContext.items.length > 0
+          ? ` (termasuk tautan dokumentasi "${firstDoc.title}"${firstDoc.snippet ? ` [${firstDoc.snippet}]` : ''})`
+          : '';
 
       const fallbackData = {
         catatan_tinjauan:
           mode === 'attachment_review'
-            ? `Tautan dokumen "${attTitle}" (${attCategory}) untuk ${kelasFormatted} mata pelajaran ${subject} oleh ${teacherName} telah diperiksa Kepala Sekolah melalui pratinjau (BISMA +). Perangkat telah lengkap, sistematis, dan selaras dengan fokus indikator ${indTitle}.`
-            : `Perencanaan persiapan observasi ${teacherName} pada ${kelasFormatted} (${subject} — "${topic}") telah disusun dengan sangat baik, terarah pada indikator ${indTitle}, serta siap dilaksanakan sesuai jadwal yang disepakati.`,
-        bukti_pengamatan: `Selama pengamatan kelas pada ${kelasFormatted} mata pelajaran ${subject} ("${topic}"), ${teacherName} memfasilitasi pembelajaran secara terstruktur, mengajukan pertanyaan pemantik terbuka, mendampingi diskusi kelompok secara merata, dan memberikan penguatan positif kepada murid.`,
+            ? `Tautan dokumen "${attTitle}" (${attCategory}) untuk ${kelasFormatted} mata pelajaran ${subject} oleh ${teacherName}${docRefNote} telah diperiksa Kepala Sekolah melalui pratinjau (BISMA +). Perangkat dan dokumentasi telah lengkap, sistematis, dan selaras dengan fokus indikator ${indTitle}.`
+            : `Perencanaan persiapan observasi ${teacherName} pada ${kelasFormatted} (${subject} — "${topic}")${docRefNote} telah disusun dengan sangat baik, terarah pada indikator ${indTitle}, serta siap dilaksanakan sesuai jadwal yang disepakati.`,
+        bukti_pengamatan: `Selama pengamatan kelas pada ${kelasFormatted} mata pelajaran ${subject} ("${topic}")${docRefNote}, ${teacherName} memfasilitasi pembelajaran secara terstruktur, mengajukan pertanyaan pemantik terbuka, mendampingi diskusi kelompok secara merata, dan memberikan penguatan positif kepada murid.`,
         dampak_murid: `Murid ${kelasFormatted} tampak antusias, berani menyampaikan gagasan di dalam kelompok, saling menghargai pendapat teman, dan tuntas mengerjakan lembar aktivitas pembelajaran.`,
-        ringkasan_observasi: `Pelaksanaan pembelajaran ${subject} pada ${kelasFormatted} oleh ${teacherName} berjalan kondusif, interaktif, dan berpusat pada murid sesuai fokus indikator ${indTitle}.`,
-        kekuatan_utama: `Kemampuan ${teacherName} membangun suasana kelas yang positif, penggunaan media kontekstual, serta pendampingan kelompok belajar murid di ${kelasFormatted}.`,
+        ringkasan_observasi: `Pelaksanaan pembelajaran ${subject} pada ${kelasFormatted} oleh ${teacherName}${docRefNote} berjalan kondusif, interaktif, dan berpusat pada murid sesuai fokus indikator ${indTitle}.`,
+        kekuatan_utama: `Kemampuan ${teacherName} membangun suasana kelas yang positif, pemanfaatan perangkat/dokumentasi "${attTitle}", serta pendampingan kelompok belajar murid di ${kelasFormatted}.`,
         area_pengembangan: `Optimalisasi manajemen waktu saat transisi diskusi kelompok dan pemerataan partisipasi bagi murid yang masih pasif.`,
         rekomendasi_pembinaan: `Gunakan timer visual di depan kelas untuk mengatur waktu diskusi kelompok dan terapkan kartu peran anggota kelompok pada pertemuan berikutnya.`
       };
@@ -4987,8 +5255,11 @@ Susun narasi supervisi akademik berdasarkan data berikut:
 - Kelas & Mapel: ${kelasFormatted} / ${subject}
 - Topik: ${topic}
 - Indikator Fokus: ${indTitle}
-- Tautan Dokumen: ${attTitle} (${attCategory})
+- Tautan Dokumen Utama: ${attTitle} (${attCategory})
+- Daftar Tautan Google Drive / Dokumentasi yang Disematkan (Form A-D):
+${docContext.summaryText}
 
+Pastikan narasi yang Anda susun mengacu pada isi/judul tautan dokumentasi di atas jika tersedia.
 Kembalikan HANYA JSON valid dengan field:
 {
   "catatan_tinjauan": "string catatan tinjauan persiapan atau catatan pratinjau tautan berkas oleh Kepala Sekolah",
@@ -5028,6 +5299,11 @@ Kembalikan HANYA JSON valid dengan field:
     try {
       const {
         actor: clientActor,
+        cycle_id,
+        cycle,
+        attachments,
+        link_url,
+        drive_url,
         mode,
         stage,
         indicator_title,
@@ -5060,6 +5336,20 @@ Kembalikan HANYA JSON valid dengan field:
         keyMap[r.key] = r.value;
       });
 
+      const docContext = await extractDriveAndDocContext(
+        cycle || (cycle_id ? { id: cycle_id } : null),
+        file_name || link_url || drive_url
+          ? {
+              file_name: file_name || 'Tautan Dokumentasi',
+              evidence_category: evidence_category || 'Bukti Dukung',
+              drive_url: drive_url || link_url,
+              link_url: link_url || drive_url
+            }
+          : undefined,
+        attachments,
+        link_url || drive_url
+      );
+
       const geminiKey = keyMap.gemini_api_key || process.env.GEMINI_API_KEY || '';
       const schoolName = keyMap.schoolName || actor.schoolName || 'SDN BAUJENG I BEJI';
       const kelasFormatted = grade ? (/^kelas\b/i.test(String(grade)) ? grade : `Kelas ${grade}`) : 'Kelas IV';
@@ -5070,21 +5360,26 @@ Kembalikan HANYA JSON valid dengan field:
         ? target_behaviors
         : ['Guru memfasilitasi kegiatan belajar yang mendorong partisipasi aktif seluruh murid'];
 
+      const firstDoc = docContext.items[0];
+      const docMention = firstDoc
+        ? ` beserta tautan bukti dukung "${firstDoc.title}" (${firstDoc.category})${firstDoc.snippet ? ` [${firstDoc.snippet}]` : ''}`
+        : '';
+
       // Build rich data-driven contextual fallback first so even if external API quota is reached, every field is 100% populated from real DB data
       const dataDrivenResult: any = {
         topic: topic || `Eksplorasi Konsep ${mapelFormatted} Kontekstual pada ${kelasFormatted}`,
-        teaching_doc_ref: `Modul Ajar ${mapelFormatted} ${kelasFormatted} (${actor.tahunAjaran})`,
-        supporting_rpp_title: `Modul Ajar & LKPD ${mapelFormatted} — ${topikFormatted}`,
-        supporting_material_note: `Media Konkret, Kartu Peran Kelompok, Slide Visual & Lembar Exit Ticket ${kelasFormatted}`,
+        teaching_doc_ref: firstDoc?.title || `Modul Ajar ${mapelFormatted} ${kelasFormatted} (${actor.tahunAjaran})`,
+        supporting_rpp_title: firstDoc?.title || `Modul Ajar & LKPD ${mapelFormatted} — ${topikFormatted}`,
+        supporting_material_note: `Media Konkret, Kartu Peran Kelompok, Slide Visual & Lembar Exit Ticket ${kelasFormatted}${docMention}`,
         learning_objectives: [
           `Melalui pengamatan dan diskusi kelompok, peserta didik ${kelasFormatted} mampu memahami konsep utama materi "${topikFormatted}" dengan tepat.`,
           `Peserta didik mampu menyajikan hasil kerja kolaboratif dan merefleksikan pemahaman belajar secara mandiri maupun berkelompok.`
         ],
         preparation_actions:
           preparation_actions ||
-          `1. Menyiapkan modul ajar, media pembelajaran konkret, dan LKPD kolaboratif untuk materi "${topikFormatted}" di ${kelasFormatted}.\n2. Menyusun pertanyaan pemantik kontekstual dan membagi peserta didik dalam kelompok heterogen beserta kartu peran.\n3. Menyiapkan pengatur waktu (timer visual) dan lembar refleksi singkat (exit ticket) guna memastikan keterlibatan merata.`,
-        review_note: `Rencana persiapan observasi ${teacher_name || 'Guru'} pada ${kelasFormatted} (${mapelFormatted} — "${topikFormatted}") dengan fokus indikator "${indTitle}" telah disusun sangat sistematis dan berpusat pada murid. Jadwal observasi disetujui, silakan laksanakan sesuai skenario yang direncanakan.`,
-        principal_note: `Dokumen "${file_name || 'Perangkat Ajar'}" (${evidence_category || 'Bukti Dukung'}) untuk ${kelasFormatted} mapel ${mapelFormatted} telah diperiksa oleh Kepala Sekolah. Struktur tujuan pembelajaran, aktivitas murid, dan instrumen asesmen sudah selaras dengan indikator fokus "${indTitle}".`,
+          `1. Menyiapkan modul ajar, media pembelajaran konkret, dan LKPD kolaboratif untuk materi "${topikFormatted}" di ${kelasFormatted}${docMention}.\n2. Menyusun pertanyaan pemantik kontekstual dan membagi peserta didik dalam kelompok heterogen beserta kartu peran.\n3. Menyiapkan pengatur waktu (timer visual) dan lembar refleksi singkat (exit ticket) guna memastikan keterlibatan merata.`,
+        review_note: `Rencana persiapan observasi ${teacher_name || 'Guru'} pada ${kelasFormatted} (${mapelFormatted} — "${topikFormatted}") dengan fokus indikator "${indTitle}"${docMention} telah disusun sangat sistematis dan berpusat pada murid. Jadwal observasi disetujui, silakan laksanakan sesuai skenario yang direncanakan.`,
+        principal_note: `Dokumen "${file_name || firstDoc?.title || 'Perangkat Ajar'}" (${evidence_category || firstDoc?.category || 'Bukti Dukung'})${firstDoc?.snippet ? ` [${firstDoc.snippet}]` : ''} untuk ${kelasFormatted} mapel ${mapelFormatted} telah diperiksa oleh Kepala Sekolah. Struktur tujuan pembelajaran, aktivitas murid, dan bukti dokumentasi sudah selaras dengan indikator fokus "${indTitle}".`,
         ratings_generated: (Array.isArray(ratings) ? ratings : behaviorsList.map((b: any, idx: number) => ({
           behavior_code: `beh_${idx}`,
           behavior_label: typeof b === 'string' ? b : b.behavior_label,
@@ -5097,7 +5392,7 @@ Kembalikan HANYA JSON valid dengan field:
               behavior_code: r.behavior_code,
               behavior_label: label,
               rating: 3,
-              evidence: `Selama observasi di ${kelasFormatted} pada materi "${topikFormatted}", guru secara konsisten menerapkan perilaku "${label}" melalui instruksi yang jelas, pertanyaan pemantik kontekstual, dan pendampingan aktif di setiap kelompok belajar.`,
+              evidence: `Selama observasi di ${kelasFormatted} pada materi "${topikFormatted}"${docMention}, guru secara konsisten menerapkan perilaku "${label}" melalui instruksi yang jelas, pertanyaan pemantik kontekstual, dan pendampingan aktif di setiap kelompok belajar.`,
               learning_impact: `Peserta didik ${kelasFormatted} tampak sangat antusias, berpartisipasi aktif dalam diskusi kelompok, dan mampu menuntaskan tugas di LKPD dengan pemahaman konsep yang kuat.`
             };
           } else if (ratingNum === 2) {
@@ -5105,7 +5400,7 @@ Kembalikan HANYA JSON valid dengan field:
               behavior_code: r.behavior_code,
               behavior_label: label,
               rating: 2,
-              evidence: `Pada pembelajaran ${mapelFormatted} ("${topikFormatted}") di ${kelasFormatted}, guru telah mempraktikkan "${label}", namun pengaturan waktu transisi diskusi dan pemerataan giliran bicara bagi murid di barisan belakang masih perlu dioptimalkan.`,
+              evidence: `Pada pembelajaran ${mapelFormatted} ("${topikFormatted}") di ${kelasFormatted}${docMention}, guru telah mempraktikkan "${label}", namun pengaturan waktu transisi diskusi dan pemerataan giliran bicara bagi murid di barisan belakang masih perlu dioptimalkan.`,
               learning_impact: `Mayoritas peserta didik terlibat mengikuti kegiatan belajar, tetapi beberapa murid yang cenderung pendiam masih menunggu giliran untuk menyampaikan pendapatnya.`
             };
           } else {
@@ -5118,8 +5413,8 @@ Kembalikan HANYA JSON valid dengan field:
             };
           }
         }),
-        summary: `Proses pembelajaran ${mapelFormatted} materi "${topikFormatted}" di ${kelasFormatted} oleh ${teacher_name || 'Guru'} berlangsung kondusif, interaktif, dan berorientasi pada pencapaian indikator "${indTitle}". Guru menunjukkan kesiapan perangkat ajar yang baik serta komunikasi positif dengan peserta didik.`,
-        strengths: `Penggunaan pemantik kontekstual, sapaan positif kepada peserta didik, serta penyediaan LKPD membuat suasana belajar di ${kelasFormatted} hidup dan menyenangkan.`,
+        summary: `Proses pembelajaran ${mapelFormatted} materi "${topikFormatted}" di ${kelasFormatted} oleh ${teacher_name || 'Guru'}${docMention} berlangsung kondusif, interaktif, dan berorientasi pada pencapaian indikator "${indTitle}". Guru menunjukkan kesiapan perangkat ajar yang baik serta komunikasi positif dengan peserta didik.`,
+        strengths: `Penggunaan pemantik kontekstual, sapaan positif kepada peserta didik, serta penyediaan LKPD${docMention} membuat suasana belajar di ${kelasFormatted} hidup dan menyenangkan.`,
         improvement_areas: `Pengelolaan alokasi waktu saat diskusi/presentasi kelompok serta pemerataan kesempatan berpendapat bagi peserta didik yang masih pasif.`,
         recommendations: `Gunakan timer visual di layar kelas untuk menjaga ketepatan waktu setiap sesi, terapkan kartu peran anggota kelompok, dan gunakan lembar exit ticket singkat di akhir pelajaran.`,
         challenges:
@@ -5141,8 +5436,8 @@ Kembalikan HANYA JSON valid dengan field:
           `Seluruh kelompok belajar di ${kelasFormatted} menyelesaikan tugas dan presentasi tepat waktu sesuai alokasi modul ajar.`,
           `Lebih dari 85% peserta didik aktif berpendapat dan mengumpulkan kartu refleksi (exit ticket) dengan tuntas.`
         ],
-        principal_review_note: `Rencana tindak lanjut yang disusun oleh ${teacher_name || 'Guru'} sangat relevan dan tajam dalam menjawab temuan observasi kelas. Langkah penggunaan timer visual dan kartu peran kelompok siap diimplementasikan.`,
-        inspiration: `Saya memperoleh kesadaran baru bahwa struktur waktu yang jelas dan pembagian peran kelompok secara eksplisit membuat murid ${kelasFormatted} jauh lebih mandiri, percaya diri, dan bertanggung jawab dalam berkolaborasi.`,
+        principal_review_note: `Rencana tindak lanjut yang disusun oleh ${teacher_name || 'Guru'}${docMention} sangat relevan dan tajam dalam menjawab temuan observasi kelas. Langkah penggunaan timer visual dan kartu peran kelompok siap diimplementasikan.`,
+        inspiration: `Saya memperoleh kesadaran baru bahwa struktur waktu yang jelas dan pembagian peran kelompok secara eksplisit${docMention} membuat murid ${kelasFormatted} jauh lebih mandiri, percaya diri, dan bertanggung jawab dalam berkolaborasi.`,
         actions_implemented:
           Array.isArray(action_steps) && action_steps.length > 0
             ? action_steps
@@ -5150,7 +5445,7 @@ Kembalikan HANYA JSON valid dengan field:
                 `Menayangkan timer visual per sesi kegiatan eksplorasi dan presentasi kelompok di ${kelasFormatted}.`,
                 `Menerapkan kartu peran anggota kelompok dan membagikan lembar exit ticket pada akhir pembelajaran.`
               ],
-        progress: `Pengelolaan waktu pembelajaran di ${kelasFormatted} menjadi jauh lebih tertib dan sesi refleksi penutup dapat terlaksana secara utuh tanpa terburu-buru.`,
+        progress: `Pengelolaan waktu pembelajaran di ${kelasFormatted} menjadi jauh lebih tertib dan sesi refleksi penutup dapat terlaksana secara utuh tanpa terburu-buru${docMention}.`,
         learning_impact: `Peserta didik yang sebelumnya pendiam menjadi lebih aktif berbicara sesuai perannya di kelompok, dan antusiasme belajar murid meningkat signifikan.`,
         remaining_challenges: `Beberapa peserta didik masih memerlukan bimbingan dalam menuliskan kesimpulan refleksi dengan kalimat yang runtut pada kartu exit ticket.`,
         improvement_strategy: `Menyediakan kalimat pemandu (sentence starters) sederhana pada lembar exit ticket agar murid lebih mudah mengekspresikan pemahamannya.`,
@@ -5158,15 +5453,16 @@ Kembalikan HANYA JSON valid dengan field:
           `Mengintegrasikan strategi kartu peran dan sentence starters secara konsisten pada tema pembelajaran berikutnya.`,
           `Berbagi praktik baik hasil tindak lanjut supervisi pada pertemuan Komunitas Belajar ${schoolName}.`
         ],
-        recognition_of_progress: `Apresiasi setinggi-tingginya kepada ${teacher_name || 'Bapak/Ibu Guru'} atas komitmen nyata dalam menindaklanjuti hasil observasi. Perubahan strategi pengelolaan kelompok dan waktu terbukti berdampak positif pada keaktifan murid ${kelasFormatted}.`,
-        coaching_feedback: `Refleksi yang disampaikan sangat jujur dan berbasis dampak murid. Strategi penyediaan kalimat pemandu (sentence starters) pada exit ticket sangat tepat untuk terus memperkuat literasi dan nalar kritis siswa.`,
+        recognition_of_progress: `Apresiasi setinggi-tingginya kepada ${teacher_name || 'Bapak/Ibu Guru'} atas komitmen nyata dalam menindaklanjuti hasil observasi${docMention}. Perubahan strategi pengelolaan kelompok dan waktu terbukti berdampak positif pada keaktifan murid ${kelasFormatted}.`,
+        coaching_feedback: `Refleksi yang disampaikan sangat jujur dan berbasis dampak murid serta didukung bukti dokumentasi yang nyata. Strategi penyediaan kalimat pemandu (sentence starters) pada exit ticket sangat tepat untuk terus memperkuat literasi dan nalar kritis siswa.`,
         suggested_next_steps: `Pertahankan praktik baik ini secara berkelanjutan dan dokumentasikan dalam portofolio praktik baik guru untuk dibagikan pada sesi Komunitas Belajar sekolah.`,
-        outline: `Melalui siklus supervisi akademik di ${schoolName} pada ${kelasFormatted} (${mapelFormatted}), fokus pengembangan diarahkan pada "${indTitle}" dengan langkah nyata yang berpusat pada kebutuhan belajar peserta didik.`
+        outline: `Melalui siklus supervisi akademik di ${schoolName} pada ${kelasFormatted} (${mapelFormatted})${docMention}, fokus pengembangan diarahkan pada "${indTitle}" dengan langkah nyata yang berpusat pada kebutuhan belajar peserta didik.`
       };
 
-      if (geminiKey) {
+      const apiKeys = [geminiKey, keyMap.other_api_key].filter(Boolean) as string[];
+      for (const activeKey of apiKeys) {
         try {
-          const ai = new GoogleGenAI({ apiKey: geminiKey });
+          const ai = new GoogleGenAI({ apiKey: activeKey });
           const prompt = `Anda adalah Asisten AI Supervisi Akademik (BISMA +) pada ${schoolName}.
 Hasilkan isian profesional, kontekstual, dan siap pakai dalam Bahasa Indonesia berdasarkan data nyata berikut:
 - Mode Permintaan: ${mode || 'general'}
@@ -5177,7 +5473,10 @@ Hasilkan isian profesional, kontekstual, dan siap pakai dalam Bahasa Indonesia b
 - Indikator Prioritas: ${indTitle}
 - Perilaku Sasaran: ${behaviorsList.join('; ')}
 - Konteks Tambahan: ${context_notes || '-'}
+- Tautan Google Drive / Dokumentasi yang Disematkan Guru (Form A–D):
+${docContext.summaryText}
 
+Pastikan catatan/refleksi yang dihasilkan membaca dan mengaitkan tautan dokumentasi di atas secara relevan.
 Kembalikan HANYA objek JSON valid dengan properti berikut (isi sesuai konteks):
 {
   "topic": "string topik pembelajaran spesifik",
@@ -5224,7 +5523,7 @@ Kembalikan HANYA objek JSON valid dengan properti berikut (isi sesuai konteks):
           const parsed = JSON.parse(response.text || '{}');
           return res.json({
             success: true,
-            notice: 'Isian berhasil disusun menggunakan API AI tertanam berdasarkan data siklus supervisi.',
+            notice: 'Isian berhasil disusun menggunakan API AI tertanam berdasarkan data siklus supervisi & tautan dokumentasi.',
             suggestions: {
               ...dataDrivenResult,
               ...parsed,
@@ -5234,13 +5533,13 @@ Kembalikan HANYA objek JSON valid dengan properti berikut (isi sesuai konteks):
             }
           });
         } catch (aiErr) {
-          // Proceed seamlessly with dataDrivenResult
+          // Proceed seamlessly to next key or dataDrivenResult
         }
       }
 
       res.json({
         success: true,
-        notice: 'Isian otomatis berhasil disusun berdasarkan data siklus supervisi di database.',
+        notice: 'Isian otomatis berhasil disusun berdasarkan data siklus supervisi & tautan dokumentasi di database.',
         suggestions: dataDrivenResult
       });
     } catch (e: any) {

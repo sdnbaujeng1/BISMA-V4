@@ -39,8 +39,9 @@ interface SupervisiJadwalProps {
   onSelectCycle: (cycle: SupervisionCycle) => void;
   onSaveFormA: (
     cycleId: string,
-    payload: Partial<FormAPayload>,
-    action: 'save_draft' | 'submit' | 'principal_approve' | 'request_revision'
+    payload: Partial<FormAPayload> & Record<string, any>,
+    action: 'save_draft' | 'submit' | 'principal_approve' | 'request_revision',
+    options?: { silent?: boolean }
   ) => Promise<void>;
   onUploadAttachment: (params: {
     cycle_id: string;
@@ -49,13 +50,20 @@ interface SupervisiJadwalProps {
     mime_type?: string;
     base64_data?: string;
     drive_url?: string;
+    link_url?: string;
     evidence_category: string;
   }) => Promise<void>;
-  onSaveAttachmentNote?: (params: {
-    cycle_id: string;
-    attachment_id: string;
-    principal_note: string;
-  }) => Promise<void>;
+  onSaveAttachmentNote?: (
+    params: {
+      cycle_id: string;
+      attachment_id: string;
+      principal_note: string;
+      file_name?: string;
+      link_url?: string;
+      drive_url?: string;
+    },
+    options?: { silent?: boolean }
+  ) => Promise<void>;
   onDeleteAttachment?: (params: {
     cycle_id: string;
     attachment_id: string;
@@ -96,6 +104,7 @@ export default function SupervisiJadwal({
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [aiReviewLoading, setAiReviewLoading] = useState<boolean>(false);
   const [aiNotice, setAiNotice] = useState<string>('');
+  const [hydratedCycleId, setHydratedCycleId] = useState<string>('');
 
   // Form A state
   const [grade, setGrade] = useState('IV');
@@ -113,6 +122,11 @@ export default function SupervisiJadwal({
   const [location, setLocation] = useState(`Ruang Kelas IV ${config.schoolName || 'SDN BAUJENG I BEJI'}`);
   const [supportingRppTitle, setSupportingRppTitle] = useState('');
   const [supportingMaterialNote, setSupportingMaterialNote] = useState('');
+  const [pendingDrive, setPendingDrive] = useState<{ url: string; title: string; category: string }>({
+    url: '',
+    title: '',
+    category: 'RPP / Modul Ajar (Form A)'
+  });
 
   // Principal A8 Review fields
   const [reviewNote, setReviewNote] = useState('');
@@ -124,28 +138,136 @@ export default function SupervisiJadwal({
   useEffect(() => {
     if (!activeCycle) return;
     const p = activeCycle.forms?.A?.payload;
-    setGrade(p?.grade || activeCycle.grade || 'IV');
-    setSubject(p?.subject || activeCycle.subject || 'IPAS');
-    setTopic(p?.topic || '');
-    setObjectivesText((p?.learning_objectives || []).join('\n'));
-    setLearningDate(p?.learning_date || activeCycle.proposed_date || '');
-    setTeachingDocRef(p?.teaching_doc_ref || '');
-    setIndicatorCode(p?.indicator_code || activeCycle.indicator_code || 'student_engagement');
-    setTargetBehaviors(p?.target_behaviors || []);
-    setPreparationActions(p?.preparation_actions || '');
-    setProposedDate(p?.proposed_date || activeCycle.proposed_date || '');
-    setStartTime(p?.start_time || '07:30');
-    setEndTime(p?.end_time || '09:00');
-    setLocation(p?.location || `Ruang ${formatClassLabel(activeCycle.grade || 'IV')} ${config.schoolName || 'SDN BAUJENG I BEJI'}`);
-    setSupportingRppTitle(p?.supporting_rpp_title || '');
-    setSupportingMaterialNote(p?.supporting_material_note || '');
+    let localDraft: any = {};
+    try {
+      const raw = localStorage.getItem(`bisma_supervisi_draft_${activeCycle.id}_A`);
+      if (raw) localDraft = JSON.parse(raw);
+    } catch {
+      // ignore
+    }
 
-    setReviewNote(p?.review_note || '');
-    setConfirmedSchedule(p?.confirmed_schedule || p?.proposed_date || activeCycle.proposed_date || '');
-    setConfirmedStartTime(p?.confirmed_start_time || p?.start_time || '07:30');
-    setConfirmedEndTime(p?.confirmed_end_time || p?.end_time || '09:00');
-    setConfirmedLocation(p?.confirmed_location || p?.location || `Ruang ${formatClassLabel(activeCycle.grade || 'IV')} ${config.schoolName || 'SDN BAUJENG I BEJI'}`);
+    setGrade(p?.grade || localDraft.grade || activeCycle.grade || 'IV');
+    setSubject(p?.subject || localDraft.subject || activeCycle.subject || 'IPAS');
+    setTopic(p?.topic || localDraft.topic || '');
+    setObjectivesText(
+      (p?.learning_objectives && p.learning_objectives.length > 0
+        ? p.learning_objectives
+        : localDraft.learning_objectives || []
+      ).join('\n')
+    );
+    setLearningDate(p?.learning_date || localDraft.learning_date || activeCycle.proposed_date || '');
+    setTeachingDocRef(p?.teaching_doc_ref || localDraft.teaching_doc_ref || '');
+    setIndicatorCode(p?.indicator_code || localDraft.indicator_code || activeCycle.indicator_code || 'student_engagement');
+    setTargetBehaviors(
+      p?.target_behaviors && p.target_behaviors.length > 0
+        ? p.target_behaviors
+        : localDraft.target_behaviors || []
+    );
+    setPreparationActions(p?.preparation_actions || localDraft.preparation_actions || '');
+    setProposedDate(p?.proposed_date || localDraft.proposed_date || activeCycle.proposed_date || '');
+    setStartTime(p?.start_time || localDraft.start_time || '07:30');
+    setEndTime(p?.end_time || localDraft.end_time || '09:00');
+    setLocation(
+      p?.location ||
+        localDraft.location ||
+        `Ruang ${formatClassLabel(activeCycle.grade || 'IV')} ${config.schoolName || 'SDN BAUJENG I BEJI'}`
+    );
+    setSupportingRppTitle(p?.supporting_rpp_title || localDraft.supporting_rpp_title || '');
+    setSupportingMaterialNote(p?.supporting_material_note || localDraft.supporting_material_note || '');
+
+    setReviewNote(p?.review_note || localDraft.review_note || '');
+    setConfirmedSchedule(
+      p?.confirmed_schedule || localDraft.confirmed_schedule || p?.proposed_date || activeCycle.proposed_date || ''
+    );
+    setConfirmedStartTime(p?.confirmed_start_time || localDraft.confirmed_start_time || p?.start_time || '07:30');
+    setConfirmedEndTime(p?.confirmed_end_time || localDraft.confirmed_end_time || p?.end_time || '09:00');
+    setConfirmedLocation(
+      p?.confirmed_location ||
+        localDraft.confirmed_location ||
+        p?.location ||
+        `Ruang ${formatClassLabel(activeCycle.grade || 'IV')} ${config.schoolName || 'SDN BAUJENG I BEJI'}`
+    );
+    setHydratedCycleId(activeCycle.id);
   }, [activeCycle?.id, config.schoolName]);
+
+  const buildPayload = (overrides?: Partial<FormAPayload> & Record<string, any>): Partial<FormAPayload> & Record<string, any> => {
+    const base: Partial<FormAPayload> & Record<string, any> = {
+      grade,
+      subject,
+      topic,
+      learning_objectives: objectivesText
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean),
+      learning_date: learningDate || proposedDate,
+      teaching_doc_ref: teachingDocRef,
+      indicator_code: indicatorCode,
+      target_behaviors: targetBehaviors,
+      preparation_actions: preparationActions,
+      proposed_date: proposedDate,
+      start_time: startTime,
+      end_time: endTime,
+      location,
+      supporting_rpp_title: supportingRppTitle,
+      supporting_material_note: supportingMaterialNote,
+      review_note: reviewNote,
+      confirmed_schedule: confirmedSchedule || proposedDate,
+      confirmed_start_time: confirmedStartTime,
+      confirmed_end_time: confirmedEndTime,
+      confirmed_location: confirmedLocation || location,
+      ...(pendingDrive.url
+        ? {
+            pending_drive_url: pendingDrive.url,
+            pending_drive_title: pendingDrive.title,
+            pending_drive_category: pendingDrive.category
+          }
+        : {}),
+      ...(overrides || {})
+    };
+    if (activeCycle?.id && typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`bisma_supervisi_draft_${activeCycle.id}_A`, JSON.stringify(base));
+      } catch {
+        // ignore
+      }
+    }
+    return base;
+  };
+
+  // Debounced auto-save to localStorage & DB when notes/fields change manually
+  useEffect(() => {
+    if (!activeCycle || hydratedCycleId !== activeCycle.id || activeCycle.state === 'completed') return;
+    const payload = buildPayload();
+    const timer = setTimeout(() => {
+      onSaveFormA(activeCycle.id, payload, 'save_draft', { silent: true })
+        .then(() => {
+          setAutoSaveInfo(`Tersimpan otomatis (${new Date().toLocaleTimeString('id-ID')})`);
+        })
+        .catch(() => {});
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [
+    grade,
+    subject,
+    topic,
+    objectivesText,
+    learningDate,
+    teachingDocRef,
+    indicatorCode,
+    targetBehaviors,
+    preparationActions,
+    proposedDate,
+    startTime,
+    endTime,
+    location,
+    supportingRppTitle,
+    supportingMaterialNote,
+    reviewNote,
+    confirmedSchedule,
+    confirmedStartTime,
+    confirmedEndTime,
+    confirmedLocation
+  ]);
 
   if (!activeCycle) {
     return (
@@ -167,32 +289,6 @@ export default function SupervisiJadwal({
   const formAStatus = activeCycle.forms?.A?.status || 'draft';
   const isLockedForTeacher = !isPrincipal && (formAStatus === 'reviewed' || activeCycle.state === 'completed');
 
-  const buildPayload = (): Partial<FormAPayload> => ({
-    grade,
-    subject,
-    topic,
-    learning_objectives: objectivesText
-      .split('\n')
-      .map(s => s.trim())
-      .filter(Boolean),
-    learning_date: learningDate || proposedDate,
-    teaching_doc_ref: teachingDocRef,
-    indicator_code: indicatorCode,
-    target_behaviors: targetBehaviors,
-    preparation_actions: preparationActions,
-    proposed_date: proposedDate,
-    start_time: startTime,
-    end_time: endTime,
-    location,
-    supporting_rpp_title: supportingRppTitle,
-    supporting_material_note: supportingMaterialNote,
-    review_note: reviewNote,
-    confirmed_schedule: confirmedSchedule || proposedDate,
-    confirmed_start_time: confirmedStartTime,
-    confirmed_end_time: confirmedEndTime,
-    confirmed_location: confirmedLocation || location
-  });
-
   const toggleBehavior = (code: string) => {
     if (isLockedForTeacher) return;
     setTargetBehaviors(prev =>
@@ -213,9 +309,9 @@ export default function SupervisiJadwal({
   };
 
   const handleNextStepWithAutoSave = async (nextStep: number) => {
-    if (!isLockedForTeacher && !isPrincipal && activeCycle.state === 'draft') {
+    if (activeCycle.state !== 'completed') {
       try {
-        await onSaveFormA(activeCycle.id, buildPayload(), 'save_draft');
+        await onSaveFormA(activeCycle.id, buildPayload(), 'save_draft', { silent: true });
         setAutoSaveInfo(`Draf halaman ${pageStep} tersimpan (${new Date().toLocaleTimeString('id-ID')})`);
       } catch {
         // Ignore auto-save validation error when moving between draft steps
@@ -236,6 +332,15 @@ export default function SupervisiJadwal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           actor,
+          cycle_id: activeCycle.id,
+          cycle: activeCycle,
+          attachments: activeCycle.attachments || [],
+          link_url: pendingDrive.url || undefined,
+          drive_url: pendingDrive.url || undefined,
+          teacher_name: activeCycle.teacher_name,
+          grade,
+          subject,
+          topic,
           stage: 'Form A — Persiapan Observasi Kelas',
           indicator_title: currentIndicator.title,
           target_behaviors: chosenLabels,
@@ -246,40 +351,69 @@ export default function SupervisiJadwal({
       if (json.success && json.suggestions) {
         setAiNotice(
           json.notice ||
-            'Isian otomatis berhasil disusun dari API tertanam berdasarkan data guru dan kelas.'
+            'Isian otomatis berhasil disusun dari API tertanam dan langsung disimpan ke database.'
         );
-        if (!topic.trim()) {
-          setTopic(`Eksplorasi Kontekstual & Kolaboratif pada Mata Pelajaran ${subject} (${formatClassLabel(grade)})`);
+        const nextTopic =
+          topic.trim() ||
+          json.suggestions.topic ||
+          `Eksplorasi Kontekstual & Kolaboratif pada Mata Pelajaran ${subject} (${formatClassLabel(grade)})`;
+        const nextDocRef =
+          teachingDocRef.trim() ||
+          json.suggestions.teaching_doc_ref ||
+          `Modul Ajar Kurikulum Merdeka ${subject} ${formatClassLabel(grade)} Semester ${activeCycle.semester}`;
+        const nextObjectives =
+          objectivesText.trim() ||
+          (Array.isArray(json.suggestions.learning_objectives) && json.suggestions.learning_objectives.length > 0
+            ? json.suggestions.learning_objectives.join('\n')
+            : `1. Melalui pengamatan media kontekstual dan diskusi kelompok pada ${formatClassLabel(grade)}, peserta didik mampu memahami konsep utama materi ${subject} secara tepat.\n2. Melalui kegiatan kerja kelompok dan presentasi, peserta didik mampu mendemonstrasikan hasil pemecahan masalah secara aktif dan percaya diri.`);
+        const nextRppTitle =
+          supportingRppTitle.trim() ||
+          json.suggestions.supporting_rpp_title ||
+          `Modul Ajar ${subject} ${formatClassLabel(grade)} — ${nextTopic}`;
+        const nextMaterial =
+          supportingMaterialNote.trim() ||
+          json.suggestions.supporting_material_note ||
+          'LKPD Kelompok Kontekstual, Kartu Pertanyaan Pemantik, dan Media Visual Interaktif';
+        const nextBehaviors =
+          targetBehaviors.length > 0
+            ? targetBehaviors
+            : currentIndicator.behaviors.slice(0, 2).map(b => b.code);
+
+        let nextPrepActions = preparationActions.trim();
+        if (!nextPrepActions) {
+          nextPrepActions =
+            json.suggestions.preparation_actions ||
+            json.suggestions.outline ||
+            (Array.isArray(json.suggestions.action_steps) ? json.suggestions.action_steps.join('\n• ') : '');
         }
-        if (!teachingDocRef.trim()) {
-          setTeachingDocRef(`Modul Ajar Kurikulum Merdeka ${subject} ${formatClassLabel(grade)} Semester ${activeCycle.semester}`);
-        }
-        if (!objectivesText.trim()) {
-          setObjectivesText(
-            `1. Melalui pengamatan media kontekstual dan diskusi kelompok pada ${formatClassLabel(grade)}, peserta didik mampu memahami konsep utama materi ${subject} secara tepat.\n2. Melalui kegiatan kerja kelompok dan presentasi, peserta didik mampu mendemonstrasikan hasil pemecahan masalah secara aktif dan percaya diri.`
-          );
-        }
-        if (!supportingRppTitle.trim()) {
-          setSupportingRppTitle(`Modul Ajar ${subject} ${formatClassLabel(grade)} — ${topic || 'Pembelajaran Berpusat pada Murid'}`);
-        }
-        if (!supportingMaterialNote.trim()) {
-          setSupportingMaterialNote('LKPD Kelompok Kontekstual, Kartu Pertanyaan Pemantik, dan Media Visual Interaktif');
-        }
-        if (targetBehaviors.length === 0 && currentIndicator.behaviors.length > 0) {
-          setTargetBehaviors(currentIndicator.behaviors.slice(0, 2).map(b => b.code));
-        }
-        if (json.suggestions.outline && !preparationActions.trim()) {
-          setPreparationActions(json.suggestions.outline);
-        } else if (Array.isArray(json.suggestions.action_steps)) {
-          setPreparationActions(prev =>
-            prev ? `${prev}\n• ${json.suggestions.action_steps.join('\n• ')}` : json.suggestions.action_steps.join('\n• ')
-          );
-        }
-        if (isPrincipal && !reviewNote.trim()) {
-          setReviewNote(
-            `Perencanaan pembelajaran ${activeCycle.teacher_name} pada ${formatClassLabel(grade)} (${subject}) telah tersusun sistematis dan selaras dengan fokus indikator ${currentIndicator.title}. Jadwal observasi disetujui.`
-          );
-        }
+        const nextReviewNote =
+          reviewNote.trim() ||
+          (isPrincipal
+            ? json.suggestions.review_note ||
+              `Perencanaan pembelajaran ${activeCycle.teacher_name} pada ${formatClassLabel(grade)} (${subject}) telah tersusun sistematis dan selaras dengan fokus indikator ${currentIndicator.title}. Jadwal observasi disetujui.`
+            : reviewNote);
+
+        setTopic(nextTopic);
+        setTeachingDocRef(nextDocRef);
+        setObjectivesText(nextObjectives);
+        setSupportingRppTitle(nextRppTitle);
+        setSupportingMaterialNote(nextMaterial);
+        setTargetBehaviors(nextBehaviors);
+        setPreparationActions(nextPrepActions);
+        if (isPrincipal) setReviewNote(nextReviewNote);
+
+        const immediatePayload = buildPayload({
+          topic: nextTopic,
+          teaching_doc_ref: nextDocRef,
+          learning_objectives: nextObjectives.split('\n').map((s: string) => s.trim()).filter(Boolean),
+          supporting_rpp_title: nextRppTitle,
+          supporting_material_note: nextMaterial,
+          target_behaviors: nextBehaviors,
+          preparation_actions: nextPrepActions,
+          review_note: nextReviewNote
+        });
+        await onSaveFormA(activeCycle.id, immediatePayload, 'save_draft', { silent: true });
+        setAutoSaveInfo(`Catatan API tersimpan ke DB (${new Date().toLocaleTimeString('id-ID')})`);
       }
     } finally {
       setAiLoading(false);
@@ -289,6 +423,7 @@ export default function SupervisiJadwal({
   const handleGeneratePrincipalReviewAI = async () => {
     setAiReviewLoading(true);
     try {
+      const currentPayload = buildPayload();
       const res = await fetch('/api/supervisi/generate-narrative', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -301,17 +436,23 @@ export default function SupervisiJadwal({
               ...activeCycle.forms,
               A: {
                 ...(activeCycle.forms?.A || {}),
-                payload: buildPayload()
+                payload: currentPayload
               }
             }
           },
+          attachments: activeCycle.attachments || [],
+          link_url: pendingDrive.url || undefined,
           mode: 'principal_prep_review'
         })
       });
       const json = await res.json();
       if (json.success && json.data?.catatan_tinjauan) {
-        setReviewNote(json.data.catatan_tinjauan);
-        setAiNotice('Catatan Tinjauan & Persiapan KS berhasil disusun menggunakan API tertanam berdasarkan data.');
+        const generatedNote = json.data.catatan_tinjauan;
+        setReviewNote(generatedNote);
+        setAiNotice('Catatan Tinjauan & Persiapan KS berhasil disusun menggunakan API dan langsung tersimpan ke database.');
+        const immediatePayload = buildPayload({ review_note: generatedNote });
+        await onSaveFormA(activeCycle.id, immediatePayload, 'save_draft', { silent: true });
+        setAutoSaveInfo(`Catatan KS tersimpan ke DB (${new Date().toLocaleTimeString('id-ID')})`);
       }
     } finally {
       setAiReviewLoading(false);
@@ -863,6 +1004,8 @@ export default function SupervisiJadwal({
               actor={actor}
               cycle={activeCycle}
               formCode="A"
+              indicatorTitle={currentIndicator.title}
+              topic={topic}
               sectionTitle="Sematkan Link Drive / URL Perangkat Pembelajaran (Form A)"
               sectionSubtitle="Guru menyematkan tautan Google Drive / URL RPP, Modul Ajar, LKPD, atau Media Ajar. Jika dibuka oleh Kepala Sekolah, muncul pop-up untuk pratinjau langsung dan edit sebagai Catatan Tinjauan."
               categories={[
@@ -874,12 +1017,14 @@ export default function SupervisiJadwal({
               ]}
               defaultCategory="RPP / Modul Ajar (Form A)"
               canAddLink={!isLockedForTeacher || isPrincipal}
+              onPendingLinkChange={setPendingDrive}
               onAddDriveLink={async params => {
                 await onUploadAttachment({
                   cycle_id: params.cycle_id,
                   form_code: params.form_code,
                   file_name: params.file_name,
                   drive_url: params.drive_url,
+                  link_url: params.drive_url,
                   evidence_category: params.evidence_category
                 });
               }}
@@ -892,7 +1037,7 @@ export default function SupervisiJadwal({
           <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200">
             <button
               type="button"
-              onClick={() => setPageStep(2)}
+              onClick={() => handleNextStepWithAutoSave(2)}
               className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold border-b-4 border-slate-300 active:border-b-0 active:translate-y-1 transition-all flex items-center gap-2 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -962,9 +1107,9 @@ export default function SupervisiJadwal({
                     ? 'Persiapan supervisi Anda telah dikirim. Silakan menunggu konfirmasi jadwal dari kepala sekolah.'
                     : 'Pastikan seluruh isian Form A telah sesuai sebelum dikirim ke Kepala Sekolah.'}
                 </p>
-                {activeCycle.forms?.A?.payload?.review_note && (
+                {(reviewNote || activeCycle.forms?.A?.payload?.review_note) && (
                   <p className="text-slate-700">
-                    <span className="font-bold">Catatan Kepala Sekolah:</span> "{activeCycle.forms.A.payload.review_note}"
+                    <span className="font-bold">Catatan Kepala Sekolah:</span> "{reviewNote || activeCycle.forms?.A?.payload?.review_note}"
                   </p>
                 )}
               </div>
@@ -1069,6 +1214,15 @@ export default function SupervisiJadwal({
                 <button
                   type="button"
                   disabled={saving}
+                  onClick={() => handleAction('save_draft')}
+                  className="px-4 py-2.5 rounded-xl bg-white border-2 border-slate-300 border-b-4 text-slate-800 font-extrabold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  Simpan Catatan KS
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
                   onClick={() => handleAction('request_revision')}
                   className="px-4 py-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-extrabold border-b-4 border-amber-300 cursor-pointer"
                 >
@@ -1091,7 +1245,7 @@ export default function SupervisiJadwal({
           <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200">
             <button
               type="button"
-              onClick={() => setPageStep(3)}
+              onClick={() => handleNextStepWithAutoSave(3)}
               className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold border-b-4 border-slate-300 active:border-b-0 active:translate-y-1 transition-all flex items-center gap-2 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -1100,7 +1254,14 @@ export default function SupervisiJadwal({
 
             <button
               type="button"
-              onClick={() => onNavigatePage(isPrincipal ? 'ks_obs' : 'form_b', activeCycle)}
+              onClick={async () => {
+                if (activeCycle.state !== 'completed') {
+                  try {
+                    await onSaveFormA(activeCycle.id, buildPayload(), 'save_draft', { silent: true });
+                  } catch {}
+                }
+                onNavigatePage(isPrincipal ? 'ks_obs' : 'form_b', activeCycle);
+              }}
               className="px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-700 to-blue-800 hover:from-indigo-600 hover:to-blue-700 text-white text-xs sm:text-sm font-extrabold border-b-4 border-indigo-950 active:border-b-0 active:translate-y-1 transition-all flex items-center gap-2 shadow-lg cursor-pointer"
             >
               <span>Lanjutkan ke Halaman Observasi (Form B)</span>

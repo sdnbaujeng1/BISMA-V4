@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   FileText,
   Sparkles,
@@ -35,7 +35,8 @@ interface SupervisiHasilProps {
   onSaveFormC: (
     cycleId: string,
     payload: Partial<FormCPayload>,
-    action: 'save_draft' | 'submit' | 'principal_review'
+    action: 'save_draft' | 'submit' | 'principal_review',
+    opts?: { silent?: boolean }
   ) => Promise<void>;
   onUploadAttachment?: (params: {
     cycle_id: string;
@@ -44,13 +45,19 @@ interface SupervisiHasilProps {
     mime_type?: string;
     base64_data?: string;
     drive_url?: string;
+    link_url?: string;
     evidence_category: string;
   }) => Promise<void>;
-  onSaveAttachmentNote?: (params: {
-    cycle_id: string;
-    attachment_id: string;
-    principal_note: string;
-  }) => Promise<void>;
+  onSaveAttachmentNote?: (
+    params: {
+      cycle_id: string;
+      attachment_id: string;
+      principal_note: string;
+      link_url?: string;
+      drive_url?: string;
+    },
+    opts?: { silent?: boolean }
+  ) => Promise<void>;
   onDeleteAttachment?: (params: {
     cycle_id: string;
     attachment_id: string;
@@ -86,6 +93,12 @@ export default function SupervisiHasil({
   const [saving, setSaving] = useState<boolean>(false);
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [aiNotice, setAiNotice] = useState<string>('');
+  const [pendingDrive, setPendingDrive] = useState<{ title: string; url: string; category: string }>({
+    title: '',
+    url: '',
+    category: 'Revisi RPP / Modul Ajar Pasca Observasi'
+  });
+  const isHydratedRef = useRef<boolean>(false);
 
   // Form C fields
   const [challenges, setChallenges] = useState('');
@@ -101,26 +114,98 @@ export default function SupervisiHasil({
 
   useEffect(() => {
     if (!activeCycle) return;
+    isHydratedRef.current = false;
     const p = activeCycle.forms?.C?.payload;
-    setChallenges(p?.challenges || '');
-    setRootCauses(p?.root_causes || '');
+    let cached: Partial<FormCPayload> | null = null;
+    try {
+      const raw = localStorage.getItem(`bisma_supervisi_draft_${activeCycle.id}_C`);
+      if (raw) cached = JSON.parse(raw);
+    } catch {
+      cached = null;
+    }
+
+    setChallenges(cached?.challenges || p?.challenges || '');
+    setRootCauses(cached?.root_causes || p?.root_causes || '');
     setPracticesToImprove(
-      p?.practices_to_improve || activeCycle.forms?.B?.payload?.improvement_areas || ''
+      cached?.practices_to_improve ||
+        p?.practices_to_improve ||
+        activeCycle.forms?.B?.payload?.improvement_areas ||
+        ''
     );
-    setGoalsText((p?.goals || []).join('\n'));
-    setActionStepsText((p?.action_steps || []).join('\n'));
+    const resolvedGoals = cached?.goals?.length ? cached.goals : p?.goals || [];
+    setGoalsText(resolvedGoals.join('\n'));
+    const resolvedSteps = cached?.action_steps?.length ? cached.action_steps : p?.action_steps || [];
+    setActionStepsText(resolvedSteps.join('\n'));
     setTargetDate(
-      p?.target_date || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+      cached?.target_date ||
+        p?.target_date ||
+        new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
     );
     setLearningSources(
-      p?.learning_sources?.length
+      cached?.learning_sources?.length
+        ? cached.learning_sources
+        : p?.learning_sources?.length
         ? p.learning_sources
         : ['Komunitas Belajar Guru (Kombel / KKG)', 'Praktik Mandiri & Eksperimen di Kelas']
     );
-    setRequiredSupport(p?.required_support || '');
-    setSuccessIndicatorsText((p?.success_indicators || []).join('\n'));
-    setPrincipalReviewNote(p?.principal_review_note || '');
+    setRequiredSupport(cached?.required_support || p?.required_support || '');
+    const resolvedIndicators = cached?.success_indicators?.length
+      ? cached.success_indicators
+      : p?.success_indicators || [];
+    setSuccessIndicatorsText(resolvedIndicators.join('\n'));
+    setPrincipalReviewNote(cached?.principal_review_note || p?.principal_review_note || '');
+
+    setTimeout(() => {
+      isHydratedRef.current = true;
+    }, 80);
   }, [activeCycle?.id]);
+
+  // Auto-save Form C notes to localStorage & DB so manual/API notes never disappear on Back or Refresh
+  useEffect(() => {
+    if (!activeCycle || !isHydratedRef.current || activeCycle.state === 'completed') return;
+    const payloadToSave: Partial<FormCPayload> & Record<string, any> = {
+      challenges,
+      root_causes: rootCauses,
+      practices_to_improve: practicesToImprove,
+      goals: goalsText.split('\n').map(s => s.trim()).filter(Boolean),
+      action_steps: actionStepsText.split('\n').map(s => s.trim()).filter(Boolean),
+      target_date: targetDate,
+      learning_sources: learningSources,
+      required_support: requiredSupport,
+      success_indicators: successIndicatorsText.split('\n').map(s => s.trim()).filter(Boolean),
+      principal_review_note: principalReviewNote,
+      ...(pendingDrive.url.trim()
+        ? {
+            pending_drive_url: pendingDrive.url.trim(),
+            pending_drive_title: pendingDrive.title.trim(),
+            pending_drive_category: pendingDrive.category
+          }
+        : {})
+    };
+    try {
+      localStorage.setItem(`bisma_supervisi_draft_${activeCycle.id}_C`, JSON.stringify(payloadToSave));
+    } catch {
+      // ignore storage quota errors
+    }
+
+    const timer = setTimeout(() => {
+      onSaveFormC(activeCycle.id, payloadToSave, 'save_draft', { silent: true }).catch(() => {});
+    }, 900);
+    return () => clearTimeout(timer);
+  }, [
+    activeCycle?.id,
+    challenges,
+    rootCauses,
+    practicesToImprove,
+    goalsText,
+    actionStepsText,
+    targetDate,
+    learningSources,
+    requiredSupport,
+    successIndicatorsText,
+    principalReviewNote,
+    pendingDrive.url
+  ]);
 
   if (!activeCycle) {
     return (
@@ -182,7 +267,7 @@ export default function SupervisiHasil({
     );
   };
 
-  const buildPayload = (): Partial<FormCPayload> => ({
+  const buildPayload = (): Partial<FormCPayload> & Record<string, any> => ({
     challenges,
     root_causes: rootCauses,
     practices_to_improve: practicesToImprove,
@@ -192,13 +277,26 @@ export default function SupervisiHasil({
     learning_sources: learningSources,
     required_support: requiredSupport,
     success_indicators: successIndicatorsText.split('\n').map(s => s.trim()).filter(Boolean),
-    principal_review_note: principalReviewNote
+    principal_review_note: principalReviewNote,
+    ...(pendingDrive.url.trim()
+      ? {
+          pending_drive_url: pendingDrive.url.trim(),
+          pending_drive_title: pendingDrive.title.trim(),
+          pending_drive_category: pendingDrive.category
+        }
+      : {})
   });
 
   const handleAction = async (action: 'save_draft' | 'submit' | 'principal_review') => {
     setSaving(true);
     try {
-      await onSaveFormC(activeCycle.id, buildPayload(), action);
+      const payload = buildPayload();
+      try {
+        localStorage.setItem(`bisma_supervisi_draft_${activeCycle.id}_C`, JSON.stringify(payload));
+      } catch {
+        // ignore
+      }
+      await onSaveFormC(activeCycle.id, payload, action);
     } finally {
       setSaving(false);
     }
@@ -212,6 +310,10 @@ export default function SupervisiHasil({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           actor,
+          cycle_id: activeCycle.id,
+          cycle: activeCycle,
+          attachments: activeCycle.attachments || [],
+          link_url: pendingDrive.url,
           stage: 'Form C — Rencana Tindak Lanjut Pasca Observasi',
           indicator_title: currentIndicator.title,
           target_behaviors: (formBData?.ratings || []).map(r => r.behavior_label),
@@ -222,44 +324,67 @@ export default function SupervisiHasil({
       if (json.success && json.suggestions) {
         setAiNotice(
           json.notice ||
-            'Isian otomatis Form C berhasil disusun menggunakan API tertanam berdasarkan data observasi.'
+            'Isian otomatis Form C berhasil disusun menggunakan API tertanam berdasarkan data observasi & tautan bukti dukung.'
         );
-        if (!challenges.trim()) {
-          setChallenges(
-            formBData?.improvement_areas ||
-              `Pengelolaan waktu diskusi kelompok dan pemerataan partisipasi aktif seluruh murid pada ${formatClassLabel(activeCycle.grade)} (${activeCycle.subject}).`
-          );
+        const nextChallenges = challenges.trim()
+          ? challenges
+          : formBData?.improvement_areas ||
+            `Pengelolaan waktu diskusi kelompok dan pemerataan partisipasi aktif seluruh murid pada ${formatClassLabel(activeCycle.grade)} (${activeCycle.subject}).`;
+        const nextRootCauses = rootCauses.trim()
+          ? rootCauses
+          : 'Pembagian peran di dalam kelompok belum terstruktur secara spesifik dan panduan waktu pengerjaan LKPD belum ditampilkan secara visual di depan kelas.';
+        const nextPractices = practicesToImprove.trim()
+          ? practicesToImprove
+          : formBData?.recommendations ||
+            `Meningkatkan kualitas fasilitasi diskusi kelompok dan umpan balik konstruktif sesuai indikator ${currentIndicator.title}.`;
+        const nextGoalsText =
+          Array.isArray(json.suggestions.goals) && !goalsText.trim()
+            ? json.suggestions.goals.join('\n')
+            : goalsText;
+        const nextActionStepsText =
+          Array.isArray(json.suggestions.action_steps) && !actionStepsText.trim()
+            ? json.suggestions.action_steps.join('\n')
+            : actionStepsText;
+        const nextSuccessIndicatorsText =
+          Array.isArray(json.suggestions.success_indicators) && !successIndicatorsText.trim()
+            ? json.suggestions.success_indicators.join('\n')
+            : successIndicatorsText;
+        const nextRequiredSupport = requiredSupport.trim()
+          ? requiredSupport
+          : 'Dukungan berbagi praktik baik bersama rekan sejawat di Komunitas Belajar (Kombel / KKG) serta pendampingan reflektif Kepala Sekolah.';
+        const nextPrincipalReviewNote =
+          isPrincipal && !principalReviewNote.trim()
+            ? `Rencana Tindak Lanjut (Form C) yang disusun oleh ${activeCycle.teacher_name} telah spesifik, realistis, dan menjawab langsung temuan observasi kelas pada ${formatClassLabel(activeCycle.grade)}. Kepala Sekolah mendukung penuh implementasi perbaikan ini.`
+            : principalReviewNote;
+
+        setChallenges(nextChallenges);
+        setRootCauses(nextRootCauses);
+        setPracticesToImprove(nextPractices);
+        setGoalsText(nextGoalsText);
+        setActionStepsText(nextActionStepsText);
+        setSuccessIndicatorsText(nextSuccessIndicatorsText);
+        setRequiredSupport(nextRequiredSupport);
+        if (isPrincipal) setPrincipalReviewNote(nextPrincipalReviewNote);
+
+        // Immediately save API-generated notes to localStorage & DB so they never disappear on Back or Refresh
+        const immediatePayload: Partial<FormCPayload> = {
+          challenges: nextChallenges,
+          root_causes: nextRootCauses,
+          practices_to_improve: nextPractices,
+          goals: nextGoalsText.split('\n').map(s => s.trim()).filter(Boolean),
+          action_steps: nextActionStepsText.split('\n').map(s => s.trim()).filter(Boolean),
+          target_date: targetDate,
+          learning_sources: learningSources,
+          required_support: nextRequiredSupport,
+          success_indicators: nextSuccessIndicatorsText.split('\n').map(s => s.trim()).filter(Boolean),
+          principal_review_note: nextPrincipalReviewNote
+        };
+        try {
+          localStorage.setItem(`bisma_supervisi_draft_${activeCycle.id}_C`, JSON.stringify(immediatePayload));
+        } catch {
+          // ignore
         }
-        if (!rootCauses.trim()) {
-          setRootCauses(
-            'Pembagian peran di dalam kelompok belum terstruktur secara spesifik dan panduan waktu pengerjaan LKPD belum ditampilkan secara visual di depan kelas.'
-          );
-        }
-        if (!practicesToImprove.trim()) {
-          setPracticesToImprove(
-            formBData?.recommendations ||
-              `Meningkatkan kualitas fasilitasi diskusi kelompok dan umpan balik konstruktif sesuai indikator ${currentIndicator.title}.`
-          );
-        }
-        if (Array.isArray(json.suggestions.goals) && !goalsText.trim()) {
-          setGoalsText(json.suggestions.goals.join('\n'));
-        }
-        if (Array.isArray(json.suggestions.action_steps) && !actionStepsText.trim()) {
-          setActionStepsText(json.suggestions.action_steps.join('\n'));
-        }
-        if (Array.isArray(json.suggestions.success_indicators) && !successIndicatorsText.trim()) {
-          setSuccessIndicatorsText(json.suggestions.success_indicators.join('\n'));
-        }
-        if (!requiredSupport.trim()) {
-          setRequiredSupport(
-            'Dukungan berbagi praktik baik bersama rekan sejawat di Komunitas Belajar (Kombel / KKG) serta pendampingan reflektif Kepala Sekolah.'
-          );
-        }
-        if (isPrincipal && !principalReviewNote.trim()) {
-          setPrincipalReviewNote(
-            `Rencana Tindak Lanjut (Form C) yang disusun oleh ${activeCycle.teacher_name} telah spesifik, realistis, dan menjawab langsung temuan observasi kelas pada ${formatClassLabel(activeCycle.grade)}. Kepala Sekolah mendukung penuh implementasi perbaikan ini.`
-          );
-        }
+        await onSaveFormC(activeCycle.id, immediatePayload, 'save_draft', { silent: true }).catch(() => {});
       }
     } finally {
       setAiLoading(false);
@@ -582,7 +707,12 @@ export default function SupervisiHasil({
           <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200">
             <button
               type="button"
-              onClick={() => setPageStep(1)}
+              onClick={() => {
+                if (!isCycleCompleted) {
+                  onSaveFormC(activeCycle.id, buildPayload(), 'save_draft', { silent: true }).catch(() => {});
+                }
+                setPageStep(1);
+              }}
               className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold border-b-4 border-slate-300 flex items-center gap-2 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -590,7 +720,12 @@ export default function SupervisiHasil({
             </button>
             <button
               type="button"
-              onClick={() => setPageStep(3)}
+              onClick={() => {
+                if (!isCycleCompleted) {
+                  onSaveFormC(activeCycle.id, buildPayload(), 'save_draft', { silent: true }).catch(() => {});
+                }
+                setPageStep(3);
+              }}
               className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white text-xs sm:text-sm font-extrabold border-b-4 border-amber-900 active:border-b-0 active:translate-y-1 transition-all flex items-center gap-2 shadow-lg cursor-pointer"
             >
               <span>Lanjutkan ke Dukungan & Indikator (Lembar 3/3)</span>
@@ -650,6 +785,8 @@ export default function SupervisiHasil({
               actor={actor}
               cycle={activeCycle}
               formCode="C"
+              indicatorTitle={currentIndicator.title}
+              topic={activeCycle.forms?.A?.payload?.topic || activeCycle.subject}
               sectionTitle="Sematkan Link Drive / URL Dokumen Rencana Tindak Lanjut (Form C)"
               sectionSubtitle="Guru menyematkan tautan Google Drive / URL revisi perangkat ajar, bahan refleksi Kombel, atau rencana aksi perbaikan. Jika dibuka oleh Kepala Sekolah, muncul pop-up untuk pratinjau dan edit sebagai Catatan Tinjauan."
               categories={[
@@ -660,12 +797,14 @@ export default function SupervisiHasil({
               ]}
               defaultCategory="Revisi RPP / Modul Ajar Pasca Observasi"
               canAddLink={!isCycleCompleted}
+              onPendingLinkChange={setPendingDrive}
               onAddDriveLink={async params => {
                 await onUploadAttachment({
                   cycle_id: params.cycle_id,
                   form_code: params.form_code,
                   file_name: params.file_name,
                   drive_url: params.drive_url,
+                  link_url: params.drive_url,
                   evidence_category: params.evidence_category
                 });
               }}
@@ -755,7 +894,12 @@ export default function SupervisiHasil({
           <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200">
             <button
               type="button"
-              onClick={() => setPageStep(2)}
+              onClick={() => {
+                if (!isCycleCompleted) {
+                  onSaveFormC(activeCycle.id, buildPayload(), 'save_draft', { silent: true }).catch(() => {});
+                }
+                setPageStep(2);
+              }}
               className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold border-b-4 border-slate-300 flex items-center gap-2 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -763,7 +907,12 @@ export default function SupervisiHasil({
             </button>
             <button
               type="button"
-              onClick={() => onNavigatePage(isPrincipal ? 'ks_reflection' : 'form_d', activeCycle)}
+              onClick={() => {
+                if (!isCycleCompleted) {
+                  onSaveFormC(activeCycle.id, buildPayload(), 'save_draft', { silent: true }).catch(() => {});
+                }
+                onNavigatePage(isPrincipal ? 'ks_reflection' : 'form_d', activeCycle);
+              }}
               className="px-6 py-3 rounded-2xl bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-600 hover:to-indigo-700 text-white text-xs sm:text-sm font-extrabold border-b-4 border-purple-950 active:border-b-0 active:translate-y-1 transition-all flex items-center gap-2 shadow-lg cursor-pointer"
             >
               <span>Lanjutkan ke Halaman Refleksi & Evaluasi (Form D)</span>
