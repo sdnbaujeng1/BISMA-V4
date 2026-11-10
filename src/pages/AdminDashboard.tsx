@@ -48,12 +48,11 @@ import {
   RotateCcw,
   BarChart3,
   ShieldCheck,
-  FileCode2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useSchoolIdentity } from "../hooks/useSchoolIdentity";
-import PromptSummaryModal from "../components/PromptSummaryModal";
 import NilaiConfigAdminModal from "../components/NilaiConfigAdminModal";
+import RekapKinerjaGuruAdmin from "./RekapKinerjaGuruAdmin";
 
 interface AdminDashboardProps {
   user: any;
@@ -87,7 +86,6 @@ export default function AdminDashboard({
     window.innerWidth >= 1024,
   );
   const [adminHeaderClicks, setAdminHeaderClicks] = useState(0);
-  const [showPromptModal, setShowPromptModal] = useState(false);
   const [showNilaiConfigModal, setShowNilaiConfigModal] = useState(false);
 
   const handleAdminHeaderClick = () => {
@@ -150,6 +148,7 @@ export default function AdminDashboard({
 
   const menuItems = [
     { id: "monitoring", icon: Table, label: "KBM Hari Ini" },
+    { id: "rekap_kinerja_jp", icon: Activity, label: "Rekap Kinerja Guru (JP/Minggu)" },
     { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { id: "konfigurasi_nilai", icon: BarChart3, label: "Konfigurasi Nilai & Logo" },
     { id: "supervisi_akademik", icon: ShieldCheck, label: "Supervisi" },
@@ -163,10 +162,18 @@ export default function AdminDashboard({
     { id: "ekskul_mapping", icon: Target, label: "Mapping Ekstrakurikuler" },
     { id: "color_config", icon: Palette, label: "Konfigurasi Warna" },
     { id: "api_config", icon: Key, label: "Konfigurasi API" },
-    { id: "ringkasan_prompt", icon: FileCode2, label: "Ringkasan Prompt (JSON & JS)" },
   ];
 
   const adminCards = [
+    {
+      id: "rekap_kinerja_jp_card",
+      title: "Rekap Kinerja Guru",
+      subtitle: "CAPAIAN JP/MINGGU",
+      icon: Activity,
+      color: "bg-emerald-600",
+      shadow: "shadow-emerald-200 dark:shadow-emerald-900/20",
+      action: () => setActiveView("rekap_kinerja_jp"),
+    },
     {
       id: "konfigurasi_nilai_card",
       title: "Konfigurasi Nilai",
@@ -339,19 +346,12 @@ export default function AdminDashboard({
       shadow: "shadow-slate-200 dark:shadow-slate-900/20",
       action: () => setActiveModal("pengaturan"),
     },
-    {
-      id: "ringkasan_prompt",
-      title: "Ringkasan Prompt",
-      subtitle: "JSON & JS DOWNLOAD",
-      icon: FileCode2,
-      color: "bg-emerald-600",
-      shadow: "shadow-emerald-200 dark:shadow-emerald-900/20",
-      action: () => setShowPromptModal(true),
-    },
   ];
 
   const renderContent = () => {
     switch (activeView) {
+      case "rekap_kinerja_jp":
+        return <RekapKinerjaGuruAdmin onBack={() => setActiveView("dashboard")} />;
       case "cetak_kartu":
         return <CetakKartu />;
       case "supervisi_akademik":
@@ -413,12 +413,12 @@ export default function AdminDashboard({
               </div>
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setShowPromptModal(true)}
+                  onClick={() => setActiveView("rekap_kinerja_jp")}
                   className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-                  title="Lihat & Download Ringkasan Prompt Rekayasa Aplikasi BISMA (JSON & JS)"
+                  title="Buka Rekap Kinerja Guru dalam Mengisi Capaian Pembelajaran JP/Minggu"
                 >
-                  <FileCode2 className="w-4 h-4" />
-                  <span>Ringkasan Prompt (JSON & JS)</span>
+                  <Activity className="w-4 h-4" />
+                  <span>Rekap Capaian JP/Minggu</span>
                 </button>
                 <div className="text-right hidden md:block">
                   <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
@@ -466,9 +466,12 @@ export default function AdminDashboard({
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
+              <div
+                onClick={() => setActiveView("rekap_kinerja_jp")}
+                className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all cursor-pointer group"
+              >
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-fuchsia-100 text-fuchsia-600 rounded-xl flex items-center justify-center">
+                  <div className="w-12 h-12 bg-fuchsia-100 text-fuchsia-600 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
                     <Calendar className="w-6 h-6" />
                   </div>
                   <div>
@@ -476,7 +479,7 @@ export default function AdminDashboard({
                       Total Jam Pelajaran (JP)
                     </p>
                     <h3 className="text-2xl font-bold text-slate-800 dark:text-white">
-                      {stats?.totalJP || 0} JP
+                      {stats?.totalJP || 0} JP / Minggu
                     </h3>
                   </div>
                 </div>
@@ -484,6 +487,10 @@ export default function AdminDashboard({
                   Total akumulasi JP dari seluruh jadwal yang telah diinput ke
                   sistem.
                 </p>
+                <div className="mt-3 inline-flex items-center gap-1.5 text-xs font-extrabold text-emerald-600 dark:text-emerald-400 group-hover:underline">
+                  <Activity className="w-3.5 h-3.5" />
+                  <span>Lihat Rekap Kinerja Capaian JP/Minggu Guru →</span>
+                </div>
               </div>
 
               <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 rounded-3xl shadow-lg shadow-blue-200 dark:shadow-none text-white relative overflow-hidden group hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
@@ -697,9 +704,7 @@ export default function AdminDashboard({
             <button
               key={item.id}
               onClick={() => {
-                if (item.id === "ringkasan_prompt") {
-                  setShowPromptModal(true);
-                } else if (item.id === "konfigurasi_nilai") {
+                if (item.id === "konfigurasi_nilai") {
                   setShowNilaiConfigModal(true);
                 } else {
                   setActiveView(item.id);
@@ -800,9 +805,6 @@ export default function AdminDashboard({
           </div>
         )}
       </AnimatePresence>
-
-      {/* Prompt Summary Modal */}
-      <PromptSummaryModal isOpen={showPromptModal} onClose={() => setShowPromptModal(false)} />
 
       {/* Konfigurasi Nilai, Logo & Tahun Aktif Modal */}
       <NilaiConfigAdminModal

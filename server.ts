@@ -273,6 +273,362 @@ app.get('/api/admin/stats', async (req, res) => {
     }
   });
 
+  app.get('/api/admin/rekap-kinerja-jp', async (req, res) => {
+    try {
+      const nowJakarta = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+      const defaultMonth = `${nowJakarta.getFullYear()}-${String(nowJakarta.getMonth() + 1).padStart(2, '0')}`;
+      const requestedMonth = String(req.query.month || defaultMonth).trim();
+
+      const [yearStr, monthStr] = requestedMonth.split('-');
+      const year = Number(yearStr) || nowJakarta.getFullYear();
+      const month = Number(monthStr) || (nowJakarta.getMonth() + 1);
+      const daysInMonth = new Date(year, month, 0).getDate();
+
+      const startIso = `${year}-${String(month).padStart(2, '0')}-01T00:00:00.000Z`;
+      const endIso = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}T23:59:59.999Z`;
+
+      const [
+        { data: guruRows, error: guruErr },
+        { data: jadwalRows, error: jadwalErr },
+        { data: jurnalRows, error: jurnalErr },
+        { data: settingsRows },
+        { data: allJurnalTimestamps }
+      ] = await Promise.all([
+        supabase.from('guru').select('*').order('nama_guru'),
+        supabase.from('jadwal_real').select('*'),
+        supabase
+          .from('jurnal')
+          .select('id, timestamp, nip, nama_guru, kelas, mata_pelajaran, jam_pembelajaran, materi, kebersihan_kelas, validasi')
+          .gte('timestamp', startIso)
+          .lte('timestamp', endIso)
+          .order('timestamp', { ascending: false }),
+        supabase.from('pengaturan').select('key, value'),
+        supabase.from('jurnal').select('timestamp').order('timestamp', { ascending: false }).limit(2000)
+      ]);
+
+      if (guruErr) throw guruErr;
+      if (jadwalErr) throw jadwalErr;
+      if (jurnalErr) throw jurnalErr;
+
+      const settingsMap: Record<string, string> = {};
+      (settingsRows || []).forEach((r: any) => {
+        settingsMap[r.key] = r.value;
+      });
+
+      let kalenderAkademik: Record<string, string> = {};
+      if (settingsMap.kalender_akademik) {
+        try {
+          kalenderAkademik = JSON.parse(settingsMap.kalender_akademik);
+        } catch {
+          kalenderAkademik = {};
+        }
+      }
+
+      let wkMap: Record<string, any> = {};
+      if (settingsMap.wali_kelas_mapping) {
+        try {
+          wkMap = JSON.parse(settingsMap.wali_kelas_mapping);
+        } catch {
+          wkMap = {};
+        }
+      }
+
+      const availableMonthsSet = new Set<string>([defaultMonth, requestedMonth]);
+      (allJurnalTimestamps || []).forEach((row: any) => {
+        if (row?.timestamp) {
+          const d = new Date(row.timestamp);
+          if (!isNaN(d.getTime())) {
+            const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            availableMonthsSet.add(ym);
+          }
+        }
+      });
+
+      const dayNamesIndo = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+      // Build weeks of the month (Minggu 1: 1-7, Minggu 2: 8-14, Minggu 3: 15-21, Minggu 4: 22-28, Minggu 5: 29-end)
+      const weekDefs: Array<{
+        weekNumber: number;
+        label: string;
+        startDay: number;
+        endDay: number;
+        dateRangeLabel: string;
+        effectiveDaysCount: number;
+        dates: Array<{ dateStr: string; dayName: string; isEffective: boolean }>;
+      }> = [];
+
+      const ranges = [
+        [1, Math.min(7, daysInMonth)],
+        [8, Math.min(14, daysInMonth)],
+        [15, Math.min(21, daysInMonth)],
+        [22, Math.min(28, daysInMonth)]
+      ];
+      if (daysInMonth > 28) {
+        ranges.push([29, daysInMonth]);
+      }
+
+      ranges.forEach(([sDay, eDay], idx) => {
+        if (sDay > daysInMonth) return;
+        const dates: Array<{ dateStr: string; dayName: string; isEffective: boolean }> = [];
+        let effectiveDaysCount = 0;
+        for (let d = sDay; d <= eDay; d++) {
+          const dateObj = new Date(year, month - 1, d);
+          const dayOfWeek = dateObj.getDay();
+          const dayName = dayNamesIndo[dayOfWeek];
+          const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          const calStatus = kalenderAkademik[dateStr] || (dayOfWeek === 0 ? 'libur' : 'efektif');
+          const isEffective = dayOfWeek !== 0 && calStatus !== 'libur' && calStatus !== 'tidak_efektif';
+          if (isEffective) effectiveDaysCount++;
+          dates.push({ dateStr, dayName, isEffective });
+        }
+        weekDefs.push({
+          weekNumber: idx + 1,
+          label: `Minggu ${idx + 1}`,
+          startDay: sDay,
+          endDay: eDay,
+          dateRangeLabel: `${sDay}–${eDay}`,
+          effectiveDaysCount,
+          dates
+        });
+      });
+
+      const normalizeName = (s: any) => String(s || '').trim().toLowerCase();
+
+      const teacherRecaps = (guruRows || []).map((guru: any) => {
+        const nip = String(guru.nip || '').trim();
+        const namaGuru = String(guru.nama_guru || '').trim();
+        const normNama = normalizeName(namaGuru);
+
+        // Find Wali Kelas info if applicable
+        let waliKelas = guru.wali_kelas || guru.waliKelas || wkMap[nip] || '';
+        if (!waliKelas) {
+          for (const [kls, info] of Object.entries(wkMap)) {
+            if (kls.startsWith('Kelas') && info && typeof info === 'object') {
+              if ((info as any).nip === nip || normalizeName((info as any).nama) === normNama) {
+                waliKelas = kls;
+                break;
+              }
+            }
+          }
+        }
+
+        // Teacher's schedules in jadwal_real
+        const mySchedules = (jadwalRows || []).filter(
+          (s: any) => normalizeName(s.guru) === normNama
+        );
+
+        // Count scheduled JP per day of week (Senin..Sabtu)
+        const scheduledJpByDayName: Record<string, number> = {};
+        const classesSet = new Set<string>();
+        const mapelSet = new Set<string>();
+
+        mySchedules.forEach((s: any) => {
+          const h = String(s.hari || '').trim();
+          if (h) {
+            scheduledJpByDayName[h] = (scheduledJpByDayName[h] || 0) + 1;
+          }
+          if (s.kelas) classesSet.add(String(s.kelas).trim());
+          if (s.mapel) mapelSet.add(String(s.mapel).trim());
+        });
+
+        if (guru.mengajar) {
+          String(guru.mengajar)
+            .split(',')
+            .map((m: string) => m.trim())
+            .filter(Boolean)
+            .forEach((m: string) => mapelSet.add(m));
+        }
+
+        // Standard Target JP / Minggu (from jadwal_real count or fallback to guru.target_jp || 24)
+        const targetJpMinggu = mySchedules.length > 0 ? mySchedules.length : (Number(guru.target_jp) || 24);
+
+        // Filter journals belonging to this teacher in the selected month
+        const myJournals = (jurnalRows || []).filter((j: any) => {
+          if (nip && String(j.nip || '').trim() === nip) return true;
+          return normalizeName(j.nama_guru) === normNama;
+        });
+
+        // Parse each journal's date (in Asia/Jakarta) and JP count
+        const parsedJournals = myJournals.map((j: any) => {
+          const ts = new Date(j.timestamp);
+          const jakartaDate = new Date(ts.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+          const dayNum = jakartaDate.getDate();
+          const dateStr = `${jakartaDate.getFullYear()}-${String(jakartaDate.getMonth() + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+          const rawJam = String(j.jam_pembelajaran || '').trim();
+          const jamItems =
+            rawJam && rawJam !== '-'
+              ? rawJam
+                  .split(',')
+                  .map((x: string) => x.trim())
+                  .filter(Boolean)
+              : [];
+          const jpCount = jamItems.length > 0 ? jamItems.length : 1;
+
+          let ringkasanMateri = '-';
+          if (j.materi) {
+            try {
+              const parsedM = typeof j.materi === 'string' ? JSON.parse(j.materi) : j.materi;
+              if (Array.isArray(parsedM)) {
+                ringkasanMateri = parsedM
+                  .map((m: any) => m.materi || m.kegiatan || m.topik || m.mataPelajaran || '')
+                  .filter(Boolean)
+                  .join('; ');
+              } else if (typeof parsedM === 'string') {
+                ringkasanMateri = parsedM;
+              }
+            } catch {
+              ringkasanMateri = String(j.materi);
+            }
+          }
+
+          return {
+            id: j.id,
+            timestamp: j.timestamp,
+            dateStr,
+            dayNum,
+            kelas: j.kelas || '-',
+            mata_pelajaran: j.mata_pelajaran || '-',
+            jam_pembelajaran: rawJam || '-',
+            jamItems,
+            jpCount,
+            materi: ringkasanMateri || '-'
+          };
+        });
+
+        // Calculate weekly breakdown
+        const weeklyBreakdown = weekDefs.map(w => {
+          const journalsInWeek = parsedJournals.filter(
+            pj => pj.dayNum >= w.startDay && pj.dayNum <= w.endDay
+          );
+
+          // Deduplicate exact same date + class + jam so JP is accurate, or sum distinct slots
+          const uniqueSlots = new Set<string>();
+          let fallbackJp = 0;
+          journalsInWeek.forEach(pj => {
+            if (pj.jamItems.length > 0) {
+              pj.jamItems.forEach((jam: string) => {
+                uniqueSlots.add(`${pj.dateStr}__${pj.kelas}__${jam}`);
+              });
+            } else {
+              fallbackJp += pj.jpCount;
+            }
+          });
+          const realisasiJp = uniqueSlots.size + fallbackJp;
+
+          // Target JP for this week:
+          // For full 7-day weeks (Minggu 1-4), calculate based on effective days in that week if schedule exists, else proportional to targetJpMinggu
+          let targetMinggu = targetJpMinggu;
+          if (mySchedules.length > 0) {
+            let scheduledEffectiveJp = 0;
+            w.dates.forEach(d => {
+              if (d.isEffective) {
+                scheduledEffectiveJp += scheduledJpByDayName[d.dayName] || 0;
+              }
+            });
+            targetMinggu = scheduledEffectiveJp;
+          } else {
+            // Proportional to effective days out of 6 standard school days
+            targetMinggu = Math.round((targetJpMinggu * w.effectiveDaysCount) / 6);
+          }
+
+          const persentase =
+            targetMinggu > 0
+              ? Math.min(100, Math.round((realisasiJp / targetMinggu) * 100))
+              : realisasiJp > 0
+              ? 100
+              : 0;
+
+          return {
+            weekNumber: w.weekNumber,
+            label: w.label,
+            dateRangeLabel: w.dateRangeLabel,
+            realisasiJp,
+            targetJp: targetMinggu,
+            standardTargetJp: targetJpMinggu,
+            jurnalCount: journalsInWeek.length,
+            persentase
+          };
+        });
+
+        const totalRealisasiJpBulan = weeklyBreakdown.reduce((acc, w) => acc + w.realisasiJp, 0);
+        const totalTargetJpBulan = weeklyBreakdown.reduce((acc, w) => acc + w.targetJp, 0) || (targetJpMinggu * 4);
+        // Active full weeks (Weeks 1-4) average JP/Minggu
+        const activeWeeks = weeklyBreakdown.filter(w => w.weekNumber <= 4 && w.targetJp > 0);
+        const divisorWeeks = activeWeeks.length || 4;
+        const rataRataJpPerMinggu = Number((totalRealisasiJpBulan / divisorWeeks).toFixed(1));
+
+        const persentaseBulan =
+          totalTargetJpBulan > 0
+            ? Math.min(100, Math.round((totalRealisasiJpBulan / totalTargetJpBulan) * 100))
+            : 0;
+
+        const distinctDays = new Set(parsedJournals.map(pj => pj.dateStr)).size;
+
+        let kategori: 'Sesuai Ekspektasi' | 'Cukup Optimal' | 'Perlu Ditingkatkan' | 'Perlu Pembinaan' = 'Perlu Pembinaan';
+        if (persentaseBulan >= 85) kategori = 'Sesuai Ekspektasi';
+        else if (persentaseBulan >= 70) kategori = 'Cukup Optimal';
+        else if (persentaseBulan >= 40) kategori = 'Perlu Ditingkatkan';
+
+        return {
+          nip,
+          nama_guru: namaGuru,
+          wali_kelas: waliKelas || '-',
+          mengajar: Array.from(mapelSet).join(', ') || guru.mengajar || '-',
+          kelas_diampu: Array.from(classesSet).sort().join(', ') || waliKelas || '-',
+          targetJpMinggu,
+          rataRataJpPerMinggu,
+          totalRealisasiJpBulan,
+          totalTargetJpBulan,
+          totalJurnalBulan: parsedJournals.length,
+          hariAktifMengisi: distinctDays,
+          persentaseCapaian: persentaseBulan,
+          kategori,
+          weeklyBreakdown,
+          riwayatJurnal: parsedJournals.slice(0, 100)
+        };
+      });
+
+      const totalTeachers = teacherRecaps.length;
+      const totalTargetJpMingguSekolah = teacherRecaps.reduce((s, t) => s + t.targetJpMinggu, 0);
+      const totalRealisasiJpBulanSekolah = teacherRecaps.reduce((s, t) => s + t.totalRealisasiJpBulan, 0);
+      const totalTargetJpBulanSekolah = teacherRecaps.reduce((s, t) => s + t.totalTargetJpBulan, 0);
+      const rataRataCapaianSekolah =
+        totalTeachers > 0
+          ? Math.round(teacherRecaps.reduce((s, t) => s + t.persentaseCapaian, 0) / totalTeachers)
+          : 0;
+      const guruSesuaiTarget = teacherRecaps.filter(t => t.persentaseCapaian >= 80).length;
+      const guruPerluPembinaan = teacherRecaps.filter(t => t.persentaseCapaian < 80).length;
+
+      res.json({
+        success: true,
+        data: {
+          month: requestedMonth,
+          year,
+          monthNumber: month,
+          availableMonths: Array.from(availableMonthsSet).sort().reverse(),
+          weeks: weekDefs.map(w => ({
+            weekNumber: w.weekNumber,
+            label: w.label,
+            dateRangeLabel: w.dateRangeLabel,
+            effectiveDaysCount: w.effectiveDaysCount
+          })),
+          summary: {
+            totalTeachers,
+            totalTargetJpMingguSekolah,
+            totalRealisasiJpBulanSekolah,
+            totalTargetJpBulanSekolah,
+            rataRataCapaianSekolah,
+            guruSesuaiTarget,
+            guruPerluPembinaan
+          },
+          teachers: teacherRecaps
+        }
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  });
+
   app.get('/api/public-dashboard', async (req, res) => {
     try {
       const today = new Date();
